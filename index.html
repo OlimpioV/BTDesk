@@ -141,13 +141,7 @@ function header() {
     ? `<span style="font-size:11px;background:#185FA5;color:#fff;padding:3px 10px;border-radius:10px">Admin</span>`
     : `<span style="font-size:11px;background:#555;color:#fff;padding:3px 10px;border-radius:10px">Visualizador</span>`;
   return `<div style="background:#1a1a2e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-    <div style="display:flex;align-items:center;gap:16px">
-      ${logo()}
-      <div style="border-left:1px solid rgba(255,255,255,0.2);padding-left:16px">
-        <div style="color:#fff;font-weight:500;font-size:15px">Bari Securitizadora</div>
-        <div style="color:rgba(255,255,255,0.6);font-size:12px">Controle de demandas</div>
-      </div>
-    </div>
+    ${logo()}
     <div style="display:flex;align-items:center;gap:10px">
       ${badge}
       <button onclick="logout()" style="font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:#fff;cursor:pointer">Sair</button>
