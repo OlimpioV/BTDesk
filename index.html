@@ -40,6 +40,11 @@ button{font-family:inherit;cursor:pointer;}
 .drop-zone.drag-over{background:rgba(37,99,235,0.06);outline:2px dashed #93c5fd;}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:200;}
 .modal-box{background:#fff;border-radius:var(--radius-lg);padding:28px 32px;width:min(95vw,560px);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-md);}
+.autocomplete-wrap{position:relative;}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--accent);border-top:none;border-radius:0 0 8px 8px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:var(--shadow-md);}
+.autocomplete-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);}
+.autocomplete-item:last-child{border-bottom:none;}
+.autocomplete-item:hover,.autocomplete-item.active{background:#eff6ff;color:var(--accent);}
 </style>
 </head>
 <body>
@@ -79,6 +84,9 @@ let TC=Object.assign({},TC_DEFAULT),TIPOS=Object.keys(TC);
 let corSelecionada=0,editingEtiqueta=null;
 let modalCardId=null,editingCommentId=null;
 let responsaveis=[],clientesDB=[],casosDB=[];
+
+// autocomplete state
+let acIndex=-1,acVisible=false;
 
 function trunc(s,n){return s&&s.length>n?s.substring(0,n)+"...":s||"";}
 function escQ(s){return (s||"").replace(/'/g,"\\'");}
@@ -333,39 +341,60 @@ function getFiltered(){
   });
 }
 
-function onClienteFilterChange(val){
-  filterCliente=val;filterCaso="";renderView();
-}
-function onCasoFilterChange(val){filterCaso=val;renderView();}
-
 function tipoTagsHTML(tipos){
   if(!tipos||!tipos.length)return "";
   return tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("");
 }
 
+// ── TOOLBAR — filtro cascata com inputs controlados ──
 function toolbarHTML(canEdit){
   var th=cards.reduce(function(s,c){return s+(parseFloat(c.horas)||0);},0);
   var rList=responsaveis.length?responsaveis:[];
   var rO=rList.map(function(r){return '<option value="'+r+'"'+(filterResp===r?' selected':'')+'>'+r+'</option>';}).join("");
   var tO=TIPOS.map(function(t){return '<option value="'+t+'"'+(filterTipo===t?' selected':'')+'>'+t+'</option>';}).join("");
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(filterStatus===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
-  var clO=clientesDB.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCliente)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("");
+
+  // Caso em cascata: só mostra opções se cliente preenchido
   var caList=filterCliente?casosDoCliente(parseInt(filterCliente)):[];
-  var caO=caList.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCaso)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("");
+  var casoField;
+  if(!filterCliente){
+    // desabilitado enquanto cliente não informado
+    casoField='<input placeholder="Caso" disabled title="Informe o cliente primeiro" value="" style="width:90px;font-size:13px;padding:6px 10px;opacity:0.45;cursor:not-allowed;"/>';
+  } else if(caList.length>0){
+    // select cascata
+    var caO=caList.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCaso)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("");
+    casoField='<select onchange="filterCaso=this.value;renderView()" style="width:100px;font-size:13px;padding:6px 10px;"><option value="">Caso</option>'+caO+'</select>';
+  } else {
+    casoField='<input placeholder="Caso" value="'+filterCaso+'" oninput="filterCaso=this.value;renderView()" style="width:90px;font-size:13px;padding:6px 10px;" type="number" min="1"/>';
+  }
+
   return '<div style="padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:var(--white);border-bottom:1px solid var(--border);min-height:52px;gap:12px;flex-wrap:wrap;">'
     +'<div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--text2);">'+icon('clock')+' '+th.toFixed(1)+'h registradas</div>'
     +'<div style="display:flex;gap:8px;align-items:center;padding:8px 0;flex-wrap:wrap;">'
     +'<select onchange="filterStatus=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Status</option>'+sO+'</select>'
     +'<select onchange="filterTipo=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Tipos</option>'+tO+'</select>'
     +'<select onchange="filterResp=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Respons&#225;vel</option>'+rO+'</select>'
-    +'<input placeholder="Cliente" value="'+filterCliente+'" oninput="filterCliente=this.value;filterCaso=\'\';renderView()" style="width:90px;font-size:13px;padding:6px 10px;" type="number" min="1" max="9999"/>'
-    +'<input placeholder="Caso" value="'+filterCaso+'" oninput="filterCaso=this.value;renderView()" style="width:90px;font-size:13px;padding:6px 10px;" type="number" min="1" max="9999"/>'
+    // Cliente: input numérico com ID fixo, sem re-render a cada tecla
+    +'<input id="filter-cliente-input" placeholder="Cliente" value="'+filterCliente+'" style="width:90px;font-size:13px;padding:6px 10px;" type="number" min="1" max="9999"/>'
+    +casoField
     +'<div style="display:flex;gap:4px;">'
     +'<button class="view-btn '+(viewMode==="kanban"?"active":"")+'" onclick="viewMode=\'kanban\';renderView()">'+icon("kanban")+'</button>'
     +'<button class="view-btn '+(viewMode==="lista"?"active":"")+'" onclick="viewMode=\'lista\';renderView()">'+icon("list")+'</button>'
     +'</div>'
     +(canEdit?'<button class="btn btn-primary" onclick="openNew()" style="display:flex;align-items:center;gap:6px;white-space:nowrap;">'+icon('plus')+' Nova demanda</button>':"")
     +'</div></div>';
+}
+
+// Bind eventos do input de cliente (chamado após render)
+function bindFilterClienteInput(){
+  var el=document.getElementById("filter-cliente-input");
+  if(!el)return;
+  el.addEventListener("change",function(){
+    filterCliente=this.value;filterCaso="";renderView();
+  });
+  el.addEventListener("keydown",function(e){
+    if(e.key==="Enter"){filterCliente=this.value;filterCaso="";renderView();}
+  });
 }
 
 // ── DRAG & DROP ──
@@ -414,8 +443,10 @@ function renderModal(){
   var col=COLS.find(function(c){return c.id===card.status;})||COLS[0];
   var canEdit=perfil==="mestre"||perfil==="advogado";
   var comentarios=getComments(card);
-  var cliNome=card.clienteNum?card.clienteNum+(clienteNome(card.clienteNum)?" - "+clienteNome(card.clienteNum):""):"";
-  var casoNm=card.casoNum?card.casoNum+(casoDesc(card.casoNum,card.clienteNum)?" - "+trunc(casoDesc(card.casoNum,card.clienteNum),60):""):"";
+  // C/C label
+  var ccLabel="";
+  if(card.clienteNum&&card.casoNum) ccLabel="C/C: "+card.clienteNum+"/"+card.casoNum;
+  else if(card.clienteNum) ccLabel="C: "+card.clienteNum;
   var commentsHTML=comentarios.length===0
     ?'<div style="font-size:12px;color:var(--text3);text-align:center;padding:16px 0;">Nenhum coment&#225;rio ainda</div>'
     :comentarios.map(function(c){
@@ -460,8 +491,7 @@ function renderModal(){
     +'</div>'
     +'<div style="display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';margin-bottom:16px;">'+col.label+'</div>'
     +'<div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">'
-    +(cliNome?rowM("Cliente",icon('briefcase')+' '+cliNome):"")
-    +(casoNm?rowM("Caso",icon('briefcase')+' '+casoNm):"")
+    +(ccLabel?rowM("C/C",icon('briefcase')+' '+ccLabel):"")
     +(card.responsavel?rowM("Respons&#225;vel",icon('user')+' '+card.responsavel):"")
     +(card.email?rowM("E-mail",icon('mail')+' '+card.email):"")
     +(card.dataInicio?rowM("Per&#237;odo",icon('cal')+' '+card.dataInicio+(card.dataFim?' &rarr; '+card.dataFim:'')):"")
@@ -508,13 +538,21 @@ async function confirmarExcluirComentario(commentId){
 // ── KANBAN / LISTA ──
 function renderView(){if(viewMode==="lista")renderLista();else renderKanban();}
 
+// C/C label nos cards
+function ccLabelHTML(card){
+  if(card.clienteNum&&card.casoNum)
+    return '<span style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;border-radius:5px;padding:1px 7px;">C/C: '+card.clienteNum+'/'+card.casoNum+'</span>';
+  if(card.clienteNum)
+    return '<span style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;border-radius:5px;padding:1px 7px;">C: '+card.clienteNum+'</span>';
+  return "";
+}
+
 function cardFaceHTML(card,canEdit){
   var obs80=trunc(card.obs,80);
   var nc=(card.comentarios||[]).length;
-  var cliLabel=card.clienteNum?'<span style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;border-radius:5px;padding:1px 7px;">C:'+card.clienteNum+'</span>':"";
-  var casoLabel=card.casoNum?'<span style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;border-radius:5px;padding:1px 7px;">P:'+card.casoNum+'</span>':"";
+  var ccHtml=ccLabelHTML(card);
   return (card.tipos&&card.tipos.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">'+tipoTagsHTML(card.tipos)+'</div>':"")
-    +(cliLabel||casoLabel?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">'+cliLabel+casoLabel+'</div>':"")
+    +(ccHtml?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">'+ccHtml+'</div>':"")
     +'<div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:8px;line-height:1.4;">'+card.titulo+'</div>'
     +'<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:'+(obs80?'8':'4')+'px;">'
     +(card.responsavel?'<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);">'+icon('user')+' '+card.responsavel+'</div>':"")
@@ -554,6 +592,7 @@ function renderKanban(){
     headerHTML("kanban")+toolbarHTML(canEdit)
     +'<div style="padding:24px 28px;max-width:1300px;margin:0 auto;">'
     +'<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;">'+colsHtml+'</div></div>';
+  bindFilterClienteInput();
 }
 
 function renderLista(){
@@ -565,13 +604,13 @@ function renderLista(){
         var col=COLS.find(function(c){return c.id===card.status;})||COLS[0];
         var sp='<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';">'+col.label+'</span>';
         var nc=(card.comentarios||[]).length;
+        var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"—");
         var ac=canEdit?'<button onclick="openEdit(\''+card.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;margin-right:4px;">Editar</button>'
           +'<button onclick="deleteCard(\''+card.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"—";
         return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'
           +'<td style="padding:12px 16px;font-size:13px;font-weight:500;">'+card.titulo+'</td>'
           +'<td style="padding:12px 16px;">'+sp+'</td>'
-          +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+(card.clienteNum||"—")+'</td>'
-          +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+(card.casoNum||"—")+'</td>'
+          +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'
           +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+(card.responsavel||"—")+'</td>'
           +'<td style="padding:12px 16px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"—")+'</td>'
           +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"—")+'</td>'
@@ -586,11 +625,12 @@ function renderLista(){
     +'<div style="overflow-x:auto;">'
     +'<table style="width:100%;border-collapse:collapse;min-width:900px;">'
     +'<thead><tr style="background:var(--surface);border-bottom:1px solid var(--border);">'
-    +['T&#237;tulo','Status','Cliente','Caso','Resp.','Tipos','In&#237;cio','Encerramento','Com.','A&#231;&#245;es'].map(function(h){return '<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">'+h+'</th>';}).join("")
+    +['T&#237;tulo','Status','C/C','Resp.','Tipos','In&#237;cio','Encerramento','Com.','A&#231;&#245;es'].map(function(h){return '<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">'+h+'</th>';}).join("")
     +'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+  bindFilterClienteInput();
 }
 
-// ── IMPORTAR (batch) ──
+// ── IMPORTAR ──
 function renderImportar(){
   document.getElementById("app").innerHTML=
     headerHTML("importar")
@@ -618,8 +658,6 @@ async function processarImport(){
     var wb=XLSX.read(data,{type:"array"});
     var ws=wb.Sheets[wb.SheetNames[0]];
     var rows=XLSX.utils.sheet_to_json(ws,{defval:""});
-
-    // Montar mapa de clientes únicos
     var clientesMap={};
     var casosArr=[];
     rows.forEach(function(row){
@@ -636,36 +674,23 @@ async function processarImport(){
         objeto:String(row["Objeto"]||"").trim(),
         situacao:String(row["Situação"]||row["Situacao"]||"").trim()});
     });
-
-    // Batch upsert clientes
     var clientesList=Object.values(clientesMap);
     var CHUNK=50;
     for(var i=0;i<clientesList.length;i+=CHUNK){
       var chunk=clientesList.slice(i,i+CHUNK);
-      await fetch(SB+"/rest/v1/clientes",{method:"POST",
-        headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),
-        body:JSON.stringify(chunk)});
+      await fetch(SB+"/rest/v1/clientes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(chunk)});
     }
-
-    // Recarregar clientes para pegar IDs
     await loadClientes();
-
-    // Montar casos com cliente_id
     var casosComId=casosArr.map(function(c){
       var cl=clientesDB.find(function(x){return x.numero===c.cliNum;});
       if(!cl)return null;
       return {numero:c.casoNum,cliente_id:cl.id,descricao:c.descricao,
         nome_consulta:c.nome_consulta,objeto:c.objeto,situacao:c.situacao};
     }).filter(Boolean);
-
-    // Batch upsert casos
     for(var j=0;j<casosComId.length;j+=CHUNK){
       var cchunk=casosComId.slice(j,j+CHUNK);
-      await fetch(SB+"/rest/v1/casos",{method:"POST",
-        headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),
-        body:JSON.stringify(cchunk)});
+      await fetch(SB+"/rest/v1/casos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(cchunk)});
     }
-
     await loadCasos();
     resultDiv.innerHTML='<div style="padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius);font-size:13px;color:#14532d;">'
       +'Importa&#231;&#227;o conclu&#237;da! <strong>'+clientesList.length+' clientes</strong> e <strong>'+casosComId.length+' casos</strong> processados.</div>';
@@ -866,6 +891,79 @@ async function deletarUsuario(id,nome){
   }catch(e){toast("Erro: "+e.message,true);}
 }
 
+// ── AUTOCOMPLETE CLIENTE ──
+function buildAcList(query){
+  if(!query||query.length<1)return [];
+  var q=query.toLowerCase();
+  return clientesDB.filter(function(c){
+    return String(c.numero).startsWith(q)||(c.nome&&c.nome.toLowerCase().includes(q));
+  }).slice(0,8);
+}
+
+function renderAcList(matches){
+  var list=document.getElementById("ac-list");
+  if(!list)return;
+  if(!matches||matches.length===0){list.style.display="none";acIndex=-1;return;}
+  list.innerHTML=matches.map(function(c,i){
+    return '<div class="autocomplete-item" id="ac-item-'+i+'" onmousedown="selectCliente('+c.numero+')" onmouseover="acIndex='+i+';highlightAc()">'
+      +'<strong>'+c.numero+'</strong>'+(c.nome?' — '+trunc(c.nome,40):'')+'</div>';
+  }).join("");
+  list.style.display="block";
+  acIndex=-1;
+}
+
+function highlightAc(){
+  var items=document.querySelectorAll(".autocomplete-item");
+  items.forEach(function(el,i){el.classList.toggle("active",i===acIndex);});
+}
+
+function onClienteInput(val){
+  var matches=buildAcList(val);
+  renderAcList(matches);
+  // atualiza cascata de caso
+  updateFormCaso(null);
+}
+
+function onClienteKeydown(e){
+  var list=document.getElementById("ac-list");
+  var items=list?list.querySelectorAll(".autocomplete-item"):[];
+  if(e.key==="ArrowDown"){e.preventDefault();acIndex=Math.min(acIndex+1,items.length-1);highlightAc();}
+  else if(e.key==="ArrowUp"){e.preventDefault();acIndex=Math.max(acIndex-1,0);highlightAc();}
+  else if(e.key==="Enter"&&acIndex>=0){
+    e.preventDefault();
+    var matches=buildAcList(document.getElementById("f-cliente-text").value||"");
+    if(matches[acIndex])selectCliente(matches[acIndex].numero);
+  } else if(e.key==="Escape"){hideAc();}
+}
+
+function hideAc(){
+  var list=document.getElementById("ac-list");
+  if(list)list.style.display="none";
+  acIndex=-1;
+}
+
+function selectCliente(num){
+  var c=clientesDB.find(function(x){return x.numero===num;});
+  var input=document.getElementById("f-cliente-text");
+  var hidden=document.getElementById("f-cliente");
+  if(input)input.value=num+(c&&c.nome?" — "+c.nome:"");
+  if(hidden)hidden.value=num;
+  hideAc();
+  updateFormCaso(num);
+}
+
+function updateFormCaso(cliNum){
+  var wrap=document.getElementById("caso-cascade-wrap");
+  if(!wrap)return;
+  var casos=cliNum?casosDoCliente(parseInt(cliNum)):[];
+  if(casos.length>0){
+    var opts=casos.map(function(c){return '<option value="'+c.numero+'">'+c.numero+(c.descricao?' — '+trunc(c.descricao,40):'')+'</option>';}).join("");
+    wrap.innerHTML='<select id="f-caso" style="width:100%;"><option value="">Selecione o caso...</option>'+opts+'</select>';
+  } else {
+    wrap.innerHTML='<input id="f-caso" type="number" min="1" max="9999" value="" placeholder="Ex: 745"/>';
+  }
+}
+
 // ── FORMULÁRIO DEMANDA ──
 function renderForm(){
   var card=editingId?cards.find(function(c){return c.id===editingId;}):null;
@@ -877,9 +975,24 @@ function renderForm(){
   var rList=responsaveis.length?responsaveis:[];
   var rO=rList.map(function(r){return '<option value="'+r+'"'+(v.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(v.status===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
-  var clO=clientesDB.map(function(c){return '<option value="'+c.numero+'"'+(String(v.clienteNum)===String(c.numero)?' selected':'')+'>'+c.numero+' - '+trunc(c.nome,40)+'</option>';}).join("");
-  var caList=v.clienteNum?casosDoCliente(parseInt(v.clienteNum)):[];
-  var caO=caList.map(function(c){return '<option value="'+c.numero+'"'+(String(v.casoNum)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' - '+trunc(c.descricao,40):'')+'</option>';}).join("");
+
+  // valor inicial do campo cliente
+  var cliTextVal="";
+  if(v.clienteNum){
+    var cliObj=clientesDB.find(function(c){return c.numero===v.clienteNum;});
+    cliTextVal=v.clienteNum+(cliObj&&cliObj.nome?" — "+cliObj.nome:"");
+  }
+
+  // cascata inicial de caso
+  var casos=v.clienteNum?casosDoCliente(parseInt(v.clienteNum)):[];
+  var casoFieldInner;
+  if(casos.length>0){
+    var opts=casos.map(function(c){return '<option value="'+c.numero+'"'+(String(v.casoNum)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' — '+trunc(c.descricao,40):'')+'</option>';}).join("");
+    casoFieldInner='<select id="f-caso" style="width:100%;"><option value="">Selecione o caso...</option>'+opts+'</select>';
+  } else {
+    casoFieldInner='<input id="f-caso" type="number" min="1" max="9999" value="'+(v.casoNum||"")+'" placeholder="Ex: 745"/>';
+  }
+
   document.getElementById("app").innerHTML=
     '<div style="background:var(--surface);min-height:100vh;padding-bottom:40px;">'
     +'<div style="background:var(--navy);height:60px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;">'
@@ -891,10 +1004,22 @@ function renderForm(){
     +'<div style="max-width:580px;margin:28px auto;padding:0 16px;">'
     +'<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px 32px;box-shadow:var(--shadow);">'
     +'<div class="field"><label>T&#237;tulo *</label><input id="f-titulo" value="'+v.titulo+'" placeholder="Ex: An&#225;lise de contrato CRI"/></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field">'
-    +'<div><label>Cliente (n&#250;mero)</label><input id="f-cliente" type="number" min="1" max="9999" value="'+(v.clienteNum||"")+'" placeholder="Ex: 446"/></div>'
-    +'<div><label>Caso (n&#250;mero)</label><input id="f-caso" type="number" min="1" max="9999" value="'+(v.casoNum||"")+'" placeholder="Ex: 745"/></div>'
-    +'</div>'
+
+    // Campo cliente com autocomplete
+    +'<div class="field">'
+    +'<label>Cliente</label>'
+    +'<div class="autocomplete-wrap">'
+    +'<input id="f-cliente-text" autocomplete="off" value="'+cliTextVal+'" placeholder="Digite nome ou número do cliente..."'
+    +' oninput="onClienteInput(this.value)"'
+    +' onkeydown="onClienteKeydown(event)"'
+    +' onblur="setTimeout(hideAc,150)"/>'
+    +'<input type="hidden" id="f-cliente" value="'+(v.clienteNum||"")+'"/>'
+    +'<div id="ac-list" class="autocomplete-list" style="display:none;"></div>'
+    +'</div></div>'
+
+    // Campo caso em cascata
+    +'<div class="field"><label>Caso</label><div id="caso-cascade-wrap">'+casoFieldInner+'</div></div>'
+
     +'<div class="field"><label>Respons&#225;vel</label><select id="f-responsavel" style="width:100%;"><option value="">Selecione...</option>'+rO+'</select></div>'
     +'<div class="field"><label>Status</label><select id="f-status" style="width:100%;">'+sO+'</select></div>'
     +'<div class="field"><label>E-mail da solicita&#231;&#227;o</label><input id="f-email" value="'+(v.email||"")+'" placeholder="Ex: Fwd: Assembleia Geral"/></div>'
@@ -911,23 +1036,6 @@ function renderForm(){
     +'</div></div></div></div>';
 }
 
-function onFormClienteChange(){
-  var sel=document.getElementById("f-cliente");
-  var casoSel=document.getElementById("f-caso");
-  if(!sel||!casoSel)return;
-  var cliNum=parseInt(sel.value);
-  casoSel.innerHTML='<option value="">Selecione...</option>';
-  if(cliNum){
-    casoSel.disabled=false;
-    var lista=casosDoCliente(cliNum);
-    lista.forEach(function(c){
-      var opt=document.createElement("option");
-      opt.value=c.numero;opt.textContent=c.numero+(c.descricao?' - '+trunc(c.descricao,40):'');
-      casoSel.appendChild(opt);
-    });
-  }else{casoSel.disabled=true;}
-}
-
 function toggleTipo(t){
   var idx=formTipos.indexOf(t);if(idx>=0)formTipos.splice(idx,1);else formTipos.push(t);
   var c=TC[t],sel=formTipos.includes(t),btn=document.getElementById("tipo-"+t);if(!btn)return;
@@ -935,13 +1043,16 @@ function toggleTipo(t){
 }
 function openNew(){editingId=null;formTipos=[];renderForm();}
 function openEdit(id){editingId=id;var card=cards.find(function(c){return c.id===id;});formTipos=card&&card.tipos?card.tipos.slice():[];renderForm();}
+
 async function saveCard(){
   var titulo=(document.getElementById("f-titulo").value||"").trim();
   if(!titulo){toast("Informe o t&#237;tulo",true);return;}
   var id=editingId||Date.now().toString();
   var existing=editingId?cards.find(function(c){return c.id===editingId;}):null;
   var cliVal=document.getElementById("f-cliente").value;
-  var casoVal=document.getElementById("f-caso").value;  var card={id,titulo,
+  var casoEl=document.getElementById("f-caso");
+  var casoVal=casoEl?casoEl.value:"";
+  var card={id,titulo,
     clienteNum:cliVal?parseInt(cliVal):null,
     casoNum:casoVal?parseInt(casoVal):null,
     responsavel:document.getElementById("f-responsavel").value,
