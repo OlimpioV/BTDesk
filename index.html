@@ -133,10 +133,10 @@ async function dbDeleteUsuario(id){
 }
 async function loadResponsaveis(){
   try{
-    var r=await fetch(SB+"/rest/v1/usuarios?perfil=eq.advogado&ativo=eq.true&select=sigla,nome",{headers:H});
+    var r=await fetch(SB+"/rest/v1/usuarios?ativo=eq.true&select=sigla,nome,perfil",{headers:H});
     if(!r.ok)return;
     var rows=await r.json();
-    responsaveis=rows.filter(function(u){return u.sigla;}).map(function(u){return u.sigla;});
+    responsaveis=rows.filter(function(u){return u.sigla&&(u.perfil==="advogado"||u.perfil==="mestre");}).map(function(u){return u.sigla;});
   }catch(e){}
 }
 async function loadClientes(){
@@ -266,6 +266,7 @@ function renderLogin(erro){
 
 // ── MODAL PRÓPRIO PERFIL ──
 function abrirModalProprioPerfil(){
+  var isMestre=perfil==="mestre";
   document.getElementById("modal-container").innerHTML=
     '<div class="modal-overlay" onclick="closeModal(event)">'
     +'<div class="modal-box" onclick="event.stopPropagation()" style="max-width:440px;">'
@@ -276,20 +277,33 @@ function abrirModalProprioPerfil(){
     +'<div class="field"><label>Nome</label><input id="mp-nome" value="'+nomeUser+'" placeholder="Nome completo"/></div>'
     +'<div class="field"><label>E-mail</label><input id="mp-email" type="email" value="'+emailUser+'" placeholder="email@btlaw.com.br"/></div>'
     +'<div class="field"><label>Nova senha (deixe vazio para manter)</label><input id="mp-senha" type="password" placeholder="Nova senha..."/></div>'
+    +(isMestre?'<div class="field"><label>Sigla (respons&#225;vel nos cards)</label><input id="mp-sigla" placeholder="Ex: VOL" style="max-width:120px;text-transform:uppercase;"/>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:4px;">Ser&#225; exibida como respons&#225;vel nos cards</div></div>':"")
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
     +'<button class="btn btn-primary" onclick="salvarProprioPerfil()">Salvar</button>'
     +'</div></div></div>';
+  if(isMestre){
+    fetch(SB+"/rest/v1/usuarios?id=eq."+userDbId+"&select=sigla",{headers:H})
+      .then(function(r){return r.json();})
+      .then(function(rows){var el=document.getElementById("mp-sigla");if(el&&rows[0])el.value=rows[0].sigla||"";});
+  }
 }
 async function salvarProprioPerfil(){
   var nome=(document.getElementById("mp-nome").value||"").trim();
   var email=(document.getElementById("mp-email").value||"").trim().toLowerCase();
   var senha=document.getElementById("mp-senha").value;
+  var siglEl=document.getElementById("mp-sigla");
+  var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():undefined;
   if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
-  var u={id:userDbId,nome,email,perfil,ativo:true};if(senha)u.senha=senha;
+  var u={id:userDbId,nome,email,perfil,ativo:true};
+  if(senha)u.senha=senha;
+  if(sigla!==undefined)u.sigla=sigla;
   try{
-    await dbSaveUsuario(u);nomeUser=nome;emailUser=email;
+    await dbSaveUsuario(u);
+    nomeUser=nome;emailUser=email;
     sessionStorage.setItem("bari_nome",nome);sessionStorage.setItem("bari_email",email);
+    await loadResponsaveis();
     toast("Perfil atualizado!");closeModal();
   }catch(e){toast("Erro: "+e.message,true);}
 }
@@ -344,8 +358,8 @@ function toolbarHTML(canEdit){
     +'<select onchange="filterStatus=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Status</option>'+sO+'</select>'
     +'<select onchange="filterTipo=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Tipos</option>'+tO+'</select>'
     +'<select onchange="filterResp=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Respons&#225;vel</option>'+rO+'</select>'
-    +'<select onchange="onClienteFilterChange(this.value)" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Cliente</option>'+clO+'</select>'
-    +'<select onchange="onCasoFilterChange(this.value)" style="width:auto;font-size:13px;padding:6px 10px;"'+(filterCliente?'':' disabled')+' title="'+(filterCliente?'':'Selecione um cliente primeiro')+'"><option value="">Caso</option>'+caO+'</select>'
+    +'<input placeholder="Cliente" value="'+filterCliente+'" oninput="filterCliente=this.value;filterCaso=\'\';renderView()" style="width:90px;font-size:13px;padding:6px 10px;" type="number" min="1" max="9999"/>'
+    +'<input placeholder="Caso" value="'+filterCaso+'" oninput="filterCaso=this.value;renderView()" style="width:90px;font-size:13px;padding:6px 10px;" type="number" min="1" max="9999"/>'
     +'<div style="display:flex;gap:4px;">'
     +'<button class="view-btn '+(viewMode==="kanban"?"active":"")+'" onclick="viewMode=\'kanban\';renderView()">'+icon("kanban")+'</button>'
     +'<button class="view-btn '+(viewMode==="lista"?"active":"")+'" onclick="viewMode=\'lista\';renderView()">'+icon("list")+'</button>'
@@ -576,7 +590,7 @@ function renderLista(){
     +'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
 }
 
-// ── IMPORTAR ──
+// ── IMPORTAR (batch) ──
 function renderImportar(){
   document.getElementById("app").innerHTML=
     headerHTML("importar")
@@ -585,8 +599,7 @@ function renderImportar(){
     +'<div style="font-size:13px;color:var(--text3);margin-top:2px;">Importe clientes e casos a partir de um arquivo Excel (.xlsx)</div></div>'
     +'<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px;box-shadow:var(--shadow);">'
     +'<div style="margin-bottom:20px;padding:14px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);font-size:13px;color:#1e40af;">'
-    +'A planilha deve ter as colunas: <strong>Cliente</strong>, <strong>Caso</strong>, <strong>Nome da Consulta</strong>, <strong>Objeto</strong>, <strong>Situa&#231;&#227;o</strong>.<br/>'
-    +'Registros existentes ser&#227;o atualizados; novos ser&#227;o inseridos.'
+    +'A planilha deve ter as colunas: <strong>Cliente</strong>, <strong>Caso</strong>, <strong>Nome da Consulta</strong>, <strong>Objeto</strong>, <strong>Situa&#231;&#227;o</strong>.'
     +'</div>'
     +'<div class="field"><label>Arquivo Excel (.xlsx)</label>'
     +'<input type="file" id="import-file" accept=".xlsx,.xls" style="padding:8px;"/></div>'
@@ -598,49 +611,64 @@ function renderImportar(){
 async function processarImport(){
   var fileInput=document.getElementById("import-file");
   if(!fileInput||!fileInput.files||!fileInput.files[0]){toast("Selecione um arquivo",true);return;}
-  var file=fileInput.files[0];
   var resultDiv=document.getElementById("import-result");
   resultDiv.innerHTML='<div style="color:var(--text3);font-size:13px;">Processando...</div>';
   try{
-    var data=await file.arrayBuffer();
+    var data=await fileInput.files[0].arrayBuffer();
     var wb=XLSX.read(data,{type:"array"});
     var ws=wb.Sheets[wb.SheetNames[0]];
     var rows=XLSX.utils.sheet_to_json(ws,{defval:""});
-    var novosClientes=0,novosCasos=0,erros=0;
-    for(var i=0;i<rows.length;i++){
-      var row=rows[i];
+
+    // Montar mapa de clientes únicos
+    var clientesMap={};
+    var casosArr=[];
+    rows.forEach(function(row){
       var cliStr=String(row["Cliente"]||"").trim();
       var casoStr=String(row["Caso"]||"").trim();
-      var nomeConsulta=String(row["Nome da Consulta"]||"").trim();
-      var objeto=String(row["Objeto"]||"").trim();
-      var situacao=String(row["Situação"]||row["Situacao"]||"").trim();
       var cliNum=numFromStr(cliStr);
       var casoNum=numFromStr(casoStr);
-      if(!cliNum||!casoNum)continue;
+      if(!cliNum||!casoNum)return;
       var cliNome=cliStr.replace(/^\d+\s*-\s*/,"").trim();
       var casoDesc2=casoStr.replace(/^\d+\s*-\s*/,"").trim();
-      try{
-        var r=await fetch(SB+"/rest/v1/clientes",{method:"POST",
-          headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),
-          body:JSON.stringify({numero:cliNum,nome:cliNome})});
-        var cliRows=await r.json();
-        var cliId=cliRows&&cliRows[0]?cliRows[0].id:null;
-        if(!cliId){
-          var rc=await fetch(SB+"/rest/v1/clientes?numero=eq."+cliNum,{headers:H});
-          var rcd=await rc.json();cliId=rcd&&rcd[0]?rcd[0].id:null;
-        }
-        if(!cliId){erros++;continue;}
-        await fetch(SB+"/rest/v1/casos",{method:"POST",
-          headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),
-          body:JSON.stringify({numero:casoNum,cliente_id:cliId,descricao:casoDesc2,nome_consulta:nomeConsulta,objeto,situacao})});
-        novosClientes++;novosCasos++;
-      }catch(e){erros++;}
+      clientesMap[cliNum]={numero:cliNum,nome:cliNome};
+      casosArr.push({cliNum,casoNum,descricao:casoDesc2,
+        nome_consulta:String(row["Nome da Consulta"]||"").trim(),
+        objeto:String(row["Objeto"]||"").trim(),
+        situacao:String(row["Situação"]||row["Situacao"]||"").trim()});
+    });
+
+    // Batch upsert clientes
+    var clientesList=Object.values(clientesMap);
+    var CHUNK=50;
+    for(var i=0;i<clientesList.length;i+=CHUNK){
+      var chunk=clientesList.slice(i,i+CHUNK);
+      await fetch(SB+"/rest/v1/clientes",{method:"POST",
+        headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),
+        body:JSON.stringify(chunk)});
     }
-    await loadClientes();await loadCasos();
+
+    // Recarregar clientes para pegar IDs
+    await loadClientes();
+
+    // Montar casos com cliente_id
+    var casosComId=casosArr.map(function(c){
+      var cl=clientesDB.find(function(x){return x.numero===c.cliNum;});
+      if(!cl)return null;
+      return {numero:c.casoNum,cliente_id:cl.id,descricao:c.descricao,
+        nome_consulta:c.nome_consulta,objeto:c.objeto,situacao:c.situacao};
+    }).filter(Boolean);
+
+    // Batch upsert casos
+    for(var j=0;j<casosComId.length;j+=CHUNK){
+      var cchunk=casosComId.slice(j,j+CHUNK);
+      await fetch(SB+"/rest/v1/casos",{method:"POST",
+        headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),
+        body:JSON.stringify(cchunk)});
+    }
+
+    await loadCasos();
     resultDiv.innerHTML='<div style="padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius);font-size:13px;color:#14532d;">'
-      +'Importa&#231;&#227;o conclu&#237;da! <strong>'+novosClientes+' registros de clientes</strong> e <strong>'+novosCasos+' casos</strong> processados.'
-      +(erros?'<br/><span style="color:#dc2626;">'+erros+' linhas ignoradas (dados incompletos)</span>':"")
-      +'</div>';
+      +'Importa&#231;&#227;o conclu&#237;da! <strong>'+clientesList.length+' clientes</strong> e <strong>'+casosComId.length+' casos</strong> processados.</div>';
     toast("Importação concluída!");
   }catch(e){
     resultDiv.innerHTML='<div style="padding:14px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);font-size:13px;color:#dc2626;">Erro: '+e.message+'</div>';
@@ -799,7 +827,7 @@ function abrirModalUsuario(id,nome,email,perf,sigla){
     +'</select></div>'
     +'<div class="field" id="sigla-field" style="'+((!perf||perf==="cliente")?"display:none;":"")+'">'
     +'<label>Sigla (respons&#225;vel nos cards)</label>'
-    +'<input id="mu-sigla" value="'+(sigla||"")+'" placeholder="Ex: DGN" style="max-width:120px;text-transform:uppercase;"/>'
+    +'<input id="mu-sigla" value="'+(sigla||"")+'" placeholder="Ex: VOL" style="max-width:120px;text-transform:uppercase;"/>'
     +'<div style="font-size:11px;color:var(--text3);margin-top:4px;">Ser&#225; exibida como respons&#225;vel nos cards</div>'
     +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">'
@@ -821,7 +849,7 @@ async function salvarUsuario(id){
   var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():"";
   if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
   if(!id&&!senha){toast("Informe a senha",true);return;}
-  var u={nome,email,perfil:perf,ativo:true,sigla:perf==="advogado"?sigla:null};
+  var u={nome,email,perfil:perf,ativo:true,sigla:(perf==="advogado"||perf==="mestre")?sigla:null};
   if(id)u.id=id;if(senha)u.senha=senha;
   try{
     await dbSaveUsuario(u);
@@ -864,8 +892,8 @@ function renderForm(){
     +'<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px 32px;box-shadow:var(--shadow);">'
     +'<div class="field"><label>T&#237;tulo *</label><input id="f-titulo" value="'+v.titulo+'" placeholder="Ex: An&#225;lise de contrato CRI"/></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field">'
-    +'<div><label>Cliente</label><select id="f-cliente" onchange="onFormClienteChange()" style="width:100%;"><option value="">Selecione...</option>'+clO+'</select></div>'
-    +'<div><label>Caso</label><select id="f-caso" style="width:100%;"'+(v.clienteNum?'':' disabled')+'><option value="">Selecione...</option>'+caO+'</select></div>'
+    +'<div><label>Cliente (n&#250;mero)</label><input id="f-cliente" type="number" min="1" max="9999" value="'+(v.clienteNum||"")+'" placeholder="Ex: 446"/></div>'
+    +'<div><label>Caso (n&#250;mero)</label><input id="f-caso" type="number" min="1" max="9999" value="'+(v.casoNum||"")+'" placeholder="Ex: 745"/></div>'
     +'</div>'
     +'<div class="field"><label>Respons&#225;vel</label><select id="f-responsavel" style="width:100%;"><option value="">Selecione...</option>'+rO+'</select></div>'
     +'<div class="field"><label>Status</label><select id="f-status" style="width:100%;">'+sO+'</select></div>'
@@ -913,8 +941,7 @@ async function saveCard(){
   var id=editingId||Date.now().toString();
   var existing=editingId?cards.find(function(c){return c.id===editingId;}):null;
   var cliVal=document.getElementById("f-cliente").value;
-  var casoVal=document.getElementById("f-caso").value;
-  var card={id,titulo,
+  var casoVal=document.getElementById("f-caso").value;  var card={id,titulo,
     clienteNum:cliVal?parseInt(cliVal):null,
     casoNum:casoVal?parseInt(casoVal):null,
     responsavel:document.getElementById("f-responsavel").value,
