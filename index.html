@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Bari Securitizadora — Controle de Demandas</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -69,15 +70,19 @@ const PALETA=[
   {bg:"#E6F1FB",border:"#185FA5",text:"#0C447C"},{bg:"#FEF9C3",border:"#A16207",text:"#713F12"},
   {bg:"#FCE7F3",border:"#9D174D",text:"#831843"},{bg:"#ECFDF5",border:"#065F46",text:"#064E3B"},
 ];
-const RESPONSAVEIS=["DGN","LNM","RAV","VOL"];
 
-let cards=[],perfil=null,nomeUser=null,emailUser=null;
-let filterResp="",filterTipo="",filterStatus="";
+let cards=[],perfil=null,nomeUser=null,emailUser=null,userDbId=null;
+let filterResp="",filterTipo="",filterStatus="",filterCliente="",filterCaso="";
 let viewMode="kanban",dragCardId=null;
 let editingId=null,formTipos=[];
 let TC=Object.assign({},TC_DEFAULT),TIPOS=Object.keys(TC);
 let corSelecionada=0,editingEtiqueta=null;
 let modalCardId=null,editingCommentId=null;
+let responsaveis=[],clientesDB=[],casosDB=[];
+
+function trunc(s,n){return s&&s.length>n?s.substring(0,n)+"...":s||"";}
+function escQ(s){return (s||"").replace(/'/g,"\\'");}
+function numFromStr(s){var m=(s||"").match(/^(\d+)/);return m?parseInt(m[1]):null;}
 
 function loadEtiquetas(){
   try{var s=localStorage.getItem(ETIQUETAS_KEY);if(s){Object.assign(TC,JSON.parse(s));TIPOS=Object.keys(TC);}}catch(e){}
@@ -86,15 +91,13 @@ function saveEtiquetas(){
   var ex={};Object.keys(TC).forEach(function(k){if(!TC_DEFAULT[k])ex[k]=TC[k];});
   localStorage.setItem(ETIQUETAS_KEY,JSON.stringify(ex));
 }
-
 function toast(msg,err){
   var el=document.getElementById("toast");
   el.textContent=msg;el.style.background=err?"#dc2626":"#0f172a";el.style.color="#fff";
   el.classList.add("show");setTimeout(function(){el.classList.remove("show");},3000);
 }
 
-function trunc(str,n){if(!str)return "";return str.length>n?str.substring(0,n)+"...":str;}
-
+// ── SUPABASE ──
 async function dbFetch(){
   var r=await fetch(SB+"/rest/v1/demandas?select=id,data",{headers:H});
   if(!r.ok)throw new Error("Erro "+r.status);
@@ -128,7 +131,39 @@ async function dbDeleteUsuario(id){
   var r=await fetch(SB+"/rest/v1/usuarios?id=eq."+id,{method:"DELETE",headers:H});
   if(!r.ok)throw new Error("Erro "+r.status);
 }
+async function loadResponsaveis(){
+  try{
+    var r=await fetch(SB+"/rest/v1/usuarios?perfil=eq.advogado&ativo=eq.true&select=sigla,nome",{headers:H});
+    if(!r.ok)return;
+    var rows=await r.json();
+    responsaveis=rows.filter(function(u){return u.sigla;}).map(function(u){return u.sigla;});
+  }catch(e){}
+}
+async function loadClientes(){
+  try{
+    var r=await fetch(SB+"/rest/v1/clientes?select=*&order=numero",{headers:H});
+    if(!r.ok)return;
+    clientesDB=await r.json();
+  }catch(e){}
+}
+async function loadCasos(){
+  try{
+    var r=await fetch(SB+"/rest/v1/casos?select=*&order=numero",{headers:H});
+    if(!r.ok)return;
+    casosDB=await r.json();
+  }catch(e){}
+}
+async function dbUpsertCliente(numero,nome){
+  var r=await fetch(SB+"/rest/v1/clientes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({numero,nome})});
+  if(!r.ok)throw new Error("Erro "+r.status);
+  var rows=await r.json();return rows[0];
+}
+async function dbUpsertCaso(numero,cliente_id,descricao,nome_consulta,objeto,situacao){
+  var r=await fetch(SB+"/rest/v1/casos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({numero,cliente_id,descricao,nome_consulta,objeto,situacao})});
+  if(!r.ok)throw new Error("Erro "+r.status);
+}
 
+// ── ICONS ──
 function icon(type){
   var icons={
     user:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
@@ -146,6 +181,8 @@ function icon(type){
     trash:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>',
     close:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
     comment:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    upload:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',
+    briefcase:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="12"/></svg>',
   };
   return icons[type]||"";
 }
@@ -169,6 +206,7 @@ function headerHTML(aba){
   if(canEdit){
     tabs+='<button class="tab '+(aba==="logs"?"active":"")+'" onclick="renderLogs()">Hist&#243;rico</button>';
     tabs+='<button class="tab '+(aba==="etiquetas"?"active":"")+'" onclick="renderEtiquetas()" style="display:inline-flex;align-items:center;gap:5px;">'+icon("tag")+' Etiquetas</button>';
+    tabs+='<button class="tab '+(aba==="importar"?"active":"")+'" onclick="renderImportar()" style="display:inline-flex;align-items:center;gap:5px;">'+icon("upload")+' Importar</button>';
   }
   if(perfil==="mestre") tabs+='<button class="tab '+(aba==="usuarios"?"active":"")+'" onclick="renderUsuarios()" style="display:inline-flex;align-items:center;gap:5px;">'+icon("users")+' Usu&#225;rios</button>';
   return '<div style="background:var(--navy);">'
@@ -177,16 +215,18 @@ function headerHTML(aba){
     +'<div style="display:flex;align-items:center;gap:12px;">'
     +perfilBadge(perfil)
     +'<span style="font-size:12px;color:rgba(255,255,255,0.5);">'+emailUser+'</span>'
+    +'<button onclick="abrirModalProprioPerfil()" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:6px 12px;border-radius:7px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);">'+icon("edit")+' Meu perfil</button>'
     +'<button onclick="logout()" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:6px 12px;border-radius:7px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);">'+icon("logout")+' Sair</button>'
     +'</div></div>'
     +'<div style="background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;display:flex;">'+tabs+'</div></div>';
 }
 
+// ── AUTH ──
 function checkAuth(){
-  var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email");
-  if(p){perfil=p;nomeUser=n;emailUser=e;return true;}return false;
+  var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email"),i=sessionStorage.getItem("bari_id");
+  if(p){perfil=p;nomeUser=n;emailUser=e;userDbId=i;return true;}return false;
 }
-function logout(){sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;renderLogin();}
+function logout(){sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;userDbId=null;renderLogin();}
 async function doLogin(){
   var email=(document.getElementById("login-email").value||"").trim().toLowerCase();
   var senha=document.getElementById("login-senha").value;
@@ -196,10 +236,9 @@ async function doLogin(){
     var rows=await r.json();
     if(!rows||rows.length===0){renderLogin("E-mail ou senha incorretos.");return;}
     var u=rows[0];
-    perfil=u.perfil;nomeUser=u.nome;emailUser=u.email;
-    sessionStorage.setItem("bari_perfil",u.perfil);
-    sessionStorage.setItem("bari_nome",u.nome);
-    sessionStorage.setItem("bari_email",u.email);
+    perfil=u.perfil;nomeUser=u.nome;emailUser=u.email;userDbId=u.id;
+    sessionStorage.setItem("bari_perfil",u.perfil);sessionStorage.setItem("bari_nome",u.nome);
+    sessionStorage.setItem("bari_email",u.email);sessionStorage.setItem("bari_id",u.id);
     dbLog("Login","Acesso ao sistema");init();
   }catch(e){renderLogin("Erro ao conectar.");}
 }
@@ -225,26 +264,88 @@ function renderLogin(erro){
   setTimeout(function(){var el=document.getElementById("login-email");if(el)el.focus();},100);
 }
 
+// ── MODAL PRÓPRIO PERFIL ──
+function abrirModalProprioPerfil(){
+  document.getElementById("modal-container").innerHTML=
+    '<div class="modal-overlay" onclick="closeModal(event)">'
+    +'<div class="modal-box" onclick="event.stopPropagation()" style="max-width:440px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">'
+    +'<div style="font-size:16px;font-weight:600;">Meu perfil</div>'
+    +'<button onclick="closeModal()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;">'+icon('close')+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Nome</label><input id="mp-nome" value="'+nomeUser+'" placeholder="Nome completo"/></div>'
+    +'<div class="field"><label>E-mail</label><input id="mp-email" type="email" value="'+emailUser+'" placeholder="email@btlaw.com.br"/></div>'
+    +'<div class="field"><label>Nova senha (deixe vazio para manter)</label><input id="mp-senha" type="password" placeholder="Nova senha..."/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="salvarProprioPerfil()">Salvar</button>'
+    +'</div></div></div>';
+}
+async function salvarProprioPerfil(){
+  var nome=(document.getElementById("mp-nome").value||"").trim();
+  var email=(document.getElementById("mp-email").value||"").trim().toLowerCase();
+  var senha=document.getElementById("mp-senha").value;
+  if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
+  var u={id:userDbId,nome,email,perfil,ativo:true};if(senha)u.senha=senha;
+  try{
+    await dbSaveUsuario(u);nomeUser=nome;emailUser=email;
+    sessionStorage.setItem("bari_nome",nome);sessionStorage.setItem("bari_email",email);
+    toast("Perfil atualizado!");closeModal();
+  }catch(e){toast("Erro: "+e.message,true);}
+}
+
+// ── CLIENTES/CASOS HELPERS ──
+function clienteNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
+function casoDesc(num,clienteNum){
+  var cl=clientesDB.find(function(c){return c.numero===clienteNum;});
+  if(!cl)return "";
+  var ca=casosDB.find(function(c){return c.numero===num&&c.cliente_id===cl.id;});
+  return ca?ca.descricao:"";
+}
+function casosDoCliente(clienteNum){
+  var cl=clientesDB.find(function(c){return c.numero===clienteNum;});
+  if(!cl)return [];
+  return casosDB.filter(function(c){return c.cliente_id===cl.id;});
+}
+
+// ── FILTROS ──
 function getFiltered(){
   return cards.filter(function(c){
-    return (!filterResp||c.responsavel===filterResp)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus);
+    return (!filterResp||c.responsavel===filterResp)
+      &&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))
+      &&(!filterStatus||c.status===filterStatus)
+      &&(!filterCliente||String(c.clienteNum)===String(filterCliente))
+      &&(!filterCaso||String(c.casoNum)===String(filterCaso));
   });
 }
+
+function onClienteFilterChange(val){
+  filterCliente=val;filterCaso="";renderView();
+}
+function onCasoFilterChange(val){filterCaso=val;renderView();}
+
 function tipoTagsHTML(tipos){
   if(!tipos||!tipos.length)return "";
   return tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("");
 }
+
 function toolbarHTML(canEdit){
   var th=cards.reduce(function(s,c){return s+(parseFloat(c.horas)||0);},0);
-  var rO=RESPONSAVEIS.map(function(r){return '<option value="'+r+'"'+(filterResp===r?' selected':'')+'>'+r+'</option>';}).join("");
+  var rList=responsaveis.length?responsaveis:[];
+  var rO=rList.map(function(r){return '<option value="'+r+'"'+(filterResp===r?' selected':'')+'>'+r+'</option>';}).join("");
   var tO=TIPOS.map(function(t){return '<option value="'+t+'"'+(filterTipo===t?' selected':'')+'>'+t+'</option>';}).join("");
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(filterStatus===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
+  var clO=clientesDB.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCliente)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("");
+  var caList=filterCliente?casosDoCliente(parseInt(filterCliente)):[];
+  var caO=caList.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCaso)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("");
   return '<div style="padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:var(--white);border-bottom:1px solid var(--border);min-height:52px;gap:12px;flex-wrap:wrap;">'
     +'<div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--text2);">'+icon('clock')+' '+th.toFixed(1)+'h registradas</div>'
     +'<div style="display:flex;gap:8px;align-items:center;padding:8px 0;flex-wrap:wrap;">'
-    +'<select onchange="filterStatus=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Todos os status</option>'+sO+'</select>'
-    +'<select onchange="filterTipo=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Todos os tipos</option>'+tO+'</select>'
-    +'<select onchange="filterResp=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Todos os respons&#225;veis</option>'+rO+'</select>'
+    +'<select onchange="filterStatus=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Status</option>'+sO+'</select>'
+    +'<select onchange="filterTipo=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Tipos</option>'+tO+'</select>'
+    +'<select onchange="filterResp=this.value;renderView()" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Respons&#225;vel</option>'+rO+'</select>'
+    +'<select onchange="onClienteFilterChange(this.value)" style="width:auto;font-size:13px;padding:6px 10px;"><option value="">Cliente</option>'+clO+'</select>'
+    +'<select onchange="onCasoFilterChange(this.value)" style="width:auto;font-size:13px;padding:6px 10px;"'+(filterCliente?'':' disabled')+' title="'+(filterCliente?'':'Selecione um cliente primeiro')+'"><option value="">Caso</option>'+caO+'</select>'
     +'<div style="display:flex;gap:4px;">'
     +'<button class="view-btn '+(viewMode==="kanban"?"active":"")+'" onclick="viewMode=\'kanban\';renderView()">'+icon("kanban")+'</button>'
     +'<button class="view-btn '+(viewMode==="lista"?"active":"")+'" onclick="viewMode=\'lista\';renderView()">'+icon("list")+'</button>'
@@ -273,41 +374,34 @@ async function onDrop(e,colId){
 // ── COMENTÁRIOS ──
 function getComments(card){return card.comentarios||[];}
 async function addComment(cardId,texto){
-  var card=cards.find(function(c){return c.id===cardId;});
-  if(!card)return;
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   var comentarios=getComments(card);
-  comentarios.push({id:Date.now().toString(),texto:texto,autor:emailUser,data:new Date().toISOString()});
-  card.comentarios=comentarios;
-  await dbUpsert(card);
-  await dbLog("Comentou",card.titulo);
+  comentarios.push({id:Date.now().toString(),texto,autor:emailUser,data:new Date().toISOString()});
+  card.comentarios=comentarios;await dbUpsert(card);await dbLog("Comentou",card.titulo);
 }
 async function editComment(cardId,commentId,novoTexto){
-  var card=cards.find(function(c){return c.id===cardId;});
-  if(!card)return;
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   card.comentarios=getComments(card).map(function(c){return c.id===commentId?Object.assign({},c,{texto:novoTexto,editado:true}):c;});
   await dbUpsert(card);
 }
 async function deleteComment(cardId,commentId){
-  var card=cards.find(function(c){return c.id===cardId;});
-  if(!card)return;
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   card.comentarios=getComments(card).filter(function(c){return c.id!==commentId;});
   await dbUpsert(card);
 }
 function canEditComment(autor){return perfil==="mestre"||(emailUser===autor&&perfil==="advogado");}
 function canComment(){return perfil==="mestre"||perfil==="advogado";}
 
-// ── MODAL ──
-function openCardModal(id){
-  modalCardId=id;editingCommentId=null;
-  renderModal();
-}
+// ── MODAL CARD ──
+function openCardModal(id){modalCardId=id;editingCommentId=null;renderModal();}
 function renderModal(){
   var id=modalCardId;
   var card=cards.find(function(c){return c.id===id;});if(!card)return;
   var col=COLS.find(function(c){return c.id===card.status;})||COLS[0];
   var canEdit=perfil==="mestre"||perfil==="advogado";
   var comentarios=getComments(card);
-
+  var cliNome=card.clienteNum?card.clienteNum+(clienteNome(card.clienteNum)?" - "+clienteNome(card.clienteNum):""):"";
+  var casoNm=card.casoNum?card.casoNum+(casoDesc(card.casoNum,card.clienteNum)?" - "+trunc(casoDesc(card.casoNum,card.clienteNum),60):""):"";
   var commentsHTML=comentarios.length===0
     ?'<div style="font-size:12px;color:var(--text3);text-align:center;padding:16px 0;">Nenhum coment&#225;rio ainda</div>'
     :comentarios.map(function(c){
@@ -334,15 +428,12 @@ function renderModal(){
             :'<div style="font-size:13px;color:var(--text);line-height:1.6;">'+c.texto+'</div>')
           +'</div>';
       }).join("");
-
   var novoComentario=canComment()
     ?'<div style="margin-top:12px;">'
       +'<textarea id="novo-comentario" rows="2" placeholder="Escreva um coment&#225;rio..." style="width:100%;resize:vertical;font-size:13px;padding:8px;border-radius:8px;margin-bottom:6px;"></textarea>'
       +'<div style="display:flex;justify-content:flex-end;">'
       +'<button class="btn btn-primary" style="font-size:12px;padding:5px 14px;display:flex;align-items:center;gap:5px;" onclick="submitComentario(\''+id+'\')">'+icon('comment')+' Comentar</button>'
-      +'</div></div>'
-    :"";
-
+      +'</div></div>':"";
   document.getElementById("modal-container").innerHTML=
     '<div class="modal-overlay" onclick="closeModal(event)">'
     +'<div class="modal-box" onclick="event.stopPropagation()">'
@@ -355,6 +446,8 @@ function renderModal(){
     +'</div>'
     +'<div style="display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';margin-bottom:16px;">'+col.label+'</div>'
     +'<div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">'
+    +(cliNome?rowM("Cliente",icon('briefcase')+' '+cliNome):"")
+    +(casoNm?rowM("Caso",icon('briefcase')+' '+casoNm):"")
     +(card.responsavel?rowM("Respons&#225;vel",icon('user')+' '+card.responsavel):"")
     +(card.email?rowM("E-mail",icon('mail')+' '+card.email):"")
     +(card.dataInicio?rowM("Per&#237;odo",icon('cal')+' '+card.dataInicio+(card.dataFim?' &rarr; '+card.dataFim:'')):"")
@@ -362,10 +455,8 @@ function renderModal(){
     +(card.obs?rowM("Observa&#231;&#245;es",card.obs):"")
     +'</div>'
     +'<div style="border-top:1px solid var(--border);padding-top:14px;">'
-    +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px;">'+icon('comment')+' Coment&#225;rios <span style="font-size:11px;font-weight:500;color:var(--text3);">('+comentarios.length+')</span></div>'
-    +commentsHTML
-    +novoComentario
-    +'</div>'
+    +'<div style="font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px;">'+icon('comment')+' Coment&#225;rios <span style="font-size:11px;font-weight:500;color:var(--text3);">('+comentarios.length+')</span></div>'
+    +commentsHTML+novoComentario+'</div>'
     +(canEdit?'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">'
       +'<button class="btn btn-danger" onclick="closeModal();deleteCard(\''+id+'\')" style="display:flex;align-items:center;gap:5px;">'+icon('trash')+' Excluir</button>'
       +'<button class="btn btn-primary" onclick="closeModal();openEdit(\''+id+'\')" style="display:flex;align-items:center;gap:5px;">'+icon('edit')+' Editar</button>'
@@ -378,26 +469,25 @@ function rowM(label,val){
     +'<span style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;word-break:break-all;">'+val+'</span></div>';
 }
 function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;document.getElementById("modal-container").innerHTML="";}
-
 async function submitComentario(cardId){
   var el=document.getElementById("novo-comentario");
   var texto=(el?el.value:"").trim();
   if(!texto){toast("Escreva um coment&#225;rio",true);return;}
-  try{await addComment(cardId,texto);toast("Coment&#225;rio adicionado!");renderModal();}
+  try{await addComment(cardId,texto);toast("Adicionado!");renderModal();}
   catch(e){toast("Erro: "+e.message,true);}
 }
-function iniciarEdicaoComentario(commentId){editingCommentId=commentId;renderModal();}
+function iniciarEdicaoComentario(cid){editingCommentId=cid;renderModal();}
 function cancelarEdicaoComentario(){editingCommentId=null;renderModal();}
 async function salvarEdicaoComentario(cardId,commentId){
   var el=document.getElementById("edit-comment-text");
   var texto=(el?el.value:"").trim();
-  if(!texto){toast("O coment&#225;rio n&#227;o pode ser vazio",true);return;}
-  try{await editComment(cardId,commentId,texto);toast("Coment&#225;rio atualizado!");editingCommentId=null;renderModal();}
+  if(!texto){toast("N&#227;o pode ser vazio",true);return;}
+  try{await editComment(cardId,commentId,texto);toast("Atualizado!");editingCommentId=null;renderModal();}
   catch(e){toast("Erro: "+e.message,true);}
 }
 async function confirmarExcluirComentario(commentId){
   if(!confirm("Excluir este coment&#225;rio?"))return;
-  try{await deleteComment(modalCardId,commentId);toast("Coment&#225;rio exclu&#237;do!");editingCommentId=null;renderModal();}
+  try{await deleteComment(modalCardId,commentId);toast("Exclu&#237;do!");editingCommentId=null;renderModal();}
   catch(e){toast("Erro: "+e.message,true);}
 }
 
@@ -405,9 +495,12 @@ async function confirmarExcluirComentario(commentId){
 function renderView(){if(viewMode==="lista")renderLista();else renderKanban();}
 
 function cardFaceHTML(card,canEdit){
-  var obs80=card.obs?trunc(card.obs,80):"";
-  var nComments=(card.comentarios||[]).length;
-  return (card.tipos&&card.tipos.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">'+tipoTagsHTML(card.tipos)+'</div>':"")
+  var obs80=trunc(card.obs,80);
+  var nc=(card.comentarios||[]).length;
+  var cliLabel=card.clienteNum?'<span style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;border-radius:5px;padding:1px 7px;">C:'+card.clienteNum+'</span>':"";
+  var casoLabel=card.casoNum?'<span style="font-size:11px;font-weight:600;color:#475569;background:#f1f5f9;border-radius:5px;padding:1px 7px;">P:'+card.casoNum+'</span>':"";
+  return (card.tipos&&card.tipos.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">'+tipoTagsHTML(card.tipos)+'</div>':"")
+    +(cliLabel||casoLabel?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">'+cliLabel+casoLabel+'</div>':"")
     +'<div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:8px;line-height:1.4;">'+card.titulo+'</div>'
     +'<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:'+(obs80?'8':'4')+'px;">'
     +(card.responsavel?'<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);">'+icon('user')+' '+card.responsavel+'</div>':"")
@@ -416,7 +509,7 @@ function cardFaceHTML(card,canEdit){
     +'</div>'
     +(obs80?'<div style="font-size:12px;color:var(--text3);padding:7px 9px;background:var(--surface);border-radius:6px;border-left:3px solid #e2e8f0;margin-bottom:8px;line-height:1.5;">'+obs80+'</div>':"")
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">'
-    +(nComments?'<span style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px;">'+icon('comment')+' '+nComments+'</span>':'<span></span>')
+    +(nc?'<span style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px;">'+icon('comment')+' '+nc+'</span>':'<span></span>')
     +(canEdit?'<span style="font-size:10px;color:var(--text3);">arraste para mover</span>':"")
     +'</div>';
 }
@@ -431,8 +524,7 @@ function renderKanban(){
       return '<div id="card-'+card.id+'" class="card-item" draggable="'+(canEdit?"true":"false")+'"'
         +(canEdit?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(\''+card.id+'\')"':"")
         +' onclick="openCardModal(\''+card.id+'\')">'
-        +cardFaceHTML(card,canEdit)
-        +'</div>';
+        +cardFaceHTML(card,canEdit)+'</div>';
     }).join("");
     return '<div style="background:'+col.bg+';border:1px solid '+col.border+';border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
@@ -440,8 +532,7 @@ function renderKanban(){
       +'<span style="font-size:13px;font-weight:600;color:'+col.text+';">'+col.label+'</span>'
       +'<span style="font-size:11px;font-weight:600;color:'+col.badgeText+';background:'+col.badgeBg+';border-radius:20px;padding:1px 8px;margin-left:auto;">'+colCards.length+'</span>'
       +'</div>'
-      +'<div class="drop-zone"'
-      +(canEdit?' ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,\''+col.id+'\')"':"")+'>'
+      +'<div class="drop-zone"'+(canEdit?' ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,\''+col.id+'\')"':"")+' >'
       +(ch||'<div style="border:1.5px dashed #e2e8f0;border-radius:10px;padding:24px;text-align:center;font-size:12px;color:#94a3b8;">'+(canEdit?'Solte aqui':'Nenhuma demanda')+'</div>')
       +'</div></div>';
   }).join("");
@@ -455,53 +546,119 @@ function renderLista(){
   viewMode="lista";
   var canEdit=perfil==="mestre"||perfil==="advogado";
   var filtered=getFiltered();
-  var rows=filtered.length===0
-    ?'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3);">Nenhuma demanda</td></tr>'
+  var rows=filtered.length===0?'<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--text3);">Nenhuma demanda</td></tr>'
     :filtered.map(function(card){
         var col=COLS.find(function(c){return c.id===card.status;})||COLS[0];
         var sp='<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';">'+col.label+'</span>';
         var nc=(card.comentarios||[]).length;
-        var ac=canEdit
-          ?'<button onclick="openEdit(\''+card.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;margin-right:4px;">Editar</button>'
-            +'<button onclick="deleteCard(\''+card.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>'
-          :"—";
+        var ac=canEdit?'<button onclick="openEdit(\''+card.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;margin-right:4px;">Editar</button>'
+          +'<button onclick="deleteCard(\''+card.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"—";
         return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'
           +'<td style="padding:12px 16px;font-size:13px;font-weight:500;">'+card.titulo+'</td>'
           +'<td style="padding:12px 16px;">'+sp+'</td>'
+          +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+(card.clienteNum||"—")+'</td>'
+          +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+(card.casoNum||"—")+'</td>'
           +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+(card.responsavel||"—")+'</td>'
           +'<td style="padding:12px 16px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"—")+'</td>'
           +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"—")+'</td>'
           +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"—")+'</td>'
-          +'<td style="padding:12px 16px;font-size:12px;color:var(--text2);">'+(card.horas?card.horas+'h':"—")+'</td>'
-          +'<td style="padding:12px 16px;font-size:12px;color:var(--text3);">'+(nc?nc+' '+icon('comment'):"—")+'</td>'
-          +'<td style="padding:12px 16px;" onclick="event.stopPropagation()">'+ac+'</td>'
-          +'</tr>';
+          +'<td style="padding:12px 16px;font-size:12px;color:var(--text3);">'+(nc?'<span style="display:flex;align-items:center;gap:4px;">'+icon('comment')+' '+nc+'</span>':"—")+'</td>'
+          +'<td style="padding:12px 16px;" onclick="event.stopPropagation()">'+ac+'</td></tr>';
       }).join("");
   document.getElementById("app").innerHTML=
     headerHTML("lista")+toolbarHTML(canEdit)
     +'<div style="padding:24px 28px;max-width:1400px;margin:0 auto;">'
     +'<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);">'
     +'<div style="overflow-x:auto;">'
-    +'<table style="width:100%;border-collapse:collapse;min-width:800px;">'
+    +'<table style="width:100%;border-collapse:collapse;min-width:900px;">'
     +'<thead><tr style="background:var(--surface);border-bottom:1px solid var(--border);">'
-    +['T&#237;tulo','Status','Respons&#225;vel','Tipos','Início','Encerramento','Horas','Com.','A&#231;&#245;es'].map(function(h){
-      return '<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">'+h+'</th>';
-    }).join("")
+    +['T&#237;tulo','Status','Cliente','Caso','Resp.','Tipos','In&#237;cio','Encerramento','Com.','A&#231;&#245;es'].map(function(h){return '<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">'+h+'</th>';}).join("")
     +'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+}
+
+// ── IMPORTAR ──
+function renderImportar(){
+  document.getElementById("app").innerHTML=
+    headerHTML("importar")
+    +'<div style="padding:24px 28px;max-width:700px;margin:0 auto;">'
+    +'<div style="margin-bottom:20px;"><div style="font-size:16px;font-weight:600;">Importar planilha</div>'
+    +'<div style="font-size:13px;color:var(--text3);margin-top:2px;">Importe clientes e casos a partir de um arquivo Excel (.xlsx)</div></div>'
+    +'<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px;box-shadow:var(--shadow);">'
+    +'<div style="margin-bottom:20px;padding:14px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);font-size:13px;color:#1e40af;">'
+    +'A planilha deve ter as colunas: <strong>Cliente</strong>, <strong>Caso</strong>, <strong>Nome da Consulta</strong>, <strong>Objeto</strong>, <strong>Situa&#231;&#227;o</strong>.<br/>'
+    +'Registros existentes ser&#227;o atualizados; novos ser&#227;o inseridos.'
+    +'</div>'
+    +'<div class="field"><label>Arquivo Excel (.xlsx)</label>'
+    +'<input type="file" id="import-file" accept=".xlsx,.xls" style="padding:8px;"/></div>'
+    +'<button class="btn btn-primary" onclick="processarImport()" style="display:flex;align-items:center;gap:6px;">'+icon('upload')+' Importar</button>'
+    +'<div id="import-result" style="margin-top:16px;"></div>'
+    +'</div></div>';
+}
+
+async function processarImport(){
+  var fileInput=document.getElementById("import-file");
+  if(!fileInput||!fileInput.files||!fileInput.files[0]){toast("Selecione um arquivo",true);return;}
+  var file=fileInput.files[0];
+  var resultDiv=document.getElementById("import-result");
+  resultDiv.innerHTML='<div style="color:var(--text3);font-size:13px;">Processando...</div>';
+  try{
+    var data=await file.arrayBuffer();
+    var wb=XLSX.read(data,{type:"array"});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+    var novosClientes=0,novosCasos=0,erros=0;
+    for(var i=0;i<rows.length;i++){
+      var row=rows[i];
+      var cliStr=String(row["Cliente"]||"").trim();
+      var casoStr=String(row["Caso"]||"").trim();
+      var nomeConsulta=String(row["Nome da Consulta"]||"").trim();
+      var objeto=String(row["Objeto"]||"").trim();
+      var situacao=String(row["Situação"]||row["Situacao"]||"").trim();
+      var cliNum=numFromStr(cliStr);
+      var casoNum=numFromStr(casoStr);
+      if(!cliNum||!casoNum)continue;
+      var cliNome=cliStr.replace(/^\d+\s*-\s*/,"").trim();
+      var casoDesc2=casoStr.replace(/^\d+\s*-\s*/,"").trim();
+      try{
+        var r=await fetch(SB+"/rest/v1/clientes",{method:"POST",
+          headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),
+          body:JSON.stringify({numero:cliNum,nome:cliNome})});
+        var cliRows=await r.json();
+        var cliId=cliRows&&cliRows[0]?cliRows[0].id:null;
+        if(!cliId){
+          var rc=await fetch(SB+"/rest/v1/clientes?numero=eq."+cliNum,{headers:H});
+          var rcd=await rc.json();cliId=rcd&&rcd[0]?rcd[0].id:null;
+        }
+        if(!cliId){erros++;continue;}
+        await fetch(SB+"/rest/v1/casos",{method:"POST",
+          headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),
+          body:JSON.stringify({numero:casoNum,cliente_id:cliId,descricao:casoDesc2,nome_consulta:nomeConsulta,objeto,situacao})});
+        novosClientes++;novosCasos++;
+      }catch(e){erros++;}
+    }
+    await loadClientes();await loadCasos();
+    resultDiv.innerHTML='<div style="padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius);font-size:13px;color:#14532d;">'
+      +'Importa&#231;&#227;o conclu&#237;da! <strong>'+novosClientes+' registros de clientes</strong> e <strong>'+novosCasos+' casos</strong> processados.'
+      +(erros?'<br/><span style="color:#dc2626;">'+erros+' linhas ignoradas (dados incompletos)</span>':"")
+      +'</div>';
+    toast("Importação concluída!");
+  }catch(e){
+    resultDiv.innerHTML='<div style="padding:14px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);font-size:13px;color:#dc2626;">Erro: '+e.message+'</div>';
+  }
 }
 
 // ── ETIQUETAS ──
 function renderEtiquetas(){
   var rows=TIPOS.map(function(t){
     var c=TC[t],isDef=!!TC_DEFAULT[t];
-    var ac=isDef?'<span style="font-size:11px;color:var(--text3);">padr&#227;o</span>'
-      :'<div style="display:flex;gap:6px;">'
-        +'<button onclick="iniciarEdicaoEtiqueta(\''+t+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('edit')+' Editar</button>'
-        +'<button onclick="deletarEtiqueta(\''+t+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('trash')+' Excluir</button>'
-        +'</div>';
+    var podeExcluir=perfil==="mestre"||!isDef;
+    var ac='<div style="display:flex;gap:6px;">'
+      +'<button onclick="iniciarEdicaoEtiqueta(\''+t+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('edit')+' Editar</button>'
+      +(podeExcluir?'<button onclick="deletarEtiqueta(\''+t+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('trash')+' Excluir</button>':"")
+      +'</div>';
     return '<tr style="border-bottom:1px solid var(--border);">'
       +'<td style="padding:12px 16px;"><span style="font-size:12px;font-weight:500;padding:3px 12px;border-radius:20px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span></td>'
-      +'<td style="padding:12px 16px;">'+ac+'</td></tr>';
+      +'<td style="padding:12px 16px;">'+(isDef&&perfil!=="mestre"?'<span style="font-size:11px;color:var(--text3);">padr&#227;o</span>':ac)+'</td></tr>';
   }).join("");
   var pal=PALETA.map(function(p,i){return '<div onclick="selecionarCor('+i+')" id="cor-'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+p.bg+';border:2px solid '+p.border+';cursor:pointer;transition:transform 0.1s;"></div>';}).join("");
   var isEd=editingEtiqueta!==null;
@@ -535,7 +692,7 @@ function criarEtiqueta(){
   var n=(document.getElementById("et-nome").value||"").trim();
   if(!n){toast("Informe o nome",true);return;}
   if(TC[n]){toast("J&#225; existe",true);return;}
-  TC[n]=PALETA[corSelecionada];TIPOS=Object.keys(TC);saveEtiquetas();toast("Etiqueta criada!");renderEtiquetas();
+  TC[n]=PALETA[corSelecionada];TIPOS=Object.keys(TC);saveEtiquetas();toast("Criada!");renderEtiquetas();
 }
 function salvarEdicaoEtiqueta(){
   var novo=(document.getElementById("et-nome").value||"").trim();
@@ -544,16 +701,19 @@ function salvarEdicaoEtiqueta(){
   if(novo!==editingEtiqueta){
     if(TC[novo]){toast("J&#225; existe",true);return;}
     cards=cards.map(function(c){if(c.tipos&&c.tipos.includes(editingEtiqueta)){c.tipos=c.tipos.map(function(t){return t===editingEtiqueta?novo:t;});}return c;});
+    if(TC_DEFAULT[editingEtiqueta])TC_DEFAULT[editingEtiqueta]=cor;
     delete TC[editingEtiqueta];
   }
-  TC[novo]=cor;TIPOS=Object.keys(TC);saveEtiquetas();toast("Etiqueta atualizada!");editingEtiqueta=null;renderEtiquetas();
+  TC[novo]=cor;TIPOS=Object.keys(TC);saveEtiquetas();
+  toast("Atualizada!");editingEtiqueta=null;renderEtiquetas();
 }
 function deletarEtiqueta(n){
   if(!confirm("Excluir \""+n+"\"?"))return;
-  delete TC[n];TIPOS=Object.keys(TC);saveEtiquetas();toast("Exclu&#237;da!");editingEtiqueta=null;renderEtiquetas();
+  delete TC[n];if(TC_DEFAULT[n])delete TC_DEFAULT[n];
+  TIPOS=Object.keys(TC);saveEtiquetas();toast("Exclu&#237;da!");editingEtiqueta=null;renderEtiquetas();
 }
 
-// ── LOGS ──
+// ── HISTÓRICO ──
 async function renderLogs(){
   document.getElementById("app").innerHTML=headerHTML("logs")+'<div style="padding:24px 28px;max-width:1100px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
   try{
@@ -582,28 +742,29 @@ async function renderLogs(){
 
 // ── USUÁRIOS ──
 async function renderUsuarios(){
-  document.getElementById("app").innerHTML=headerHTML("usuarios")+'<div style="padding:24px 28px;max-width:800px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
+  document.getElementById("app").innerHTML=headerHTML("usuarios")+'<div style="padding:24px 28px;max-width:900px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
   try{
     var us=await dbFetchUsuarios();
     var rows=us.map(function(u){
       var b=u.perfil==="mestre"?'<span class="badge" style="background:#f5f3ff;color:#7c3aed;">Mestre</span>'
         :u.perfil==="advogado"?'<span class="badge" style="background:#eff6ff;color:#2563eb;">Advogado</span>'
         :'<span class="badge" style="background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;">Cliente</span>';
-      var ac=u.perfil!=="mestre"
-        ?'<div style="display:flex;gap:6px;">'
-          +'<button onclick="abrirModalUsuario(\''+u.id+'\',\''+u.nome+'\',\''+u.email+'\',\''+u.perfil+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('edit')+' Editar</button>'
-          +'<button onclick="deletarUsuario(\''+u.id+'\',\''+u.nome+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('trash')+' Excluir</button>'
-          +'</div>'
-        :'<span style="font-size:11px;color:var(--text3);">conta principal</span>';
+      var isMestre=u.perfil==="mestre";
+      var ac=isMestre?'<span style="font-size:11px;color:var(--text3);">conta principal</span>'
+        :'<div style="display:flex;gap:6px;">'
+          +'<button onclick="abrirModalUsuario(\''+u.id+'\',\''+escQ(u.nome)+'\',\''+u.email+'\',\''+u.perfil+'\',\''+(u.sigla||'')+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('edit')+' Editar</button>'
+          +'<button onclick="deletarUsuario(\''+u.id+'\',\''+escQ(u.nome)+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:4px;">'+icon('trash')+' Excluir</button>'
+          +'</div>';
       return '<tr style="border-bottom:1px solid var(--border);">'
         +'<td style="padding:12px 16px;font-size:13px;font-weight:500;">'+u.nome+'</td>'
         +'<td style="padding:12px 16px;font-size:13px;color:var(--text2);">'+u.email+'</td>'
         +'<td style="padding:12px 16px;">'+b+'</td>'
+        +'<td style="padding:12px 16px;font-size:12px;font-weight:600;color:var(--text2);">'+(u.sigla||'—')+'</td>'
         +'<td style="padding:12px 16px;font-size:12px;color:'+(u.ativo?"#16a34a":"#dc2626")+';">'+(u.ativo?"Ativo":"Inativo")+'</td>'
         +'<td style="padding:12px 16px;">'+ac+'</td></tr>';
     }).join("");
     document.getElementById("app").innerHTML=headerHTML("usuarios")
-      +'<div style="padding:24px 28px;max-width:800px;margin:0 auto;">'
+      +'<div style="padding:24px 28px;max-width:900px;margin:0 auto;">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">'
       +'<div><div style="font-size:16px;font-weight:600;">Usu&#225;rios</div>'
       +'<div style="font-size:13px;color:var(--text3);margin-top:2px;">Gerencie os acessos ao painel</div></div>'
@@ -612,11 +773,14 @@ async function renderUsuarios(){
       +'<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);">'
       +'<table style="width:100%;border-collapse:collapse;">'
       +'<thead><tr style="background:var(--surface);border-bottom:1px solid var(--border);">'
-      +['Nome','E-mail','Perfil','Status','A&#231;&#245;es'].map(function(h){return '<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">'+h+'</th>';}).join("")
-      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+      +['Nome','E-mail','Perfil','Sigla','Status','A&#231;&#245;es'].map(function(h){return '<th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">'+h+'</th>';}).join("")
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +'<div style="margin-top:12px;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);font-size:12px;color:#1e40af;">'
+      +'A sigla dos advogados &#233; usada como respons&#225;vel nos cards.</div>'
+      +'</div>';
   }catch(e){toast("Erro: "+e.message,true);}
 }
-function abrirModalUsuario(id,nome,email,perf){
+function abrirModalUsuario(id,nome,email,perf,sigla){
   var isEdit=!!id;
   document.getElementById("modal-container").innerHTML=
     '<div class="modal-overlay" onclick="closeModal(event)">'
@@ -629,45 +793,65 @@ function abrirModalUsuario(id,nome,email,perf){
     +'<div class="field"><label>E-mail</label><input id="mu-email" type="email" value="'+(email||"")+'" placeholder="email@btlaw.com.br"/></div>'
     +'<div class="field"><label>'+(isEdit?"Nova senha (deixe vazio para manter)":"Senha")+'</label>'
     +'<input id="mu-senha" type="password" placeholder="'+(isEdit?"Nova senha...":"Senha de acesso...")+'"/></div>'
-    +'<div class="field"><label>Perfil</label><select id="mu-perfil" style="width:100%;">'
+    +'<div class="field"><label>Perfil</label><select id="mu-perfil" onchange="toggleSigla()" style="width:100%;">'
     +'<option value="advogado"'+(perf==="advogado"?" selected":"")+'>Advogado</option>'
     +'<option value="cliente"'+(perf==="cliente"?" selected":"")+'>Cliente</option>'
     +'</select></div>'
+    +'<div class="field" id="sigla-field" style="'+((!perf||perf==="cliente")?"display:none;":"")+'">'
+    +'<label>Sigla (respons&#225;vel nos cards)</label>'
+    +'<input id="mu-sigla" value="'+(sigla||"")+'" placeholder="Ex: DGN" style="max-width:120px;text-transform:uppercase;"/>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:4px;">Ser&#225; exibida como respons&#225;vel nos cards</div>'
+    +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn btn-primary" onclick="salvarUsuario(\''+( id||"")+'\')">Salvar</button>'
+    +'<button class="btn btn-primary" onclick="salvarUsuario(\''+(id||"")+'\')">Salvar</button>'
     +'</div></div></div>';
+}
+function toggleSigla(){
+  var p=document.getElementById("mu-perfil").value;
+  var f=document.getElementById("sigla-field");
+  if(f)f.style.display=p==="advogado"?"":"none";
 }
 async function salvarUsuario(id){
   var nome=(document.getElementById("mu-nome").value||"").trim();
   var email=(document.getElementById("mu-email").value||"").trim().toLowerCase();
   var senha=document.getElementById("mu-senha").value;
   var perf=document.getElementById("mu-perfil").value;
+  var siglEl=document.getElementById("mu-sigla");
+  var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():"";
   if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
   if(!id&&!senha){toast("Informe a senha",true);return;}
-  var u={nome,email,perfil:perf,ativo:true};
+  var u={nome,email,perfil:perf,ativo:true,sigla:perf==="advogado"?sigla:null};
   if(id)u.id=id;if(senha)u.senha=senha;
   try{
-    await dbSaveUsuario(u);await dbLog(id?"Editou usu&#225;rio":"Criou usu&#225;rio",nome+" ("+perf+")");
+    await dbSaveUsuario(u);
+    await dbLog(id?"Editou usu&#225;rio":"Criou usu&#225;rio",nome+" ("+perf+(sigla?" / "+sigla:"")+")");
+    await loadResponsaveis();
     toast(id?"Atualizado!":"Criado!");closeModal();renderUsuarios();
   }catch(e){toast("Erro: "+e.message,true);}
 }
 async function deletarUsuario(id,nome){
   if(!confirm("Excluir \""+nome+"\"?"))return;
-  try{await dbDeleteUsuario(id);await dbLog("Excluiu usu&#225;rio",nome);toast("Exclu&#237;do!");renderUsuarios();}
-  catch(e){toast("Erro: "+e.message,true);}
+  try{
+    await dbDeleteUsuario(id);await dbLog("Excluiu usu&#225;rio",nome);
+    await loadResponsaveis();toast("Exclu&#237;do!");renderUsuarios();
+  }catch(e){toast("Erro: "+e.message,true);}
 }
 
 // ── FORMULÁRIO DEMANDA ──
 function renderForm(){
   var card=editingId?cards.find(function(c){return c.id===editingId;}):null;
-  var v=card||{titulo:"",responsavel:"",email:"",dataInicio:new Date().toISOString().split("T")[0],dataFim:"",horas:"",obs:"",tipos:[],status:"aberto"};
+  var v=card||{titulo:"",responsavel:"",email:"",dataInicio:new Date().toISOString().split("T")[0],dataFim:"",horas:"",obs:"",tipos:[],status:"aberto",clienteNum:null,casoNum:null};
   var tBtns=TIPOS.map(function(t){
     var sel=formTipos.includes(t),c=TC[t];
     return '<button type="button" onclick="toggleTipo(\''+t+'\')" id="tipo-'+t+'" style="font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;cursor:pointer;background:'+(sel?c.bg:'var(--surface)')+';border:'+(sel?'1.5px solid '+c.border:'1px solid var(--border)')+';color:'+(sel?c.text:'var(--text2)')+';transition:all 0.15s;">'+t+'</button>';
   }).join("");
-  var rO=RESPONSAVEIS.map(function(r){return '<option value="'+r+'"'+(v.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
+  var rList=responsaveis.length?responsaveis:[];
+  var rO=rList.map(function(r){return '<option value="'+r+'"'+(v.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(v.status===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
+  var clO=clientesDB.map(function(c){return '<option value="'+c.numero+'"'+(String(v.clienteNum)===String(c.numero)?' selected':'')+'>'+c.numero+' - '+trunc(c.nome,40)+'</option>';}).join("");
+  var caList=v.clienteNum?casosDoCliente(parseInt(v.clienteNum)):[];
+  var caO=caList.map(function(c){return '<option value="'+c.numero+'"'+(String(v.casoNum)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' - '+trunc(c.descricao,40):'')+'</option>';}).join("");
   document.getElementById("app").innerHTML=
     '<div style="background:var(--surface);min-height:100vh;padding-bottom:40px;">'
     +'<div style="background:var(--navy);height:60px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;">'
@@ -679,6 +863,10 @@ function renderForm(){
     +'<div style="max-width:580px;margin:28px auto;padding:0 16px;">'
     +'<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:28px 32px;box-shadow:var(--shadow);">'
     +'<div class="field"><label>T&#237;tulo *</label><input id="f-titulo" value="'+v.titulo+'" placeholder="Ex: An&#225;lise de contrato CRI"/></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field">'
+    +'<div><label>Cliente</label><select id="f-cliente" onchange="onFormClienteChange()" style="width:100%;"><option value="">Selecione...</option>'+clO+'</select></div>'
+    +'<div><label>Caso</label><select id="f-caso" style="width:100%;"'+(v.clienteNum?'':' disabled')+'><option value="">Selecione...</option>'+caO+'</select></div>'
+    +'</div>'
     +'<div class="field"><label>Respons&#225;vel</label><select id="f-responsavel" style="width:100%;"><option value="">Selecione...</option>'+rO+'</select></div>'
     +'<div class="field"><label>Status</label><select id="f-status" style="width:100%;">'+sO+'</select></div>'
     +'<div class="field"><label>E-mail da solicita&#231;&#227;o</label><input id="f-email" value="'+(v.email||"")+'" placeholder="Ex: Fwd: Assembleia Geral"/></div>'
@@ -694,6 +882,24 @@ function renderForm(){
     +'<button class="btn btn-primary" onclick="saveCard()">Salvar demanda</button>'
     +'</div></div></div></div>';
 }
+
+function onFormClienteChange(){
+  var sel=document.getElementById("f-cliente");
+  var casoSel=document.getElementById("f-caso");
+  if(!sel||!casoSel)return;
+  var cliNum=parseInt(sel.value);
+  casoSel.innerHTML='<option value="">Selecione...</option>';
+  if(cliNum){
+    casoSel.disabled=false;
+    var lista=casosDoCliente(cliNum);
+    lista.forEach(function(c){
+      var opt=document.createElement("option");
+      opt.value=c.numero;opt.textContent=c.numero+(c.descricao?' - '+trunc(c.descricao,40):'');
+      casoSel.appendChild(opt);
+    });
+  }else{casoSel.disabled=true;}
+}
+
 function toggleTipo(t){
   var idx=formTipos.indexOf(t);if(idx>=0)formTipos.splice(idx,1);else formTipos.push(t);
   var c=TC[t],sel=formTipos.includes(t),btn=document.getElementById("tipo-"+t);if(!btn)return;
@@ -706,7 +912,11 @@ async function saveCard(){
   if(!titulo){toast("Informe o t&#237;tulo",true);return;}
   var id=editingId||Date.now().toString();
   var existing=editingId?cards.find(function(c){return c.id===editingId;}):null;
+  var cliVal=document.getElementById("f-cliente").value;
+  var casoVal=document.getElementById("f-caso").value;
   var card={id,titulo,
+    clienteNum:cliVal?parseInt(cliVal):null,
+    casoNum:casoVal?parseInt(casoVal):null,
     responsavel:document.getElementById("f-responsavel").value,
     status:document.getElementById("f-status").value,
     email:document.getElementById("f-email").value,
@@ -730,9 +940,13 @@ async function deleteCard(id){
   catch(e){toast("Erro: "+e.message,true);}
 }
 
+// ── INIT ──
 async function init(){
   document.getElementById("app").innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--text3);">Carregando...</div>';
-  try{cards=await dbFetch();}catch(e){toast("Erro ao carregar: "+e.message,true);}
+  try{
+    await Promise.all([loadResponsaveis(),loadClientes(),loadCasos()]);
+    cards=await dbFetch();
+  }catch(e){toast("Erro ao carregar: "+e.message,true);}
   loadEtiquetas();renderKanban();
 }
 if(checkAuth()){loadEtiquetas();init();}else{renderLogin();}
