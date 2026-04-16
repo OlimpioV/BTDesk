@@ -19,7 +19,7 @@
   --col-w:272px;
 }
 html,body{height:100%;}
-body{background:#253f4f;color:var(--text);font-family:'Work Sans',-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden;}
+body{background:#253f4f;color:var(--text);font-family:'Work Sans',-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
 input,select,textarea{width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s,box-shadow .2s;}
 input:focus,select:focus,textarea:focus{border-color:var(--bt-orange);box-shadow:0 0 0 3px rgba(250,81,14,.12);}
 label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:5px;}
@@ -41,114 +41,96 @@ button{font-family:inherit;cursor:pointer;}
 .view-btn{padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;transition:all .18s;display:flex;align-items:center;gap:4px;}
 .view-btn:hover{color:#fff;border-color:rgba(255,255,255,.3);}
 .view-btn.active{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.3);}
-
 /* LAYOUT */
-#app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
-#app.page-mode{overflow:auto;height:auto;min-height:100vh;background:var(--surface);}
-
+#app{display:flex;flex-direction:column;overflow:hidden;}
+#app.kanban-mode{height:100vh;}
+#app.page-mode{overflow:auto;min-height:100vh;background:var(--surface);}
+#app.login-mode{overflow:auto;min-height:100vh;}
 /* BOARD */
 .board-outer{flex:1;overflow-x:auto;overflow-y:hidden;padding:10px 12px 14px;}
 .board-inner{display:flex;gap:10px;align-items:flex-start;height:100%;min-width:max-content;}
-
 /* COLUMN */
 .col-wrap{width:var(--col-w);min-width:var(--col-w);display:flex;flex-direction:column;background:rgba(255,255,255,.09);border-radius:14px;max-height:calc(100vh - 124px);}
 .col-header{padding:10px 10px 8px;display:flex;align-items:center;gap:6px;flex-shrink:0;position:relative;}
 .col-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.9);flex:1;cursor:default;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.col-title[data-editable="true"]{cursor:pointer;}
-.col-title[data-editable="true"]:hover{color:#fff;}
 .col-title-input{font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.4);border-radius:6px;padding:2px 7px;width:100%;outline:none;font-family:inherit;}
 .col-count{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);background:rgba(0,0,0,.18);border-radius:20px;padding:1px 8px;flex-shrink:0;}
 .col-cards{overflow-y:auto;overflow-x:hidden;flex:1;padding:2px 7px 8px;}
 .col-cards::-webkit-scrollbar{width:4px;}
 .col-cards::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px;}
-
-/* COLOR PICKER POPUP */
+/* COLOR PICKER */
 .col-color-picker{position:absolute;top:36px;left:8px;background:#fff;border-radius:12px;padding:12px;box-shadow:var(--shadow-lg);z-index:50;display:flex;gap:8px;flex-wrap:wrap;width:180px;}
-.color-swatch{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s;}
-.color-swatch:hover,.color-swatch.active{transform:scale(1.25);border-color:#fff;}
-
+.color-swatch{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s;}
+.color-swatch:hover,.color-swatch.sel{transform:scale(1.25);border-color:#253f4f;}
 /* ADD COLUMN */
 .add-col-btn{width:var(--col-w);min-width:var(--col-w);height:42px;border-radius:12px;background:rgba(255,255,255,.07);border:1.5px dashed rgba(255,255,255,.2);color:rgba(255,255,255,.45);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all .18s;flex-shrink:0;align-self:flex-start;}
 .add-col-btn:hover{background:rgba(255,255,255,.13);color:rgba(255,255,255,.85);}
-
 /* CARD */
 .card-item{background:#fff;border-radius:10px;margin-bottom:7px;cursor:pointer;transition:box-shadow .15s,transform .1s,opacity .15s;box-shadow:0 1px 3px rgba(0,0,0,.12);overflow:hidden;user-select:none;}
 .card-item:hover{box-shadow:0 4px 14px rgba(0,0,0,.2);transform:translateY(-1px);}
 .card-item.dragging{opacity:.25;cursor:grabbing;}
-.card-drop-indicator{height:5px;border-radius:4px;background:var(--bt-orange);margin-bottom:7px;opacity:0;transition:opacity .1s;}
-.card-drop-indicator.active{opacity:1;}
+.card-drop-ind{height:5px;border-radius:4px;background:var(--bt-orange);margin-bottom:7px;opacity:0;transition:opacity .1s;}
+.card-drop-ind.active{opacity:1;}
 .card-cover{height:34px;width:100%;display:block;}
 .card-body{padding:9px 11px 10px;}
-.card-title{font-weight:600;font-size:13px;color:#172b4d;line-height:1.4;margin-bottom:6px;}
-.card-obs{font-size:11px;color:#5e6c84;line-height:1.4;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.card-labels{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;}
-.card-label-bar{height:8px;min-width:40px;border-radius:4px;display:inline-block;cursor:pointer;transition:min-width .15s;}
-.card-label-bar.expanded{min-width:auto;height:20px;border-radius:4px;padding:0 8px;display:inline-flex;align-items:center;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;}
+.card-title{font-weight:600;font-size:13px;color:#172b4d;line-height:1.4;margin-bottom:5px;}
+.card-obs{font-size:11px;color:#5e6c84;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card-labels{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;}
+.lbar{height:8px;min-width:40px;border-radius:4px;display:inline-block;cursor:pointer;}
+.lbar.exp{min-width:auto;height:20px;border-radius:4px;padding:0 8px;display:inline-flex;align-items:center;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;}
 .card-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px;}
-.card-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#5e6c84;background:#f4f5f7;border-radius:4px;padding:2px 6px;font-weight:500;}
-.card-cc{display:inline-flex;font-size:11px;font-weight:700;color:#5e6c84;background:#f4f5f7;border-radius:4px;padding:2px 6px;}
-.drop-zone.drag-over-empty{background:rgba(255,255,255,.07);border-radius:10px;outline:2px dashed rgba(255,255,255,.18);}
-
+.chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#5e6c84;background:#f4f5f7;border-radius:4px;padding:2px 6px;font-weight:500;}
+.cc{display:inline-flex;font-size:11px;font-weight:700;color:#5e6c84;background:#f4f5f7;border-radius:4px;padding:2px 6px;}
+.drop-zone.dov{background:rgba(255,255,255,.07);border-radius:10px;outline:2px dashed rgba(255,255,255,.18);}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;z-index:200;overflow-y:auto;padding:20px 16px;}
 .modal-trello{background:#f4f5f7;border-radius:18px;width:min(96vw,780px);box-shadow:var(--shadow-lg);overflow:hidden;margin:auto;}
 .modal-cover{height:108px;width:100%;position:relative;}
-.modal-cover-close{position:absolute;top:10px;right:12px;background:rgba(0,0,0,.25);border:none;color:#fff;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;}
-.modal-cover-close:hover{background:rgba(0,0,0,.45);}
+.mcclose{position:absolute;top:10px;right:12px;background:rgba(0,0,0,.25);border:none;color:#fff;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;}
+.mcclose:hover{background:rgba(0,0,0,.45);}
 .modal-body{display:grid;grid-template-columns:1fr 210px;}
 .modal-main{padding:18px 22px 26px;min-width:0;}
 .modal-side{background:#ebecf0;padding:14px 10px;display:flex;flex-direction:column;gap:6px;}
-.modal-side-label{font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.06em;padding:0 2px;margin-top:4px;}
-.modal-side-btn{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;border:none;background:rgba(9,30,66,.08);color:#172b4d;width:100%;text-align:left;cursor:pointer;transition:background .15s;}
-.modal-side-btn:hover{background:rgba(9,30,66,.16);}
-.modal-section{margin-bottom:16px;}
-.modal-sec-title{font-size:11px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
-
-/* INLINE EDIT FIELDS */
-.inline-title{font-size:19px;font-weight:700;color:#172b4d;line-height:1.3;padding:4px 6px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:border-color .15s,background .15s;word-break:break-word;}
-.inline-title:hover{background:rgba(9,30,66,.06);border-color:transparent;}
-.inline-title.editing{display:none;}
-.inline-title-input{font-size:19px;font-weight:700;color:#172b4d;line-height:1.3;padding:4px 6px;border-radius:6px;border:2px solid var(--bt-orange);background:#fff;width:100%;resize:none;font-family:inherit;display:none;}
-.inline-title-input.editing{display:block;}
-
+.mslabel{font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.06em;padding:0 2px;margin-top:4px;}
+.msbtn{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;border:none;background:rgba(9,30,66,.08);color:#172b4d;width:100%;text-align:left;cursor:pointer;transition:background .15s;}
+.msbtn:hover{background:rgba(9,30,66,.16);}
+.msec{margin-bottom:16px;}
+.msec-title{font-size:11px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+/* INLINE EDIT */
+.ititle{font-size:19px;font-weight:700;color:#172b4d;line-height:1.3;padding:4px 6px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:border-color .15s,background .15s;word-break:break-word;}
+.ititle:hover{background:rgba(9,30,66,.06);}
+.ititle.editing{display:none;}
+.ititle-inp{font-size:19px;font-weight:700;color:#172b4d;line-height:1.3;padding:4px 6px;border-radius:6px;border:2px solid var(--bt-orange);background:#fff;width:100%;resize:none;font-family:inherit;display:none;}
+.ititle-inp.editing{display:block;}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
-.info-cell{background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s;}
-.info-cell:hover{border-color:var(--bt-orange);}
-.info-cell.editing{border-color:var(--bt-orange);padding:5px 8px;}
-.info-cell-label{font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-.info-cell-val{font-size:13px;font-weight:600;color:#172b4d;}
-.info-cell input,.info-cell select{padding:4px 7px;font-size:13px;border-radius:6px;margin-top:3px;}
+.icell{background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s;}
+.icell:hover{border-color:rgba(250,81,14,.4);}
+.icell.open{border-color:var(--bt-orange);padding:6px 8px;}
+.icell-label{font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.icell-val{font-size:13px;font-weight:600;color:#172b4d;}
 .obs-block{background:#fff;border-radius:8px;padding:10px 12px;cursor:pointer;border:2px solid transparent;transition:border-color .15s;min-height:40px;}
-.obs-block:hover{border-color:var(--bt-orange);}
-.obs-block.editing{border-color:var(--bt-orange);}
+.obs-block:hover{border-color:rgba(250,81,14,.4);}
+.obs-block.open{border-color:var(--bt-orange);}
 .obs-text{font-size:13px;color:#5e6c84;line-height:1.6;white-space:pre-wrap;word-break:break-word;}
-.obs-placeholder{font-size:13px;color:#94a3b8;font-style:italic;}
-.obs-textarea{width:100%;border:none;background:transparent;font-size:13px;color:#5e6c84;line-height:1.6;resize:vertical;min-height:60px;padding:0;font-family:inherit;outline:none;}
-
-/* STATUS SELECT IN SIDE */
-.status-select{font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;border:none;width:100%;font-family:inherit;cursor:pointer;text-align:left;}
-
+.obs-ph{font-size:13px;color:#94a3b8;font-style:italic;}
+.obs-ta{width:100%;border:none;background:transparent;font-size:13px;color:#5e6c84;line-height:1.6;resize:vertical;min-height:60px;padding:0;font-family:inherit;outline:none;}
 /* COMMENT */
-.comment-wrap{background:#fff;border-radius:9px;border:1.5px solid var(--border);padding:8px 10px;margin-bottom:9px;transition:border-color .2s;}
-.comment-wrap:focus-within{border-color:var(--bt-orange);}
-.comment-wrap textarea{border:none;padding:0;background:transparent;font-size:13px;resize:none;min-height:32px;width:100%;}
-.comment-wrap textarea:focus{box-shadow:none;}
-
-/* MODAL SIMPLES */
+.cmt-wrap{background:#fff;border-radius:9px;border:1.5px solid var(--border);padding:8px 10px;margin-bottom:9px;transition:border-color .2s;}
+.cmt-wrap:focus-within{border-color:var(--bt-orange);}
+.cmt-wrap textarea{border:none;padding:0;background:transparent;font-size:13px;resize:none;min-height:32px;width:100%;}
+.cmt-wrap textarea:focus{box-shadow:none;}
+/* MODAL BOX */
 .modal-box{background:#fff;border-radius:18px;padding:26px 30px;width:min(95vw,540px);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
-
 /* TOOLBAR */
 .toolbar{padding:0 12px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.18);border-bottom:1px solid rgba(255,255,255,.05);min-height:44px;gap:8px;flex-wrap:wrap;flex-shrink:0;}
 .toolbar select,.toolbar input[type="number"]{font-size:12px;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);color:#fff;width:auto;}
 .toolbar select option{background:#253f4f;color:#fff;}
-
 /* AUTOCOMPLETE */
-.autocomplete-wrap{position:relative;}
-.autocomplete-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--bt-orange);border-radius:10px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:var(--shadow-md);}
-.autocomplete-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);}
-.autocomplete-item:last-child{border-bottom:none;}
-.autocomplete-item:hover,.autocomplete-item.active{background:rgba(250,81,14,.06);}
-
+.ac-wrap{position:relative;}
+.ac-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--bt-orange);border-radius:10px;z-index:300;max-height:200px;overflow-y:auto;box-shadow:var(--shadow-md);}
+.ac-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.active{background:rgba(250,81,14,.06);}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(37,63,79,.2);border-radius:10px;}
@@ -170,7 +152,6 @@ const COL_COLORS=[
   {dot:"#14b8a6",cover:"#99f6e4"},{dot:"#f97316",cover:"#fed7aa"},
   {dot:"#6366f1",cover:"#c7d2fe"},{dot:"#84cc16",cover:"#d9f99d"},
 ];
-
 const COLS_DEFAULT=[
   {id:"aberto",    label:"Não iniciado",dot:"#3b82f6",cover:"#bfdbfe",badgeBg:"#dbeafe",badgeText:"#1d4ed8",ordem:0},
   {id:"andamento", label:"Em andamento",dot:"#f59e0b",cover:"#fde68a",badgeBg:"#fef3c7",badgeText:"#b45309",ordem:1},
@@ -179,8 +160,8 @@ const COLS_DEFAULT=[
 ];
 let COLS=[...COLS_DEFAULT];
 
-const ETIQUETAS_KEY="bari_etiquetas_v1";
-const TC_DEFAULT={
+const EK="bari_etiquetas_v1";
+const TC_DEF={
   Assembleia:{bg:"#EEEDFE",border:"#534AB7",text:"#3C3489",cover:"#c4b5fd"},
   Aditamentos:{bg:"#FAEEDA",border:"#BA7517",text:"#633806",cover:"#fcd34d"},
   Oferta:     {bg:"#E1F5EE",border:"#0F6E56",text:"#085041",cover:"#6ee7b7"},
@@ -200,52 +181,54 @@ const PALETA=[
 let cards=[],perfil=null,nomeUser=null,emailUser=null,userDbId=null;
 let filterResp="",filterTipo="",filterStatus="",filterCliente="",filterCaso="";
 let viewMode="kanban";
-let dragCardId=null,_dragOverColId=null,_dragOverIdx=null;
+let dragCardId=null,_dOvColId=null,_dOvIdx=null;
 let editingId=null,formTipos=[];
-let TC=Object.assign({},TC_DEFAULT),TIPOS=Object.keys(TC);
-let corSelecionada=0,editingEtiqueta=null;
-let modalCardId=null,editingCommentId=null;
+let TC=Object.assign({},TC_DEF),TIPOS=Object.keys(TC);
+let corSel=0,editingEtq=null;
+let modalCardId=null,editingCmtId=null;
 let responsaveis=[],clientesDB=[],casosDB=[];
-let acIndex=-1;
-let labelsExpanded={};
-let colorPickerOpen=null; // colId
+let acIdx=-1;
+let labelsExp={};
+let cpOpen=null;
+// inline edit state
+let _ef=null,_ecid=null; // editing field, editing card id
+let _acMatches=[],_acI=-1;
 
 function trunc(s,n){return s&&s.length>n?s.substring(0,n)+"...":s||"";}
 function escQ(s){return (s||"").replace(/'/g,"\\'");}
 function numFromStr(s){var m=(s||"").match(/^(\d+)/);return m?parseInt(m[1]):null;}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-
-function loadEtiquetas(){try{var s=localStorage.getItem(ETIQUETAS_KEY);if(s){Object.assign(TC,JSON.parse(s));TIPOS=Object.keys(TC);}}catch(e){}}
-function saveEtiquetas(){var ex={};Object.keys(TC).forEach(function(k){if(!TC_DEFAULT[k])ex[k]=TC[k];});localStorage.setItem(ETIQUETAS_KEY,JSON.stringify(ex));}
+function loadEtq(){try{var s=localStorage.getItem(EK);if(s){Object.assign(TC,JSON.parse(s));TIPOS=Object.keys(TC);}}catch(e){}}
+function saveEtq(){var ex={};Object.keys(TC).forEach(function(k){if(!TC_DEF[k])ex[k]=TC[k];});localStorage.setItem(EK,JSON.stringify(ex));}
 function toast(msg,err){var el=document.getElementById("toast");el.textContent=msg;el.style.background=err?"#dc2626":"#253f4f";el.style.color="#fff";el.classList.add("show");setTimeout(function(){el.classList.remove("show");},3000);}
 
 // ── DB ──
-async function dbFetch(){var r=await fetch(SB+"/rest/v1/demandas?select=id,data",{headers:H});if(!r.ok)throw new Error("Erro "+r.status);return (await r.json()).map(function(r){return Object.assign({id:r.id},r.data);});}
-async function dbUpsert(card){var id=card.id,data=Object.assign({},card);delete data.id;var r=await fetch(SB+"/rest/v1/demandas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id,data})});if(!r.ok)throw new Error("Erro "+r.status);}
-async function dbDelete(id){var r=await fetch(SB+"/rest/v1/demandas?id=eq."+id,{method:"DELETE",headers:H});if(!r.ok)throw new Error();}
-async function dbLog(acao,detalhe){await fetch(SB+"/rest/v1/logs",{method:"POST",headers:H,body:JSON.stringify({perfil,acao,detalhe})});}
+async function dbFetch(){var r=await fetch(SB+"/rest/v1/demandas?select=id,data",{headers:H});if(!r.ok)throw new Error();return (await r.json()).map(function(x){return Object.assign({id:x.id},x.data);});}
+async function dbUpsert(card){var id=card.id,data=Object.assign({},card);delete data.id;var r=await fetch(SB+"/rest/v1/demandas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id,data})});if(!r.ok)throw new Error();}
+async function dbDel(id){await fetch(SB+"/rest/v1/demandas?id=eq."+id,{method:"DELETE",headers:H});}
+async function dbLog(a,d){await fetch(SB+"/rest/v1/logs",{method:"POST",headers:H,body:JSON.stringify({perfil,acao:a,detalhe:d})});}
 async function dbFetchLogs(){var r=await fetch(SB+"/rest/v1/logs?select=*&order=criado_em.desc&limit=100",{headers:H});if(!r.ok)throw new Error();return r.json();}
-async function dbFetchUsuarios(){var r=await fetch(SB+"/rest/v1/usuarios?select=*&order=nome",{headers:H});if(!r.ok)throw new Error();return r.json();}
-async function dbSaveUsuario(u){var r=await fetch(SB+"/rest/v1/usuarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(u)});if(!r.ok)throw new Error();}
-async function dbDeleteUsuario(id){var r=await fetch(SB+"/rest/v1/usuarios?id=eq."+id,{method:"DELETE",headers:H});if(!r.ok)throw new Error();}
+async function dbFetchUsers(){var r=await fetch(SB+"/rest/v1/usuarios?select=*&order=nome",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbSaveUser(u){var r=await fetch(SB+"/rest/v1/usuarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(u)});if(!r.ok)throw new Error();}
+async function dbDelUser(id){await fetch(SB+"/rest/v1/usuarios?id=eq."+id,{method:"DELETE",headers:H});}
 async function dbSaveCols(){var data={colunas:COLS};await fetch(SB+"/rest/v1/demandas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id:"__cols__",data})});}
 async function dbLoadCols(){var r=await fetch(SB+"/rest/v1/demandas?id=eq.__cols__&select=data",{headers:H});if(!r.ok)return;var rows=await r.json();if(rows&&rows[0]&&rows[0].data&&rows[0].data.colunas)COLS=rows[0].data.colunas;}
-async function loadResponsaveis(){try{var r=await fetch(SB+"/rest/v1/usuarios?ativo=eq.true&select=sigla,nome,perfil",{headers:H});if(!r.ok)return;var rows=await r.json();responsaveis=rows.filter(function(u){return u.sigla&&(u.perfil==="advogado"||u.perfil==="mestre");}).map(function(u){return u.sigla;});}catch(e){}}
+async function loadResp(){try{var r=await fetch(SB+"/rest/v1/usuarios?ativo=eq.true&select=sigla,nome,perfil",{headers:H});if(!r.ok)return;var rows=await r.json();responsaveis=rows.filter(function(u){return u.sigla&&(u.perfil==="advogado"||u.perfil==="mestre");}).map(function(u){return u.sigla;});}catch(e){}}
 async function loadClientes(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/clientes?select=*&order=numero&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}clientesDB=all;}catch(e){}}
 async function loadCasos(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/casos?select=*&order=numero&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}casosDB=all;}catch(e){}}
 
 // ── ICONS ──
-function icon(t){var m={user:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',mail:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>',cal:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',clock:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',plus:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',back:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',logout:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',users:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',tag:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',kanban:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>',list:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',edit:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',trash:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>',close:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',comment:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',upload:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',briefcase:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>',spark:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',palette:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="8" r="1.5" fill="currentColor"/><circle cx="17" cy="14" r="1.5" fill="currentColor"/><circle cx="9" cy="15" r="1.5" fill="currentColor"/></svg>',};return m[t]||"";}
+function ic(t){var m={user:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',cal:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',clock:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',plus:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',back:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',logout:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',users:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',tag:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',kanban:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>',list:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',edit:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',trash:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>',close:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',comment:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',upload:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>',briefcase:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>',spark:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',};return m[t]||"";}
 
 function logoBlock(){return '<div style="display:flex;align-items:center;gap:12px;"><img src="logo-branco-negativo.png" style="height:36px;object-fit:contain;" onerror="this.style.display=\'none\'"/><div style="border-left:1px solid rgba(255,255,255,.1);padding-left:12px;"><div style="font-weight:700;font-size:13px;color:#fff;">Barcellos Tucunduva</div><div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:.1em;text-transform:uppercase;margin-top:1px;">Controle de demandas</div></div></div>';}
 function perfilBadge(p){if(p==="mestre")return '<span class="badge" style="background:rgba(168,85,247,.18);color:#d8b4fe;border:1px solid rgba(168,85,247,.2);">Mestre</span>';if(p==="advogado")return '<span class="badge" style="background:rgba(250,81,14,.18);color:#fed7aa;border:1px solid rgba(250,81,14,.2);">Advogado</span>';return '<span class="badge" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);">Cliente</span>';}
 
 function headerHTML(aba){
-  var canEdit=perfil==="mestre"||perfil==="advogado";
+  var ce=perfil==="mestre"||perfil==="advogado";
   var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
-  if(canEdit){tabs+='<button class="tab '+(aba==="logs"?"active":"")+'" onclick="renderLogs()">Histórico</button><button class="tab '+(aba==="etiquetas"?"active":"")+'" onclick="renderEtiquetas()" style="display:inline-flex;align-items:center;gap:5px;">'+icon("tag")+' Etiquetas</button><button class="tab '+(aba==="importar"?"active":"")+'" onclick="renderImportar()" style="display:inline-flex;align-items:center;gap:5px;">'+icon("upload")+' Importar</button>';}
-  if(perfil==="mestre")tabs+='<button class="tab '+(aba==="usuarios"?"active":"")+'" onclick="renderUsuarios()" style="display:inline-flex;align-items:center;gap:5px;">'+icon("users")+' Usuários</button>';
-  return '<div style="background:linear-gradient(135deg,#1a2e3a 0%,#253f4f 60%,#2d4f63 100%);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;"><div style="padding:0 14px;height:52px;display:flex;align-items:center;justify-content:space-between;">'+logoBlock()+'<div style="display:flex;align-items:center;gap:8px;">'+perfilBadge(perfil)+'<span style="font-size:11px;color:rgba(255,255,255,.3);">'+emailUser+'</span><button onclick="abrirModalProprioPerfil()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+icon("edit")+' Perfil</button><button onclick="logout()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(250,81,14,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+icon("logout")+' Sair</button></div></div><div style="background:rgba(0,0,0,.15);padding:0 14px;display:flex;border-top:1px solid rgba(255,255,255,.05);">'+tabs+'</div></div>';
+  if(ce){tabs+='<button class="tab '+(aba==="logs"?"active":"")+'" onclick="renderLogs()">Histórico</button><button class="tab '+(aba==="etq"?"active":"")+'" onclick="renderEtq()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("tag")+' Etiquetas</button><button class="tab '+(aba==="imp"?"active":"")+'" onclick="renderImp()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("upload")+' Importar</button>';}
+  if(perfil==="mestre")tabs+='<button class="tab '+(aba==="usr"?"active":"")+'" onclick="renderUsers()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("users")+' Usuários</button>';
+  return '<div style="background:linear-gradient(135deg,#1a2e3a 0%,#253f4f 60%,#2d4f63 100%);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;"><div style="padding:0 14px;height:52px;display:flex;align-items:center;justify-content:space-between;">'+logoBlock()+'<div style="display:flex;align-items:center;gap:8px;">'+perfilBadge(perfil)+'<span style="font-size:11px;color:rgba(255,255,255,.3);">'+emailUser+'</span><button onclick="openMyProfile()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("edit")+' Perfil</button><button onclick="logout()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(250,81,14,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("logout")+' Sair</button></div></div><div style="background:rgba(0,0,0,.15);padding:0 14px;display:flex;border-top:1px solid rgba(255,255,255,.05);">'+tabs+'</div></div>';
 }
 
 // ── AUTH ──
@@ -257,544 +240,449 @@ async function doLogin(){
   if(!email||!senha){renderLogin("Preencha e-mail e senha.");return;}
   try{
     var r=await fetch(SB+"/rest/v1/usuarios?email=eq."+encodeURIComponent(email)+"&senha=eq."+encodeURIComponent(senha)+"&ativo=eq.true&select=*",{headers:H});
-    var rows=await r.json();if(!rows||!rows.length){renderLogin("E-mail ou senha incorretos.");return;}
+    var rows=await r.json();
+    if(!rows||!rows.length){renderLogin("E-mail ou senha incorretos.");return;}
     var u=rows[0];perfil=u.perfil;nomeUser=u.nome;emailUser=u.email;userDbId=u.id;
     sessionStorage.setItem("bari_perfil",u.perfil);sessionStorage.setItem("bari_nome",u.nome);sessionStorage.setItem("bari_email",u.email);sessionStorage.setItem("bari_id",u.id);
     dbLog("Login","Acesso ao sistema");init();
   }catch(e){renderLogin("Erro ao conectar.");}
 }
 function renderLogin(erro){
-  document.getElementById("app").innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:url(BTpapeldeparede.png) center/contain no-repeat,linear-gradient(135deg,#1a2e3a,#253f4f);position:relative;"><div style="position:fixed;inset:0;background:rgba(15,26,35,.55);backdrop-filter:blur(2px);z-index:0;"></div><div style="position:relative;z-index:1;width:min(400px,92vw);"><div style="background:rgba(255,255,255,.94);backdrop-filter:blur(20px);border-radius:20px;padding:40px 44px;box-shadow:0 20px 60px rgba(0,0,0,.3);"><div style="text-align:center;margin-bottom:30px;"><div style="font-size:26px;font-weight:700;color:#1a2e3a;">BTDesk</div><div style="font-size:12px;color:#94a3b8;margin-top:4px;letter-spacing:.06em;text-transform:uppercase;">Barcellos Tucunduva</div></div><div style="height:1px;background:linear-gradient(90deg,transparent,rgba(250,81,14,.3),transparent);margin-bottom:26px;"></div><div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com.br" onkeydown="if(event.key===\'Enter\')document.getElementById(\'login-senha\').focus()" style="padding:11px 14px;"/></div><div class="field"><label>Senha</label><input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key===\'Enter\')doLogin()" style="padding:11px 14px;"/></div>'+(erro?'<div style="font-size:13px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 13px;margin-bottom:14px;">'+erro+'</div>':"")+'<button onclick="doLogin()" style="width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;border-radius:10px;border:none;background:linear-gradient(135deg,#253f4f,#1a2e3a);color:#fff;cursor:pointer;">Entrar</button><p style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:22px;">2026 © Barcellos Tucunduva</p></div></div></div>';
+  var app=document.getElementById("app");app.className="login-mode";
+  app.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:url(BTpapeldeparede.png) center/contain no-repeat,linear-gradient(135deg,#1a2e3a,#253f4f);position:relative;"><div style="position:fixed;inset:0;background:rgba(15,26,35,.55);backdrop-filter:blur(2px);z-index:0;"></div><div style="position:relative;z-index:1;width:min(400px,92vw);"><div style="background:rgba(255,255,255,.94);backdrop-filter:blur(20px);border-radius:20px;padding:40px 44px;box-shadow:0 20px 60px rgba(0,0,0,.3);"><div style="text-align:center;margin-bottom:30px;"><div style="font-size:26px;font-weight:700;color:#1a2e3a;">BTDesk</div><div style="font-size:12px;color:#94a3b8;margin-top:4px;letter-spacing:.06em;text-transform:uppercase;">Barcellos Tucunduva</div></div><div style="height:1px;background:linear-gradient(90deg,transparent,rgba(250,81,14,.3),transparent);margin-bottom:26px;"></div><div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com.br" onkeydown="if(event.key===\'Enter\')document.getElementById(\'login-senha\').focus()" style="padding:11px 14px;"/></div><div class="field"><label>Senha</label><input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key===\'Enter\')doLogin()" style="padding:11px 14px;"/></div>'+(erro?'<div style="font-size:13px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 13px;margin-bottom:14px;">'+erro+'</div>':"")+'<button onclick="doLogin()" style="width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;border-radius:10px;border:none;background:linear-gradient(135deg,#253f4f,#1a2e3a);color:#fff;cursor:pointer;">Entrar</button><p style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:22px;">2026 © Barcellos Tucunduva</p></div></div></div>';
   setTimeout(function(){var el=document.getElementById("login-email");if(el)el.focus();},100);
 }
 
-function abrirModalProprioPerfil(){
+// ── PERFIL ──
+function openMyProfile(){
   var isMestre=perfil==="mestre";
-  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Meu perfil</div><button onclick="closeModal()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;">'+icon('close')+'</button></div><div class="field"><label>Nome</label><input id="mp-nome" value="'+nomeUser+'"/></div><div class="field"><label>E-mail</label><input id="mp-email" type="email" value="'+emailUser+'"/></div><div class="field"><label>Nova senha</label><input id="mp-senha" type="password" placeholder="Deixe vazio para manter"/></div>'+(isMestre?'<div class="field"><label>Sigla</label><input id="mp-sigla" style="max-width:120px;text-transform:uppercase;"/></div>':"")+'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarProprioPerfil()">Salvar</button></div></div></div>';
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Meu perfil</div><button onclick="closeModal()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;">'+ic('close')+'</button></div><div class="field"><label>Nome</label><input id="mp-nome" value="'+nomeUser+'"/></div><div class="field"><label>E-mail</label><input id="mp-email" type="email" value="'+emailUser+'"/></div><div class="field"><label>Nova senha</label><input id="mp-senha" type="password" placeholder="Deixe vazio para manter"/></div>'+(isMestre?'<div class="field"><label>Sigla</label><input id="mp-sigla" style="max-width:120px;text-transform:uppercase;"/></div>':"")+'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveMyProfile()">Salvar</button></div></div></div>';
   if(isMestre){fetch(SB+"/rest/v1/usuarios?id=eq."+userDbId+"&select=sigla",{headers:H}).then(function(r){return r.json();}).then(function(rows){var el=document.getElementById("mp-sigla");if(el&&rows[0])el.value=rows[0].sigla||"";});}
 }
-async function salvarProprioPerfil(){
+async function saveMyProfile(){
   var nome=(document.getElementById("mp-nome").value||"").trim();var email=(document.getElementById("mp-email").value||"").trim().toLowerCase();var senha=document.getElementById("mp-senha").value;var siglEl=document.getElementById("mp-sigla");var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():undefined;
   if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
   var u={id:userDbId,nome,email,perfil,ativo:true};if(senha)u.senha=senha;if(sigla!==undefined)u.sigla=sigla;
-  try{await dbSaveUsuario(u);nomeUser=nome;emailUser=email;sessionStorage.setItem("bari_nome",nome);sessionStorage.setItem("bari_email",email);await loadResponsaveis();toast("Perfil atualizado!");closeModal();}catch(e){toast("Erro",true);}
+  try{await dbSaveUser(u);nomeUser=nome;emailUser=email;sessionStorage.setItem("bari_nome",nome);sessionStorage.setItem("bari_email",email);await loadResp();toast("Perfil atualizado!");closeModal();}catch(e){toast("Erro",true);}
 }
 
 // ── HELPERS ──
-function clienteNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
+function cliNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
 function casoDesc(num,cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return "";var ca=casosDB.find(function(c){return c.numero===num&&c.cliente_id===cl.id;});return ca?ca.descricao:"";}
 function casosDoCliente(cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return [];return casosDB.filter(function(c){return c.cliente_id===cl.id;});}
 function getFiltered(){return cards.filter(function(c){return (!filterResp||c.responsavel===filterResp)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus)&&(!filterCliente||String(c.clienteNum)===String(filterCliente))&&(!filterCaso||String(c.casoNum)===String(filterCaso));}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});}
-function getCardCoverColor(card){if(card.tipos&&card.tipos.length){var tc=TC[card.tipos[0]];if(tc&&tc.cover)return tc.cover;}var col=COLS.find(function(c){return c.id===card.status;});return col?col.cover:"#e2e8f0";}
+function coverColor(card){if(card.tipos&&card.tipos.length){var tc=TC[card.tipos[0]];if(tc&&tc.cover)return tc.cover;}var col=COLS.find(function(c){return c.id===card.status;});return col?col.cover:"#e2e8f0";}
 function tipoTagsHTML(tipos){if(!tipos||!tipos.length)return "";return tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("");}
-function ccLabelHTML(card){if(card.clienteNum&&card.casoNum)return '<span class="card-cc">'+card.clienteNum+'/'+card.casoNum+'</span>';if(card.clienteNum)return '<span class="card-cc">'+card.clienteNum+'</span>';return "";}
-async function salvarOrdemCol(col){var saves=[];col.forEach(function(c,i){if(c.ordem!==i){c.ordem=i;saves.push(dbUpsert(c));}});await Promise.all(saves);}
+function ccHTML(card){if(card.clienteNum&&card.casoNum)return '<span class="cc">'+card.clienteNum+'/'+card.casoNum+'</span>';if(card.clienteNum)return '<span class="cc">'+card.clienteNum+'</span>';return "";}
+function buildAcList(q){if(!q||q.length<1)return [];var ql=q.toLowerCase();return clientesDB.filter(function(c){return String(c.numero).startsWith(ql)||(c.nome&&c.nome.toLowerCase().includes(ql));}).slice(0,8);}
 
 // ── TOOLBAR ──
-function toolbarHTML(canEdit){
+function toolbarHTML(ce){
   var th=cards.reduce(function(s,c){return s+(parseFloat(c.horas)||0);},0);
   var rO=responsaveis.map(function(r){return '<option value="'+r+'"'+(filterResp===r?' selected':'')+'>'+r+'</option>';}).join("");
   var tO=TIPOS.map(function(t){return '<option value="'+t+'"'+(filterTipo===t?' selected':'')+'>'+t+'</option>';}).join("");
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(filterStatus===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
   var caList=filterCliente?casosDoCliente(parseInt(filterCliente)):[];
   var casoField=!filterCliente?'<input placeholder="Caso" disabled value="" style="width:72px;opacity:.4;cursor:not-allowed;"/>':caList.length>0?'<select onchange="filterCaso=this.value;renderView()" style="width:84px;"><option value="">Caso</option>'+caList.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCaso)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("")+'</select>':'<input placeholder="Caso" value="'+filterCaso+'" oninput="filterCaso=this.value;renderView()" style="width:72px;" type="number" min="1"/>';
-  return '<div class="toolbar"><div style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.45);">'+icon('clock')+' <span style="font-weight:700;color:rgba(255,255,255,.8);">'+th.toFixed(1)+'h</span></div><div style="display:flex;gap:5px;align-items:center;padding:4px 0;flex-wrap:wrap;"><select onchange="filterStatus=this.value;renderView()"><option value="">Status</option>'+sO+'</select><select onchange="filterTipo=this.value;renderView()"><option value="">Tipo</option>'+tO+'</select><select onchange="filterResp=this.value;renderView()"><option value="">Resp.</option>'+rO+'</select><input id="filter-cliente-input" placeholder="Cliente" value="'+filterCliente+'" style="width:72px;" type="number" min="1" max="9999"/>'+casoField+'<div style="display:flex;gap:3px;"><button class="view-btn '+(viewMode==="kanban"?"active":"")+'" onclick="viewMode=\'kanban\';renderView()">'+icon("kanban")+'</button><button class="view-btn '+(viewMode==="lista"?"active":"")+'" onclick="viewMode=\'lista\';renderView()">'+icon("list")+'</button></div>'+(canEdit?'<button class="btn btn-accent" onclick="openNew()" style="display:flex;align-items:center;gap:5px;font-size:12px;padding:5px 13px;border-radius:8px;">'+icon('plus')+' Nova demanda</button>':"")+'</div></div>';
+  return '<div class="toolbar"><div style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.45);">'+ic('clock')+' <span style="font-weight:700;color:rgba(255,255,255,.8);">'+th.toFixed(1)+'h</span></div><div style="display:flex;gap:5px;align-items:center;padding:4px 0;flex-wrap:wrap;"><select onchange="filterStatus=this.value;renderView()"><option value="">Status</option>'+sO+'</select><select onchange="filterTipo=this.value;renderView()"><option value="">Tipo</option>'+tO+'</select><select onchange="filterResp=this.value;renderView()"><option value="">Resp.</option>'+rO+'</select><input id="fci" placeholder="Cliente" value="'+filterCliente+'" style="width:72px;" type="number" min="1" max="9999"/>'+casoField+'<div style="display:flex;gap:3px;"><button class="view-btn '+(viewMode==="kanban"?"active":"")+'" onclick="viewMode=\'kanban\';renderView()">'+ic("kanban")+'</button><button class="view-btn '+(viewMode==="lista"?"active":"")+'" onclick="viewMode=\'lista\';renderView()">'+ic("list")+'</button></div>'+(ce?'<button class="btn btn-accent" onclick="openNew()" style="display:flex;align-items:center;gap:5px;font-size:12px;padding:5px 13px;border-radius:8px;">'+ic('plus')+' Nova demanda</button>':"")+'</div></div>';
 }
-function bindFilterClienteInput(){var el=document.getElementById("filter-cliente-input");if(!el)return;el.addEventListener("change",function(){filterCliente=this.value;filterCaso="";renderView();});el.addEventListener("keydown",function(e){if(e.key==="Enter"){filterCliente=this.value;filterCaso="";renderView();}});}
+function bindFCI(){var el=document.getElementById("fci");if(!el)return;el.addEventListener("change",function(){filterCliente=this.value;filterCaso="";renderView();});el.addEventListener("keydown",function(e){if(e.key==="Enter"){filterCliente=this.value;filterCaso="";renderView();}});}
 
 // ── DRAG & DROP ──
-function onDragStart(e,id){dragCardId=id;e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",id);setTimeout(function(){var el=document.getElementById("card-"+id);if(el)el.classList.add("dragging");},0);}
-function onDragEnd(e,id){var el=document.getElementById("card-"+id);if(el)el.classList.remove("dragging");clearDropIndicators();dragCardId=null;_dragOverColId=null;_dragOverIdx=null;}
-function clearDropIndicators(){document.querySelectorAll(".card-drop-indicator").forEach(function(el){el.classList.remove("active");});}
-function onColDragOver(e,colId){e.preventDefault();e.dataTransfer.dropEffect="move";if(!dragCardId)return;var colEl=document.getElementById("col-cards-"+colId);if(!colEl)return;var cardEls=Array.from(colEl.querySelectorAll(".card-item:not(.dragging)"));var idx=cardEls.length;for(var i=0;i<cardEls.length;i++){var rect=cardEls[i].getBoundingClientRect();if(e.clientY<rect.top+rect.height/2){idx=i;break;}}if(_dragOverColId===colId&&_dragOverIdx===idx)return;_dragOverColId=colId;_dragOverIdx=idx;clearDropIndicators();var indEl=document.getElementById("ind-"+colId+"-"+idx);if(indEl)indEl.classList.add("active");}
-function onColDragLeave(e,colId){var colEl=document.getElementById("col-cards-"+colId);if(!colEl)return;var rect=colEl.getBoundingClientRect();if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){clearDropIndicators();_dragOverColId=null;_dragOverIdx=null;}}
+function onDragStart(e,id){dragCardId=id;e.dataTransfer.effectAllowed="move";setTimeout(function(){var el=document.getElementById("card-"+id);if(el)el.classList.add("dragging");},0);}
+function onDragEnd(e,id){var el=document.getElementById("card-"+id);if(el)el.classList.remove("dragging");clearInds();dragCardId=null;_dOvColId=null;_dOvIdx=null;}
+function clearInds(){document.querySelectorAll(".card-drop-ind").forEach(function(el){el.classList.remove("active");});}
+function onColDragOver(e,colId){e.preventDefault();if(!dragCardId)return;var colEl=document.getElementById("col-cards-"+colId);if(!colEl)return;var els=Array.from(colEl.querySelectorAll(".card-item:not(.dragging)"));var idx=els.length;for(var i=0;i<els.length;i++){var rect=els[i].getBoundingClientRect();if(e.clientY<rect.top+rect.height/2){idx=i;break;}}if(_dOvColId===colId&&_dOvIdx===idx)return;_dOvColId=colId;_dOvIdx=idx;clearInds();var ind=document.getElementById("ind-"+colId+"-"+idx);if(ind)ind.classList.add("active");}
+function onColDragLeave(e,colId){var colEl=document.getElementById("col-cards-"+colId);if(!colEl)return;var rect=colEl.getBoundingClientRect();if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){clearInds();_dOvColId=null;_dOvIdx=null;}}
 async function onColDrop(e,colId){
-  e.preventDefault();clearDropIndicators();if(!dragCardId)return;
+  e.preventDefault();clearInds();if(!dragCardId)return;
   var card=cards.find(function(c){return c.id===dragCardId;});if(!card){dragCardId=null;return;}
-  var targetCol=cards.filter(function(c){return c.status===colId&&c.id!==dragCardId;}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
-  var insertIdx=(_dragOverColId===colId&&_dragOverIdx!=null)?_dragOverIdx:targetCol.length;
-  var antes=card.status;card.status=colId;
-  targetCol.splice(insertIdx,0,card);
-  targetCol.forEach(function(c,i){c.ordem=i;});
-  try{await Promise.all(targetCol.map(function(c){return dbUpsert(c);}));if(antes!==colId){var al=COLS.find(function(c){return c.id===antes;});var dl=COLS.find(function(c){return c.id===colId;});await dbLog("Moveu demanda",card.titulo+": "+(al?al.label:antes)+" → "+(dl?dl.label:colId));}}catch(err){toast("Erro",true);}
-  dragCardId=null;_dragOverColId=null;_dragOverIdx=null;renderKanban();
+  var col=cards.filter(function(c){return c.status===colId&&c.id!==dragCardId;}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
+  var ins=(_dOvColId===colId&&_dOvIdx!=null)?_dOvIdx:col.length;
+  var antes=card.status;card.status=colId;col.splice(ins,0,card);col.forEach(function(c,i){c.ordem=i;});
+  try{await Promise.all(col.map(function(c){return dbUpsert(c);}));if(antes!==colId){var al=COLS.find(function(c){return c.id===antes;});var dl=COLS.find(function(c){return c.id===colId;});await dbLog("Moveu demanda",card.titulo+": "+(al?al.label:antes)+" → "+(dl?dl.label:colId));}}catch(err){toast("Erro",true);}
+  dragCardId=null;_dOvColId=null;_dOvIdx=null;renderKanban();
 }
 
-// ── COLUMN: renomear, cor, excluir ──
-function colTitleInner(col){
-  var canEdit=perfil==="mestre";
-  return '<span class="col-title" data-editable="'+(canEdit?"true":"false")+'"'+(canEdit?' ondblclick="iniciarRenomearColuna(\''+col.id+'\')" title="Duplo clique para renomear"':'')+'>'+col.label+'</span>';
-}
-function iniciarRenomearColuna(colId){
-  var col=COLS.find(function(c){return c.id===colId;});if(!col)return;
-  var titleEl=document.getElementById("col-title-"+colId);if(!titleEl)return;
-  titleEl.innerHTML='<input class="col-title-input" id="col-input-'+colId+'" value="'+col.label+'" maxlength="40" onblur="salvarNomeColuna(\''+colId+'\')" onkeydown="if(event.key===\'Enter\')this.blur();if(event.key===\'Escape\')cancelarRenomear(\''+colId+'\')"/>';
-  var inp=document.getElementById("col-input-"+colId);if(inp){inp.focus();inp.select();}
-}
-function cancelarRenomear(colId){var col=COLS.find(function(c){return c.id===colId;});var el=document.getElementById("col-title-"+colId);if(el&&col)el.innerHTML=colTitleInner(col);}
-async function salvarNomeColuna(colId){var inp=document.getElementById("col-input-"+colId);if(!inp)return;var nome=(inp.value||"").trim();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;if(nome)col.label=nome;var el=document.getElementById("col-title-"+colId);if(el)el.innerHTML=colTitleInner(col);if(nome)try{await dbSaveCols();}catch(e){}}
-
-function toggleColorPicker(colId,e){e.stopPropagation();if(colorPickerOpen===colId){colorPickerOpen=null;var el=document.getElementById("cpicker-"+colId);if(el)el.remove();return;}colorPickerOpen=colId;var existing=document.querySelector(".col-color-picker");if(existing)existing.remove();var col=COLS.find(function(c){return c.id===colId;});var swatches=COL_COLORS.map(function(cc,i){var active=cc.dot===col.dot?"active":"";return '<div class="color-swatch '+active+'" style="background:'+cc.dot+';" onclick="applyColColor(\''+colId+'\','+i+',event)" title="'+cc.dot+'"></div>';}).join("");var picker=document.createElement("div");picker.className="col-color-picker";picker.id="cpicker-"+colId;picker.innerHTML=swatches;var header=document.getElementById("col-header-"+colId);if(header)header.appendChild(picker);setTimeout(function(){document.addEventListener("click",function h(){colorPickerOpen=null;var p=document.getElementById("cpicker-"+colId);if(p)p.remove();document.removeEventListener("click",h);},true);},10);}
-async function applyColColor(colId,idx,e){e.stopPropagation();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;var cc=COL_COLORS[idx];col.dot=cc.dot;col.cover=cc.cover;colorPickerOpen=null;var p=document.getElementById("cpicker-"+colId);if(p)p.remove();try{await dbSaveCols();}catch(err){}renderKanban();}
-
-async function adicionarColuna(){var nome=prompt("Nome da nova coluna:");if(!nome||!nome.trim())return;nome=nome.trim();var id="col_"+uid();var cc=COL_COLORS[COLS.length%COL_COLORS.length];var nova={id,label:nome,dot:cc.dot,cover:cc.cover,badgeBg:"#f1f5f9",badgeText:"#475569",ordem:COLS.length};COLS.push(nova);try{await dbSaveCols();toast("Coluna criada!");}catch(e){toast("Erro",true);}renderKanban();}
-async function excluirColuna(colId,e){e.stopPropagation();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;var cardsNaCol=cards.filter(function(c){return c.status===colId;});if(cardsNaCol.length>0){toast("A coluna precisa estar vazia para ser excluída",true);return;}if(!confirm('Excluir a coluna "'+col.label+'"?'))return;COLS=COLS.filter(function(c){return c.id!==colId;});try{await dbSaveCols();toast("Coluna excluída!");}catch(err){toast("Erro",true);}renderKanban();}
+// ── COLUMNS ──
+function colTitleInner(col){var isMestre=perfil==="mestre";return '<span class="col-title"'+(isMestre?' ondblclick="startRenameCol(\''+col.id+'\')" title="Duplo clique para renomear"':'')+'>'+col.label+'</span>';}
+function startRenameCol(colId){var col=COLS.find(function(c){return c.id===colId;});if(!col)return;var el=document.getElementById("col-title-"+colId);if(!el)return;el.innerHTML='<input class="col-title-input" id="cti-'+colId+'" value="'+col.label+'" maxlength="40" onkeydown="if(event.key===\'Enter\')this.blur();if(event.key===\'Escape\')cancelRenameCol(\''+colId+'\')" onblur="saveRenameCol(\''+colId+'\')"/>';var inp=document.getElementById("cti-"+colId);if(inp){inp.focus();inp.select();}}
+function cancelRenameCol(colId){var col=COLS.find(function(c){return c.id===colId;});var el=document.getElementById("col-title-"+colId);if(el&&col)el.innerHTML=colTitleInner(col);}
+async function saveRenameCol(colId){var inp=document.getElementById("cti-"+colId);if(!inp)return;var nome=(inp.value||"").trim();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;if(nome)col.label=nome;var el=document.getElementById("col-title-"+colId);if(el)el.innerHTML=colTitleInner(col);if(nome)try{await dbSaveCols();}catch(e){}}
+function toggleCP(colId,e){e.stopPropagation();if(cpOpen===colId){cpOpen=null;var el=document.getElementById("cp-"+colId);if(el)el.remove();return;}cpOpen=colId;document.querySelectorAll(".col-color-picker").forEach(function(el){el.remove();});var col=COLS.find(function(c){return c.id===colId;});var sw=COL_COLORS.map(function(cc,i){return '<div class="color-swatch'+(cc.dot===col.dot?" sel":"")+'" style="background:'+cc.dot+';" onclick="applyColColor(\''+colId+'\','+i+',event)"></div>';}).join("");var picker=document.createElement("div");picker.className="col-color-picker";picker.id="cp-"+colId;picker.innerHTML=sw;var hdr=document.getElementById("col-hdr-"+colId);if(hdr)hdr.appendChild(picker);setTimeout(function(){document.addEventListener("click",function h(){cpOpen=null;var p=document.getElementById("cp-"+colId);if(p)p.remove();document.removeEventListener("click",h);},true);},10);}
+async function applyColColor(colId,idx,e){e.stopPropagation();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;var cc=COL_COLORS[idx];col.dot=cc.dot;col.cover=cc.cover;cpOpen=null;var p=document.getElementById("cp-"+colId);if(p)p.remove();try{await dbSaveCols();}catch(err){}renderKanban();}
+async function addColuna(){var nome=prompt("Nome da nova coluna:");if(!nome||!nome.trim())return;nome=nome.trim();var id="col_"+uid();var cc=COL_COLORS[COLS.length%COL_COLORS.length];COLS.push({id,label:nome,dot:cc.dot,cover:cc.cover,badgeBg:"#f1f5f9",badgeText:"#475569",ordem:COLS.length});try{await dbSaveCols();toast("Coluna criada!");}catch(e){toast("Erro",true);}renderKanban();}
+async function delColuna(colId,e){e.stopPropagation();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;if(cards.filter(function(c){return c.status===colId;}).length>0){toast("A coluna precisa estar vazia",true);return;}if(!confirm('Excluir "'+col.label+'"?'))return;COLS=COLS.filter(function(c){return c.id!==colId;});try{await dbSaveCols();toast("Coluna excluída!");}catch(err){}renderKanban();}
 
 // ── LABELS TOGGLE ──
-function toggleLabels(cardId,e){e.stopPropagation();labelsExpanded[cardId]=!labelsExpanded[cardId];var el=document.getElementById("card-labels-"+cardId);if(!el)return;var card=cards.find(function(c){return c.id===cardId;});if(card)el.innerHTML=buildLabelsHTML(card);}
-function buildLabelsHTML(card){if(!card.tipos||!card.tipos.length)return "";var exp=!!labelsExpanded[card.id];return card.tipos.map(function(t){var c=TC[t]||PALETA[0];if(exp)return '<span class="card-label-bar expanded" style="background:'+c.border+';" onclick="toggleLabels(\''+card.id+'\',event)">'+t+'</span>';return '<span class="card-label-bar" style="background:'+c.border+';" title="'+t+'" onclick="toggleLabels(\''+card.id+'\',event)"></span>';}).join("");}
+function toggleLabels(cardId,e){e.stopPropagation();labelsExp[cardId]=!labelsExp[cardId];var el=document.getElementById("clb-"+cardId);if(!el)return;var card=cards.find(function(c){return c.id===cardId;});if(card)el.innerHTML=buildLabels(card);}
+function buildLabels(card){if(!card.tipos||!card.tipos.length)return "";var exp=!!labelsExp[card.id];return card.tipos.map(function(t){var c=TC[t]||PALETA[0];if(exp)return '<span class="lbar exp" style="background:'+c.border+';" onclick="toggleLabels(\''+card.id+'\',event)">'+t+'</span>';return '<span class="lbar" style="background:'+c.border+';" title="'+t+'" onclick="toggleLabels(\''+card.id+'\',event)"></span>';}).join("");}
 
 // ── COMENTÁRIOS ──
-function getComments(card){return card.comentarios||[];}
-async function addComment(cardId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;var c=getComments(card);c.push({id:Date.now().toString(),texto,autor:emailUser,data:new Date().toISOString()});card.comentarios=c;await dbUpsert(card);await dbLog("Comentou",card.titulo);}
-async function editComment(cardId,commentId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getComments(card).map(function(c){return c.id===commentId?Object.assign({},c,{texto,editado:true}):c;});await dbUpsert(card);}
-async function deleteComment(cardId,commentId){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getComments(card).filter(function(c){return c.id!==commentId;});await dbUpsert(card);}
-function canEditComment(autor){return perfil==="mestre"||(emailUser===autor&&perfil==="advogado");}
+function getCmts(card){return card.comentarios||[];}
+async function addCmt(cardId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;var cmts=getCmts(card);cmts.push({id:Date.now().toString(),texto,autor:emailUser,data:new Date().toISOString()});card.comentarios=cmts;await dbUpsert(card);await dbLog("Comentou",card.titulo);}
+async function editCmt(cardId,cmtId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getCmts(card).map(function(c){return c.id===cmtId?Object.assign({},c,{texto,editado:true}):c;});await dbUpsert(card);}
+async function delCmt(cardId,cmtId){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getCmts(card).filter(function(c){return c.id!==cmtId;});await dbUpsert(card);}
+function canEditCmt(autor){return perfil==="mestre"||(emailUser===autor&&perfil==="advogado");}
 function canComment(){return perfil==="mestre"||perfil==="advogado";}
 
-// ── MODAL ──
-function openCardModal(id){modalCardId=id;editingCommentId=null;renderModal();}
+// ── INLINE EDIT (modal) ──
+function icCell(cardId,field,label,displayVal,canEdit,type,extraOpts){
+  if(!canEdit)return '<div class="icell" style="cursor:default;"><div class="icell-label">'+label+'</div><div class="icell-val">'+displayVal+'</div></div>';
+  var inputArea="";
+  if(field==="clienteNum"){
+    inputArea='<div class="ac-wrap"><input id="ic-cli-txt" autocomplete="off" placeholder="Nome ou número..." style="font-size:13px;margin-top:3px;" oninput="icAcInput(this.value,\''+cardId+'\')" onkeydown="icAcKd(event,\''+cardId+'\')"/><div id="ic-ac-list" class="ac-list" style="display:none;"></div></div>';
+  } else if(field==="casoNum"){
+    inputArea='<div id="ic-caso-area"></div>';
+  } else if(type==="date"){
+    inputArea='<input type="date" id="ic-'+field+'" style="margin-top:3px;" onkeydown="icKd(event,\''+cardId+'\',\''+field+'\')">';
+  } else if(type==="nstep"){
+    inputArea='<input type="number" id="ic-'+field+'" min="0" step="0.5" style="margin-top:3px;" onkeydown="icKd(event,\''+cardId+'\',\''+field+'\')">';
+  } else if(type==="sel"){
+    inputArea='<select id="ic-'+field+'" style="margin-top:3px;" onkeydown="icKd(event,\''+cardId+'\',\''+field+'\')"><option value="">—</option>'+(extraOpts||"")+'</select>';
+  } else {
+    inputArea='<input type="text" id="ic-'+field+'" style="margin-top:3px;" onkeydown="icKd(event,\''+cardId+'\',\''+field+'\')">';
+  }
+  return '<div class="icell" id="icw-'+field+'" onclick="openIcell(\''+cardId+'\',\''+field+'\')">'
+    +'<div class="icell-label">'+label+'</div>'
+    +'<div class="icell-val" id="icv-'+field+'">'+displayVal+'</div>'
+    +'<div id="ici-'+field+'" style="display:none;">'+inputArea+'</div>'
+    +'</div>';
+}
 
+function openIcell(cardId,field){
+  if(_ef&&_ef!==field)closeIcell(_ef,true);
+  _ef=field;_ecid=cardId;
+  var card=cards.find(function(c){return c.id===cardId;});
+  document.getElementById("icv-"+field).style.display="none";
+  document.getElementById("ici-"+field).style.display="block";
+  document.getElementById("icw-"+field).classList.add("open");
+
+  if(field==="clienteNum"){
+    var inp=document.getElementById("ic-cli-txt");
+    if(inp){
+      if(card&&card.clienteNum){var cn=cliNome(card.clienteNum);inp.value=card.clienteNum+(cn?" — "+cn:"");}
+      inp.focus();inp.select();
+    }
+  } else if(field==="casoNum"){
+    var area=document.getElementById("ic-caso-area");
+    if(area&&card){
+      var casos=card.clienteNum?casosDoCliente(parseInt(card.clienteNum)):[];
+      if(casos.length>0){
+        var opts='<option value="">Selecione...</option>'+casos.map(function(c){return '<option value="'+c.numero+'"'+(String(card.casoNum)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' — '+trunc(c.descricao,35):'')+'</option>';}).join("");
+        area.innerHTML='<select id="ic-casoNum" style="margin-top:3px;font-size:13px;" onkeydown="icKd(event,\''+cardId+'\',\'casoNum\')">'+opts+'</select>';
+      } else {
+        area.innerHTML='<input type="number" id="ic-casoNum" min="1" max="9999" placeholder="Nº caso" style="margin-top:3px;font-size:13px;" onkeydown="icKd(event,\''+cardId+'\',\'casoNum\')"/>';
+        if(card.casoNum)document.getElementById("ic-casoNum").value=card.casoNum;
+      }
+      setTimeout(function(){var el=document.getElementById("ic-casoNum");if(el){el.focus();}},10);
+    }
+  } else {
+    var inp=document.getElementById("ic-"+field);
+    if(inp&&card){
+      if(field==="horas")inp.value=card.horas||"";
+      else if(field==="dataInicio")inp.value=card.dataInicio||"";
+      else if(field==="dataFim")inp.value=card.dataFim||"";
+      else if(field==="responsavel")inp.value=card.responsavel||"";
+      else if(field==="email")inp.value=card.email||"";
+      inp.focus();if(inp.select)inp.select();
+    }
+  }
+}
+
+function closeIcell(field,cancel){
+  if(!field)return;
+  var wrap=document.getElementById("icw-"+field);
+  var valEl=document.getElementById("icv-"+field);
+  var inpWrap=document.getElementById("ici-"+field);
+  if(wrap)wrap.classList.remove("open");
+  if(valEl)valEl.style.display="";
+  if(inpWrap)inpWrap.style.display="none";
+  if(_ef===field){_ef=null;_ecid=null;}
+}
+
+function icKd(e,cardId,field){
+  if(e.key==="Enter"){e.preventDefault();saveIcell(cardId,field);}
+  if(e.key==="Escape"){e.preventDefault();closeIcell(field,true);}
+}
+
+// AC for clienteNum inside modal
+function icAcInput(val,cardId){
+  _acMatches=buildAcList(val);_acI=-1;
+  var list=document.getElementById("ic-ac-list");if(!list)return;
+  if(!_acMatches.length){list.style.display="none";return;}
+  list.innerHTML=_acMatches.map(function(c,i){return '<div class="ac-item" id="icac-'+i+'" onmousedown="icAcSelect('+c.numero+',\''+cardId+'\')" onmouseover="_acI='+i+';icAcHL()"><strong>'+c.numero+'</strong>'+(c.nome?' — '+trunc(c.nome,36):'')+'</div>';}).join("");
+  list.style.display="block";
+}
+function icAcHL(){document.querySelectorAll("[id^='icac-']").forEach(function(el,i){el.classList.toggle("active",i===_acI);});}
+function icAcKd(e,cardId){
+  var items=document.querySelectorAll("[id^='icac-']");
+  if(e.key==="ArrowDown"){e.preventDefault();_acI=Math.min(_acI+1,items.length-1);icAcHL();}
+  else if(e.key==="ArrowUp"){e.preventDefault();_acI=Math.max(_acI-1,0);icAcHL();}
+  else if(e.key==="Enter"){e.preventDefault();if(_acI>=0&&_acMatches[_acI])icAcSelect(_acMatches[_acI].numero,cardId);else saveIcell(cardId,"clienteNum");}
+  else if(e.key==="Escape"){e.preventDefault();closeIcell("clienteNum",true);}
+}
+function icAcSelect(num,cardId){
+  var c=clientesDB.find(function(x){return x.numero===num;});
+  var inp=document.getElementById("ic-cli-txt");if(inp)inp.value=num+(c&&c.nome?" — "+c.nome:"");
+  var list=document.getElementById("ic-ac-list");if(list)list.style.display="none";
+  _acI=-1;
+  var card=cards.find(function(x){return x.id===cardId;});
+  if(card){card.clienteNum=num;card.casoNum=null;}
+  var cn=cliNome(num);
+  var valEl=document.getElementById("icv-clienteNum");if(valEl)valEl.textContent=num+(cn?" — "+cn:"");
+  closeIcell("clienteNum",false);
+  var valCaso=document.getElementById("icv-casoNum");if(valCaso)valCaso.textContent="—";
+  dbUpsert(card).catch(function(){});
+}
+
+async function saveIcell(cardId,field){
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  var newVal=null,displayVal="—";
+  if(field==="clienteNum"){
+    var inp=document.getElementById("ic-cli-txt");
+    var raw=(inp?inp.value:"").trim();
+    var num=numFromStr(raw);
+    card.clienteNum=num||null;card.casoNum=null;
+    var cn=num?cliNome(num):"";
+    displayVal=num?(num+(cn?" — "+cn:"")):"—";
+    var vCaso=document.getElementById("icv-casoNum");if(vCaso)vCaso.textContent="—";
+  } else if(field==="casoNum"){
+    var sel=document.getElementById("ic-casoNum");
+    newVal=sel&&sel.value?parseInt(sel.value):null;
+    card.casoNum=newVal;
+    var cd=newVal?casoDesc(newVal,card.clienteNum):"";
+    displayVal=newVal?(newVal+(cd?" — "+trunc(cd,40):"")):"—";
+  } else if(field==="horas"){
+    var inp=document.getElementById("ic-"+field);
+    card.horas=inp&&inp.value?inp.value:null;
+    displayVal=card.horas?(card.horas+"h"):"—";
+  } else if(field==="responsavel"){
+    var sel=document.getElementById("ic-"+field);
+    card.responsavel=sel?sel.value||null:null;
+    displayVal=card.responsavel||"—";
+  } else {
+    var inp=document.getElementById("ic-"+field);
+    card[field]=inp&&inp.value?inp.value:null;
+    displayVal=card[field]||"—";
+  }
+  var valEl=document.getElementById("icv-"+field);if(valEl)valEl.textContent=displayVal;
+  closeIcell(field,false);
+  try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro ao salvar",true);}
+}
+
+// Title inline
+function startEditTitle(cardId){
+  if(_ef&&_ef!=="titulo")closeIcell(_ef,true);
+  _ef="titulo";_ecid=cardId;
+  var disp=document.getElementById("mt-disp");var inp=document.getElementById("mt-inp");
+  if(!disp||!inp)return;
+  disp.classList.add("editing");inp.classList.add("editing");inp.focus();inp.select();
+}
+function titleKd(e,cardId){
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();saveTitleModal(cardId);}
+  if(e.key==="Escape"){e.preventDefault();stopEditTitle();}
+}
+async function saveTitleModal(cardId){
+  var inp=document.getElementById("mt-inp");var val=(inp?inp.value:"").trim();if(!val){toast("Título não pode ser vazio",true);return;}
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  card.titulo=val;
+  var disp=document.getElementById("mt-disp");if(disp)disp.textContent=val;
+  stopEditTitle();
+  // update card face
+  var faceEl=document.getElementById("ct-"+cardId);if(faceEl)faceEl.textContent=val;
+  try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}
+}
+function stopEditTitle(){
+  var disp=document.getElementById("mt-disp");var inp=document.getElementById("mt-inp");
+  if(disp)disp.classList.remove("editing");if(inp)inp.classList.remove("editing");
+  if(_ef==="titulo"){_ef=null;_ecid=null;}
+}
+
+// Obs inline
+function startEditObs(cardId){
+  if(_ef&&_ef!=="obs")closeIcell(_ef,true);
+  _ef="obs";_ecid=cardId;
+  var block=document.getElementById("obs-block-"+cardId);var textEl=document.getElementById("obs-txt-"+cardId);var inpEl=document.getElementById("obs-inp-"+cardId);
+  if(!block||!inpEl)return;
+  block.classList.add("open");if(textEl)textEl.style.display="none";inpEl.style.display="block";inpEl.focus();
+}
+function obsKd(e,cardId){
+  if(e.key==="Escape"){e.preventDefault();stopEditObs(cardId,null);}
+  // Ctrl+Enter to save
+  if(e.key==="Enter"&&e.ctrlKey){e.preventDefault();saveObsModal(cardId);}
+}
+async function saveObsModal(cardId){
+  var ta=document.getElementById("obs-inp-"+cardId);var val=ta?ta.value:"";
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  card.obs=val;stopEditObs(cardId,val);
+  // update card face
+  var faceObs=document.getElementById("co-"+cardId);
+  if(faceObs){if(val){faceObs.style.display="";faceObs.textContent=trunc(val,90);}else{faceObs.style.display="none";}}
+  try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}
+}
+function stopEditObs(cardId,val){
+  var block=document.getElementById("obs-block-"+cardId);var textEl=document.getElementById("obs-txt-"+cardId);var inpEl=document.getElementById("obs-inp-"+cardId);
+  if(block)block.classList.remove("open");if(inpEl)inpEl.style.display="none";
+  if(textEl){textEl.style.display="";if(val!==null){if(val){textEl.className="obs-text";textEl.textContent=val;}else{textEl.className="obs-ph";textEl.textContent="Clique para adicionar observações...";}}
+  }if(_ef==="obs"){_ef=null;_ecid=null;}
+}
+
+// ── MODAL ──
+function openCardModal(id){modalCardId=id;editingCmtId=null;_ef=null;_ecid=null;renderModal();}
 function renderModal(){
   var id=modalCardId;
   var card=cards.find(function(c){return c.id===id;});if(!card)return;
   var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",dot:"#94a3b8",cover:"#e2e8f0",badgeBg:"#f1f5f9",badgeText:"#475569"};
-  var canEdit=perfil==="mestre"||perfil==="advogado";
-  var comentarios=getComments(card);
-  var coverColor=getCardCoverColor(card);
-  var cliNome=clienteNome(card.clienteNum);
-  var cDesc=casoDesc(card.casoNum,card.clienteNum);
-
-  // STATUS options for select
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var cmts=getCmts(card);
+  var cv=coverColor(card);
+  var cn=cliNome(card.clienteNum);var cd=casoDesc(card.casoNum,card.clienteNum);
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(card.status===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
-  // RESPONSAVEL options
-  var rO='<option value="">—</option>'+responsaveis.map(function(r){return '<option value="'+r+'"'+(card.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
-  // Tipos checkboxes
-  var tiposOpts=TIPOS.map(function(t){var sel=(card.tipos||[]).includes(t);var c=TC[t]||PALETA[0];return '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin-right:6px;margin-bottom:4px;"><input type="checkbox" '+(sel?"checked ":"")+' onchange="toggleModalTipo(\''+id+'\',\''+t+'\')" style="width:auto;accent-color:'+c.border+';"/><span style="font-size:12px;font-weight:600;padding:2px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span></label>';}).join("");
+  var rO=responsaveis.map(function(r){return '<option value="'+r+'"'+(card.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
+  var tiposOpts=TIPOS.map(function(t){var sel=(card.tipos||[]).includes(t);var c=TC[t]||PALETA[0];return '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin-right:6px;margin-bottom:4px;"><input type="checkbox" '+(sel?"checked":"")+' onchange="toggleModalTipo(\''+id+'\',\''+t+'\')" style="width:auto;accent-color:'+c.border+';"/><span style="font-size:12px;font-weight:600;padding:2px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span></label>';}).join("");
 
-  // comments HTML
-  var commHTML=comentarios.length===0?'<div style="font-size:12px;color:var(--text3);padding:8px 0;">Nenhum comentário ainda</div>':comentarios.map(function(c){var dt=new Date(c.data).toLocaleString("pt-BR");var ited=editingCommentId===c.id;var pode=canEditComment(c.autor);return '<div style="display:flex;gap:9px;margin-bottom:12px;"><div style="width:28px;height:28px;border-radius:50%;background:'+col.dot+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">'+c.autor.charAt(0).toUpperCase()+'</div><div style="flex:1;"><div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;"><span style="font-size:12px;font-weight:700;color:#172b4d;">'+c.autor+'</span><span style="font-size:11px;color:var(--text3);">'+dt+'</span>'+(c.editado?'<span style="font-size:10px;color:var(--text3);">(editado)</span>':"")+'</div>'+(ited?'<div><textarea id="edit-comment-text" rows="2" style="width:100%;font-size:13px;padding:8px;border-radius:8px;margin-bottom:5px;resize:vertical;">'+c.texto+'</textarea><div style="display:flex;gap:5px;"><button class="btn" style="font-size:12px;padding:4px 10px;" onclick="cancelarEdicaoComentario()">Cancelar</button><button class="btn btn-primary" style="font-size:12px;padding:4px 10px;" onclick="salvarEdicaoComentario(\''+id+'\',\''+c.id+'\')">Salvar</button></div></div>':'<div style="background:#fff;border-radius:8px;padding:8px 11px;font-size:13px;color:#172b4d;line-height:1.5;box-shadow:0 1px 2px rgba(0,0,0,.08);">'+c.texto+'</div>'+(pode?'<div style="display:flex;gap:8px;margin-top:4px;"><button onclick="iniciarEdicaoComentario(\''+c.id+'\')" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;">Editar</button><button onclick="confirmarExcluirComentario(\''+c.id+'\')" style="font-size:11px;color:#dc2626;background:none;border:none;cursor:pointer;text-decoration:underline;">Excluir</button></div>':""))+'</div></div>';}).join("");
-  var novoCom=canComment()?'<div style="display:flex;gap:9px;margin-top:6px;"><div style="width:28px;height:28px;border-radius:50%;background:var(--bt-navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">'+emailUser.charAt(0).toUpperCase()+'</div><div style="flex:1;"><div class="comment-wrap"><textarea id="novo-comentario" rows="2" placeholder="Escreva um comentário..."></textarea></div><button class="btn btn-primary" style="font-size:12px;padding:5px 14px;" onclick="submitComentario(\''+id+'\')">Salvar</button></div></div>':"";
+  var cmtHTML=cmts.length===0?'<div style="font-size:12px;color:var(--text3);padding:8px 0;">Nenhum comentário ainda</div>':cmts.map(function(c){var dt=new Date(c.data).toLocaleString("pt-BR");var ited=editingCmtId===c.id;var pode=canEditCmt(c.autor);return '<div style="display:flex;gap:9px;margin-bottom:12px;"><div style="width:28px;height:28px;border-radius:50%;background:'+col.dot+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">'+c.autor.charAt(0).toUpperCase()+'</div><div style="flex:1;"><div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;"><span style="font-size:12px;font-weight:700;color:#172b4d;">'+c.autor+'</span><span style="font-size:11px;color:var(--text3);">'+dt+'</span>'+(c.editado?'<span style="font-size:10px;color:var(--text3);">(editado)</span>':"")+'</div>'+(ited?'<div><textarea id="edit-cmt-txt" rows="2" style="width:100%;font-size:13px;padding:8px;border-radius:8px;margin-bottom:5px;resize:vertical;">'+c.texto+'</textarea><div style="display:flex;gap:5px;"><button class="btn" style="font-size:12px;padding:4px 10px;" onclick="cancelEditCmt()">Cancelar</button><button class="btn btn-primary" style="font-size:12px;padding:4px 10px;" onclick="saveEditCmt(\''+id+'\',\''+c.id+'\')">Salvar</button></div></div>':'<div style="background:#fff;border-radius:8px;padding:8px 11px;font-size:13px;color:#172b4d;line-height:1.5;box-shadow:0 1px 2px rgba(0,0,0,.08);">'+c.texto+'</div>'+(pode?'<div style="display:flex;gap:8px;margin-top:4px;"><button onclick="startEditCmt(\''+c.id+'\')" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;">Editar</button><button onclick="confirmDelCmt(\''+c.id+'\')" style="font-size:11px;color:#dc2626;background:none;border:none;cursor:pointer;text-decoration:underline;">Excluir</button></div>':""))+'</div></div>';}).join("");
+  var newCmt=canComment()?'<div style="display:flex;gap:9px;margin-top:6px;"><div style="width:28px;height:28px;border-radius:50%;background:var(--bt-navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">'+emailUser.charAt(0).toUpperCase()+'</div><div style="flex:1;"><div class="cmt-wrap"><textarea id="new-cmt" rows="2" placeholder="Escreva um comentário..."></textarea></div><button class="btn btn-primary" style="font-size:12px;padding:5px 14px;" onclick="submitCmt(\''+id+'\')">Salvar</button></div></div>':"";
 
-  // side
-  var sideHTML='<div class="modal-side-label">Ações</div>'
-    +(canEdit?'<button class="modal-side-btn" onclick="confirmarExcluirCard(\''+id+'\')" style="color:#dc2626;">'+icon('trash')+' Excluir card</button>':"")
-    +'<div class="modal-side-label">Status</div>'
-    +(canEdit
-      ?'<select class="status-select" style="background:'+col.badgeBg+';color:'+col.badgeText+';" onchange="atualizarStatusModal(\''+id+'\',this.value)">'+sO+'</select>'
-      :'<div style="font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;background:'+col.badgeBg+';color:'+col.badgeText+';display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</div>')
-    +'<div class="modal-side-label">Etiquetas</div>'
-    +(canEdit
-      ?'<div style="background:#fff;border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;">'+tiposOpts+'</div>'
-      :(card.tipos&&card.tipos.length?'<div style="display:flex;flex-direction:column;gap:4px;">'+card.tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:5px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("")+'</div>':'<span style="font-size:12px;color:var(--text3);">Nenhuma</span>'));
+  var sideHTML='<div class="mslabel">Ações</div>'
+    +(ce?'<button class="msbtn" onclick="confirmDelCard(\''+id+'\')" style="color:#dc2626;">'+ic('trash')+' Excluir card</button>':"")
+    +'<div class="mslabel">Status</div>'
+    +(ce?'<select style="font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;border:none;width:100%;font-family:inherit;background:'+col.badgeBg+';color:'+col.badgeText+';" onchange="updateStatus(\''+id+'\',this.value)">'+sO+'</select>'
+       :'<div style="font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;background:'+col.badgeBg+';color:'+col.badgeText+';display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</div>')
+    +'<div class="mslabel">Etiquetas</div>'
+    +(ce?'<div style="background:#fff;border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;">'+tiposOpts+'</div>'
+       :(card.tipos&&card.tipos.length?'<div style="display:flex;flex-direction:column;gap:4px;">'+card.tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:5px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("")+'</div>':'<span style="font-size:12px;color:var(--text3);">Nenhuma</span>'));
 
   document.getElementById("modal-container").innerHTML=
     '<div class="modal-overlay" onclick="closeModal(event)">'
     +'<div class="modal-trello" onclick="event.stopPropagation()">'
-    +'<div class="modal-cover" style="background:'+coverColor+';">'
-    +'<button class="modal-cover-close" onclick="closeModal()">'+icon('close')+' Fechar</button>'
-    +'</div>'
+    +'<div class="modal-cover" style="background:'+cv+';" id="mcover"><button class="mcclose" onclick="closeModal()">'+ic('close')+' Fechar</button></div>'
     +'<div class="modal-body">'
     +'<div class="modal-main">'
-
-    // título inline
-    +'<div class="modal-section">'
-    +(canEdit
-      ?'<div onclick="startEditTitle(\''+id+'\')" id="modal-title-display" class="inline-title">'+card.titulo+'</div>'
-       +'<textarea id="modal-title-input" class="inline-title-input" rows="2" onkeydown="titleKeydown(event,\''+id+'\')" placeholder="Título da demanda...">'+card.titulo+'</textarea>'
-      :'<div class="inline-title" style="cursor:default;">'+card.titulo+'</div>')
+    // título
+    +'<div class="msec">'
+    +(ce?'<div class="ititle" id="mt-disp" onclick="startEditTitle(\''+id+'\')">'+card.titulo+'</div>'
+        +'<textarea class="ititle-inp" id="mt-inp" rows="2" onkeydown="titleKd(event,\''+id+'\')">'+card.titulo+'</textarea>'
+      :'<div class="ititle" style="cursor:default;">'+card.titulo+'</div>')
     +'</div>'
-
-    // observações
-    +'<div class="modal-section">'
-    +'<div class="modal-sec-title">'+icon('edit')+' Observações</div>'
-    +(canEdit
-      ?'<div class="obs-block" id="obs-block-'+id+'" onclick="startEditObs(\''+id+'\')">'
-        +(card.obs?'<div class="obs-text" id="obs-text-'+id+'">'+card.obs+'</div>':'<div class="obs-placeholder" id="obs-text-'+id+'">Clique para adicionar observações...</div>')
-        +'<textarea id="obs-input-'+id+'" class="obs-textarea" style="display:none;" onblur="saveModalField(\''+id+'\',\'obs\')" placeholder="Escreva observações...">'+  (card.obs||"")+'</textarea>'
-        +'</div>'
-      :(card.obs?'<div class="obs-block" style="cursor:default;"><div class="obs-text">'+card.obs+'</div></div>':''))
+    // obs
+    +'<div class="msec"><div class="msec-title">'+ic('edit')+' Observações</div>'
+    +(ce?'<div class="obs-block" id="obs-block-'+id+'" onclick="startEditObs(\''+id+'\')">'
+        +(card.obs?'<div class="obs-text" id="obs-txt-'+id+'">'+card.obs+'</div>':'<div class="obs-ph" id="obs-txt-'+id+'">Clique para adicionar observações...</div>')
+        +'<textarea id="obs-inp-'+id+'" class="obs-ta" style="display:none;" onkeydown="obsKd(event,\''+id+'\')" placeholder="Escreva observações... (Ctrl+Enter para salvar, Esc para cancelar)">'+  (card.obs||"")+'</textarea></div>'
+      :(card.obs?'<div class="obs-block" style="cursor:default;"><div class="obs-text">'+card.obs+'</div></div>':""))
     +'</div>'
-
-    // detalhes inline
-    +'<div class="modal-section">'
-    +'<div class="modal-sec-title">'+icon('briefcase')+' Detalhes</div>'
+    // detalhes
+    +'<div class="msec"><div class="msec-title">'+ic('briefcase')+' Detalhes</div>'
     +'<div class="info-grid">'
-    +infoCell(id,'clienteNum','Cliente',card.clienteNum?(card.clienteNum+(cliNome?" — "+cliNome:"")):"—",canEdit,'number')
-    +infoCell(id,'casoNum','Caso',card.casoNum?(card.casoNum+(cDesc?" — "+trunc(cDesc,40):"")):"—",canEdit,'number')
-    +infoCell(id,'responsavel','Responsável',card.responsavel||"—",canEdit,'select-resp',rO)
-    +infoCell(id,'email','E-mail ref.',trunc(card.email,35)||"—",canEdit,'text')
-    +infoCell(id,'dataInicio','Início',card.dataInicio||"—",canEdit,'date')
-    +infoCell(id,'dataFim','Encerramento',card.dataFim||"—",canEdit,'date')
-    +infoCell(id,'horas','Horas',card.horas?(card.horas+"h"):"—",canEdit,'number-step')
-    +'</div>'
-    +'</div>'
-
+    +icCell(id,"clienteNum","Cliente",card.clienteNum?(card.clienteNum+(cn?" — "+cn:"")):"—",ce,"ac")
+    +icCell(id,"casoNum","Caso",card.casoNum?(card.casoNum+(cd?" — "+trunc(cd,40):"")):"—",ce,"ac")
+    +icCell(id,"responsavel","Responsável",card.responsavel||"—",ce,"sel",rO)
+    +icCell(id,"email","E-mail ref.",trunc(card.email,35)||"—",ce,"text")
+    +icCell(id,"dataInicio","Início",card.dataInicio||"—",ce,"date")
+    +icCell(id,"dataFim","Encerramento",card.dataFim||"—",ce,"date")
+    +icCell(id,"horas","Horas",card.horas?(card.horas+"h"):"—",ce,"nstep")
+    +'</div></div>'
     // comentários
-    +'<div class="modal-section">'
-    +'<div class="modal-sec-title">'+icon('comment')+' Comentários <span style="background:#fff;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:500;margin-left:3px;">'+comentarios.length+'</span></div>'
-    +commHTML+novoCom
-    +'</div>'
+    +'<div class="msec"><div class="msec-title">'+ic('comment')+' Comentários <span style="background:#fff;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:500;margin-left:3px;">'+cmts.length+'</span></div>'
+    +cmtHTML+newCmt+'</div>'
     +'</div>'
     +'<div class="modal-side">'+sideHTML+'</div>'
     +'</div></div></div>';
 }
 
-// ── INLINE EDIT STATE ──
-var _editingField=null; // field name currently open
-var _editingCardId=null;
-
-function infoCell(cardId,field,label,val,canEdit,type,extra){
-  // For cliente/caso we render a special AC cell; others render normally
-  if(!canEdit){
-    return '<div class="info-cell" style="cursor:default;"><div class="info-cell-label">'+label+'</div><div class="info-cell-val">'+val+'</div></div>';
-  }
-  var isAC=(field==="clienteNum"||field==="casoNum");
-  var inputHTML="";
-  if(isAC){
-    // will be rendered dynamically when opened
-    inputHTML='<div id="ic-ac-wrap-'+field+'"></div>';
-  } else if(type==="number"){
-    inputHTML='<input type="number" id="ic-'+field+'" value="'+(val==="—"?"":val.toString().replace(/\D.*$/,""))+'" min="1" style="margin-top:3px;" onkeydown="icKeydown(event,\''+cardId+'\',\''+field+'\')" />';
-  } else if(type==="number-step"){
-    inputHTML='<input type="number" id="ic-'+field+'" value="'+(val==="—"?"":val.replace("h",""))+'" min="0" step="0.5" style="margin-top:3px;" onkeydown="icKeydown(event,\''+cardId+'\',\''+field+'\')" />';
-  } else if(type==="date"){
-    inputHTML='<input type="date" id="ic-'+field+'" value="'+(val==="—"?"":val)+'" style="margin-top:3px;" onkeydown="icKeydown(event,\''+cardId+'\',\''+field+'\')" />';
-  } else if(type==="select-resp"){
-    inputHTML='<select id="ic-'+field+'" style="margin-top:3px;" onkeydown="icKeydown(event,\''+cardId+'\',\''+field+'\')">'+(extra||"")+'</select>';
-  } else {
-    inputHTML='<input type="text" id="ic-'+field+'" value="'+(val==="—"?"":val)+'" style="margin-top:3px;" onkeydown="icKeydown(event,\''+cardId+'\',\''+field+'\')" />';
-  }
-  return '<div class="info-cell" id="ic-wrap-'+field+'" onclick="focusInfoCell(\''+cardId+'\',\''+field+'\')">'
-    +'<div class="info-cell-label">'+label+'</div>'
-    +'<div class="info-cell-val" id="ic-val-'+field+'">'+val+'</div>'
-    +'<div id="ic-input-wrap-'+field+'" style="display:none;">'+inputHTML+'</div>'
-    +'</div>';
-}
-
-function icKeydown(e,cardId,field){
-  if(e.key==="Enter"&&field!=="obs"){e.preventDefault();saveModalField(cardId,field);}
-  if(e.key==="Escape"){e.preventDefault();cancelModalField(field);}
-}
-
-function focusInfoCell(cardId,field){
-  if(_editingField&&_editingField!==field) cancelModalField(_editingField);
-  _editingField=field;_editingCardId=cardId;
-  var wrap=document.getElementById("ic-input-wrap-"+field);
-  var valEl=document.getElementById("ic-val-"+field);
-  var cellEl=document.getElementById("ic-wrap-"+field);
-  if(!wrap)return;
-  wrap.style.display="block";
-  if(valEl)valEl.style.display="none";
-  if(cellEl)cellEl.classList.add("editing");
-
-  // Special: client autocomplete
-  if(field==="clienteNum"){
-    var card=cards.find(function(c){return c.id===cardId;});
-    var acWrap=document.getElementById("ic-ac-wrap-clienteNum");
-    if(acWrap){
-      var curVal=card&&card.clienteNum?card.clienteNum:"";
-      acWrap.innerHTML='<div class="autocomplete-wrap" style="margin-top:3px;">'
-        +'<input id="ic-cliente-text" autocomplete="off" placeholder="Nome ou número..." value="'+curVal+'" style="font-size:13px;" '
-        +'oninput="icAcClienteInput(this.value,\''+cardId+'\')" '
-        +'onkeydown="icAcClienteKeydown(event,\''+cardId+'\')" '
-        +'onkeydown2="icKeydown(event,\''+cardId+'\',\'clienteNum\')" />'
-        +'<div id="ic-ac-list" class="autocomplete-list" style="display:none;"></div>'
-        +'</div>';
-      setTimeout(function(){var inp=document.getElementById("ic-cliente-text");if(inp){inp.focus();inp.select();}},10);
-    }
-    return;
-  }
-  if(field==="casoNum"){
-    var card=cards.find(function(c){return c.id===cardId;});
-    var acWrap=document.getElementById("ic-ac-wrap-casoNum");
-    if(acWrap){
-      var casos=card&&card.clienteNum?casosDoCliente(parseInt(card.clienteNum)):[];
-      var curCaso=card&&card.casoNum?card.casoNum:"";
-      if(casos.length>0){
-        var opts='<option value="">Selecione...</option>'+casos.map(function(c){return '<option value="'+c.numero+'"'+(String(curCaso)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' — '+trunc(c.descricao,35):'')+'</option>';}).join("");
-        acWrap.innerHTML='<select id="ic-caso-select" style="margin-top:3px;font-size:13px;" onkeydown="icKeydown(event,\''+cardId+'\',\'casoNum\')">'+opts+'</select>';
-        setTimeout(function(){var s=document.getElementById("ic-caso-select");if(s)s.focus();},10);
-      } else {
-        acWrap.innerHTML='<input type="number" id="ic-caso-num" value="'+curCaso+'" min="1" max="9999" placeholder="Nº do caso" style="margin-top:3px;font-size:13px;" onkeydown="icKeydown(event,\''+cardId+'\',\'casoNum\')"/>';
-        setTimeout(function(){var inp=document.getElementById("ic-caso-num");if(inp){inp.focus();inp.select();}},10);
-      }
-    }
-    return;
-  }
-  var inp=wrap.querySelector("input,select");
-  if(inp){setTimeout(function(){inp.focus();if(inp.select)inp.select();},10);}
-}
-
-function cancelModalField(field){
-  _editingField=null;_editingCardId=null;
-  var wrap=document.getElementById("ic-input-wrap-"+field);
-  var valEl=document.getElementById("ic-val-"+field);
-  var cellEl=document.getElementById("ic-wrap-"+field);
-  if(wrap)wrap.style.display="none";
-  if(valEl)valEl.style.display="";
-  if(cellEl)cellEl.classList.remove("editing");
-}
-
-// AC for cliente inside modal
-var _icAcMatches=[];
-var _icAcIdx=-1;
-function icAcClienteInput(val,cardId){
-  _icAcMatches=buildAcList(val);
-  var list=document.getElementById("ic-ac-list");if(!list)return;
-  if(!_icAcMatches.length){list.style.display="none";_icAcIdx=-1;return;}
-  list.innerHTML=_icAcMatches.map(function(c,i){return '<div class="autocomplete-item" id="ic-ac-item-'+i+'" onmousedown="icSelectCliente('+c.numero+',\''+cardId+'\')" onmouseover="_icAcIdx='+i+';icHighlightAc()"><strong>'+c.numero+'</strong>'+(c.nome?' — '+trunc(c.nome,36):'')+'</div>';}).join("");
-  list.style.display="block";_icAcIdx=-1;
-}
-function icHighlightAc(){document.querySelectorAll("[id^='ic-ac-item-']").forEach(function(el,i){el.classList.toggle("active",i===_icAcIdx);});}
-function icAcClienteKeydown(e,cardId){
-  var list=document.getElementById("ic-ac-list");var items=list?list.querySelectorAll(".autocomplete-item"):[];
-  if(e.key==="ArrowDown"){e.preventDefault();_icAcIdx=Math.min(_icAcIdx+1,items.length-1);icHighlightAc();}
-  else if(e.key==="ArrowUp"){e.preventDefault();_icAcIdx=Math.max(_icAcIdx-1,0);icHighlightAc();}
-  else if(e.key==="Enter"){e.preventDefault();if(_icAcIdx>=0&&_icAcMatches[_icAcIdx])icSelectCliente(_icAcMatches[_icAcIdx].numero,cardId);else saveModalField(cardId,"clienteNum");}
-  else if(e.key==="Escape"){e.preventDefault();cancelModalField("clienteNum");}
-}
-function icSelectCliente(num,cardId){
-  var c=clientesDB.find(function(x){return x.numero===num;});
-  var inp=document.getElementById("ic-cliente-text");
-  if(inp)inp.value=num+(c&&c.nome?" — "+c.nome:"");
-  var list=document.getElementById("ic-ac-list");if(list)list.style.display="none";
-  _icAcIdx=-1;
-  // immediately save and refresh caso cell
-  var card=cards.find(function(x){return x.id===cardId;});
-  if(card){card.clienteNum=num;card.casoNum=null;}
-  var valEl=document.getElementById("ic-val-clienteNum");
-  var cliNome=clienteNome(num);
-  if(valEl)valEl.textContent=num+(cliNome?" — "+cliNome:"");
-  cancelModalField("clienteNum");
-  // refresh caso cell display
-  var casoValEl=document.getElementById("ic-val-casoNum");
-  if(casoValEl)casoValEl.textContent="—";
-  dbUpsert(card).catch(function(){});
-}
-
-async function saveModalField(cardId,field){
-  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-
-  if(field==="titulo"){
-    var ta=document.getElementById("modal-title-input");
-    var val=(ta?ta.value:"").trim();
-    if(!val){toast("Título não pode ser vazio",true);return;}
-    card.titulo=val;
-    var disp=document.getElementById("modal-title-display");
-    if(disp)disp.textContent=val;
-    stopEditTitle();
-    // update card face in board
-    var cardFaceTitle=document.getElementById("card-title-"+cardId);
-    if(cardFaceTitle)cardFaceTitle.textContent=val;
-  } else if(field==="obs"){
-    var ta=document.getElementById("obs-input-"+cardId);
-    var val=ta?ta.value:"";
-    card.obs=val;
-    stopEditObs(cardId,val);
-    // update card face obs preview
-    var cardFaceObs=document.getElementById("card-obs-"+cardId);
-    if(cardFaceObs){
-      if(val){cardFaceObs.style.display="";cardFaceObs.textContent=trunc(val,90);}
-      else cardFaceObs.style.display="none";
-    }
-  } else if(field==="clienteNum"){
-    var inp=document.getElementById("ic-cliente-text");
-    var raw=(inp?inp.value:"").trim();
-    var num=numFromStr(raw);
-    card.clienteNum=num||null;
-    card.casoNum=null;
-    var cliNome=num?clienteNome(num):"";
-    var display=num?(num+(cliNome?" — "+cliNome:"")):"—";
-    var valEl=document.getElementById("ic-val-clienteNum");if(valEl){valEl.textContent=display;valEl.style.display="";}
-    cancelModalField("clienteNum");
-  } else if(field==="casoNum"){
-    var sel=document.getElementById("ic-caso-select");
-    var numInp=document.getElementById("ic-caso-num");
-    var val=sel?sel.value:(numInp?numInp.value:"");
-    card.casoNum=val?parseInt(val):null;
-    var cd=card.casoNum?casoDesc(card.casoNum,card.clienteNum):"";
-    var display=card.casoNum?(card.casoNum+(cd?" — "+trunc(cd,40):"")):"—";
-    var valEl=document.getElementById("ic-val-casoNum");if(valEl){valEl.textContent=display;valEl.style.display="";}
-    cancelModalField("casoNum");
-  } else if(field==="horas"){
-    var inp=document.getElementById("ic-"+field);
-    card.horas=inp&&inp.value?inp.value:null;
-    var valEl=document.getElementById("ic-val-"+field);if(valEl){valEl.textContent=card.horas?(card.horas+"h"):"—";valEl.style.display="";}
-    cancelModalField(field);
-  } else if(field==="responsavel"){
-    var sel=document.getElementById("ic-"+field);
-    card.responsavel=sel?sel.value:null;
-    var valEl=document.getElementById("ic-val-"+field);if(valEl){valEl.textContent=card.responsavel||"—";valEl.style.display="";}
-    cancelModalField(field);
-  } else {
-    var inp=document.getElementById("ic-"+field);
-    var val=inp?inp.value:"";
-    card[field]=val||null;
-    var valEl=document.getElementById("ic-val-"+field);if(valEl){valEl.textContent=val||"—";valEl.style.display="";}
-    cancelModalField(field);
-  }
-  try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro ao salvar",true);}
-  _editingField=null;_editingCardId=null;
-}
-
-function titleKeydown(e,cardId){
-  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();saveModalField(cardId,"titulo");}
-  if(e.key==="Escape"){e.preventDefault();stopEditTitle();}
-}
-  var disp=document.getElementById("modal-title-display");
-  var inp=document.getElementById("modal-title-input");
-  if(!disp||!inp)return;
-  if(_editingField&&_editingField!=="titulo")cancelModalField(_editingField);
-  _editingField="titulo";_editingCardId=cardId;
-  disp.classList.add("editing");inp.classList.add("editing");
-  inp.focus();inp.select();
-}
-function stopEditTitle(){
-  var disp=document.getElementById("modal-title-display");
-  var inp=document.getElementById("modal-title-input");
-  if(disp)disp.classList.remove("editing");
-  if(inp)inp.classList.remove("editing");
-  _editingField=null;
-}
-function startEditObs(cardId){
-  var block=document.getElementById("obs-block-"+cardId);
-  var textEl=document.getElementById("obs-text-"+cardId);
-  var inpEl=document.getElementById("obs-input-"+cardId);
-  if(!block||!inpEl)return;
-  if(_editingField&&_editingField!=="obs")cancelModalField(_editingField);
-  _editingField="obs";_editingCardId=cardId;
-  block.classList.add("editing");
-  if(textEl)textEl.style.display="none";
-  inpEl.style.display="block";inpEl.focus();
-}
-function stopEditObs(cardId,val){
-  var block=document.getElementById("obs-block-"+cardId);
-  var textEl=document.getElementById("obs-text-"+cardId);
-  var inpEl=document.getElementById("obs-input-"+cardId);
-  if(block)block.classList.remove("editing");
-  if(inpEl)inpEl.style.display="none";
-  if(textEl){textEl.style.display="";if(val){textEl.className="obs-text";textEl.textContent=val;}else{textEl.className="obs-placeholder";textEl.textContent="Clique para adicionar observações...";}}
-  _editingField=null;
-}
-async function toggleModalTipo(cardId,tipo){
-  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  card.tipos=card.tipos||[];
-  var idx=card.tipos.indexOf(tipo);
-  if(idx>=0)card.tipos.splice(idx,1);else card.tipos.push(tipo);
-  try{await dbUpsert(card);}catch(e){toast("Erro",true);}
-  // update cover
-  var coverColor=getCardCoverColor(card);
-  var modalCover=document.querySelector(".modal-cover");
-  if(modalCover)modalCover.style.background=coverColor;
-}
-async function atualizarStatusModal(cardId,novoStatus){
-  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  card.status=novoStatus;
-  try{await dbUpsert(card);toast("Status atualizado!");}catch(e){toast("Erro",true);}
-}
-async function confirmarExcluirCard(id){if(!confirm("Excluir esta demanda?"))return;var card=cards.find(function(c){return c.id===id;});try{await dbDelete(id);await dbLog("Excluiu demanda",card?card.titulo:id);cards=cards.filter(function(c){return c.id!==id;});closeModal();renderView();}catch(e){toast("Erro",true);}}
-
-function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;document.getElementById("modal-container").innerHTML="";}
-async function submitComentario(cardId){var el=document.getElementById("novo-comentario");var texto=(el?el.value:"").trim();if(!texto){toast("Escreva um comentário",true);return;}try{await addComment(cardId,texto);toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
-function iniciarEdicaoComentario(cid){editingCommentId=cid;renderModal();}
-function cancelarEdicaoComentario(){editingCommentId=null;renderModal();}
-async function salvarEdicaoComentario(cardId,commentId){var el=document.getElementById("edit-comment-text");var texto=(el?el.value:"").trim();if(!texto){toast("Não pode ser vazio",true);return;}try{await editComment(cardId,commentId,texto);toast("Atualizado!");editingCommentId=null;renderModal();}catch(e){toast("Erro",true);}}
-async function confirmarExcluirComentario(commentId){if(!confirm("Excluir este comentário?"))return;try{await deleteComment(modalCardId,commentId);toast("Excluído!");editingCommentId=null;renderModal();}catch(e){toast("Erro",true);}}
+function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;document.getElementById("modal-container").innerHTML="";_ef=null;_ecid=null;}
+async function submitCmt(cardId){var el=document.getElementById("new-cmt");var txt=(el?el.value:"").trim();if(!txt){toast("Escreva um comentário",true);return;}try{await addCmt(cardId,txt);toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
+function startEditCmt(cid){editingCmtId=cid;renderModal();}
+function cancelEditCmt(){editingCmtId=null;renderModal();}
+async function saveEditCmt(cardId,cmtId){var el=document.getElementById("edit-cmt-txt");var txt=(el?el.value:"").trim();if(!txt){toast("Não pode ser vazio",true);return;}try{await editCmt(cardId,cmtId,txt);toast("Atualizado!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}}
+async function confirmDelCmt(cmtId){if(!confirm("Excluir este comentário?"))return;try{await delCmt(modalCardId,cmtId);toast("Excluído!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}}
+async function toggleModalTipo(cardId,tipo){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.tipos=card.tipos||[];var idx=card.tipos.indexOf(tipo);if(idx>=0)card.tipos.splice(idx,1);else card.tipos.push(tipo);try{await dbUpsert(card);}catch(e){toast("Erro",true);}var mcover=document.getElementById("mcover");if(mcover)mcover.style.background=coverColor(card);}
+async function updateStatus(cardId,val){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.status=val;try{await dbUpsert(card);toast("Status atualizado!");}catch(e){toast("Erro",true);}}
+async function confirmDelCard(id){if(!confirm("Excluir esta demanda?"))return;var card=cards.find(function(c){return c.id===id;});try{await dbDel(id);await dbLog("Excluiu demanda",card?card.titulo:id);cards=cards.filter(function(c){return c.id!==id;});closeModal();renderView();}catch(e){toast("Erro",true);}}
 
 // ── KANBAN ──
 function renderView(){if(viewMode==="lista")renderLista();else renderKanban();}
 
-function buildCardHTML(card,canEdit){
-  var nc=(card.comentarios||[]).length;
-  var cover=getCardCoverColor(card);
-  var labelsHTML=buildLabelsHTML(card);
-  var cc=ccLabelHTML(card);
-  var obsPreview=card.obs?'<div class="card-obs" id="card-obs-'+card.id+'">'+trunc(card.obs,90)+'</div>':'<div class="card-obs" id="card-obs-'+card.id+'" style="display:none;"></div>';
-  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(canEdit?"true":"false")+'"'
-    +(canEdit?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")
+function buildCardHTML(card,ce){
+  var nc=getCmts(card).length;
+  var cv=coverColor(card);
+  var labels=buildLabels(card);
+  var cc2=ccHTML(card);
+  var obsP=card.obs?'<div class="card-obs" id="co-'+card.id+'">'+trunc(card.obs,90)+'</div>':'<div class="card-obs" id="co-'+card.id+'" style="display:none;"></div>';
+  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'
+    +(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")
     +' onclick="openCardModal(\''+card.id+'\')">'
-    +'<div class="card-cover" style="background:'+cover+';"></div>'
+    +'<div class="card-cover" style="background:'+cv+';"></div>'
     +'<div class="card-body">'
-    +(labelsHTML?'<div class="card-labels" id="card-labels-'+card.id+'">'+labelsHTML+'</div>':"")
-    +'<div class="card-title" id="card-title-'+card.id+'">'+card.titulo+'</div>'
-    +obsPreview
-    +'<div class="card-meta">'+(cc||"")+(card.responsavel?'<span class="card-chip">'+icon('user')+' '+card.responsavel+'</span>':"")+(card.horas?'<span class="card-chip">'+icon('clock')+' '+card.horas+'h</span>':"")+(nc?'<span class="card-chip">'+icon('comment')+' '+nc+'</span>':"")+(card.dataFim?'<span class="card-chip">'+icon('cal')+' '+card.dataFim+'</span>':"")+'</div>'
+    +(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")
+    +'<div class="card-title" id="ct-'+card.id+'">'+card.titulo+'</div>'
+    +obsP
+    +'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic('user')+' '+card.responsavel+'</span>':"")+(card.horas?'<span class="chip">'+ic('clock')+' '+card.horas+'h</span>':"")+(nc?'<span class="chip">'+ic('comment')+' '+nc+'</span>':"")+(card.dataFim?'<span class="chip">'+ic('cal')+' '+card.dataFim+'</span>':"")+'</div>'
     +'</div></div>';
 }
 
 function renderKanban(){
   viewMode="kanban";
-  var canEdit=perfil==="mestre"||perfil==="advogado";
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var isMestre=perfil==="mestre";
   var filtered=getFiltered();
   var sortedCols=[].concat(COLS).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
-  var isMestre=perfil==="mestre";
-
   var colsHtml=sortedCols.map(function(col){
     var colCards=filtered.filter(function(c){return c.status===col.id;});
     var isEmpty=cards.filter(function(c){return c.status===col.id;}).length===0;
-    var inner='<div class="card-drop-indicator" id="ind-'+col.id+'-0"></div>';
-    colCards.forEach(function(card,i){inner+=buildCardHTML(card,canEdit)+'<div class="card-drop-indicator" id="ind-'+col.id+'-'+(i+1)+'"></div>';});
-    if(colCards.length===0)inner='<div class="card-drop-indicator" id="ind-'+col.id+'-0"></div><div style="border:1.5px dashed rgba(255,255,255,.15);border-radius:10px;padding:16px;text-align:center;font-size:12px;color:rgba(255,255,255,.3);">'+(canEdit?'Solte aqui':'Nenhuma')+'</div>';
-    return '<div class="col-wrap">'
-      +'<div class="col-header" id="col-header-'+col.id+'">'
-      +'<span style="width:9px;height:9px;border-radius:50%;background:'+col.dot+';box-shadow:0 0 5px '+col.dot+'70;flex-shrink:0;cursor:'+(isMestre?"pointer":"default")+';" '+(isMestre?'onclick="toggleColorPicker(\''+col.id+'\',event)" title="Trocar cor"':"")+' ></span>'
+    var inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div>';
+    colCards.forEach(function(card,i){inner+=buildCardHTML(card,ce)+'<div class="card-drop-ind" id="ind-'+col.id+'-'+(i+1)+'"></div>';});
+    if(colCards.length===0)inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div><div style="border:1.5px dashed rgba(255,255,255,.15);border-radius:10px;padding:16px;text-align:center;font-size:12px;color:rgba(255,255,255,.3);">'+(ce?'Solte aqui':'Nenhuma')+'</div>';
+    return '<div class="col-wrap"><div class="col-header" id="col-hdr-'+col.id+'">'
+      +'<span style="width:9px;height:9px;border-radius:50%;background:'+col.dot+';box-shadow:0 0 5px '+col.dot+'70;flex-shrink:0;cursor:'+(isMestre?"pointer":"default")+';" '+(isMestre?'onclick="toggleCP(\''+col.id+'\',event)" title="Trocar cor"':"")+' ></span>'
       +'<div id="col-title-'+col.id+'" style="flex:1;min-width:0;">'+colTitleInner(col)+'</div>'
       +'<span class="col-count">'+colCards.length+'</span>'
-      +(isMestre&&isEmpty?'<button onclick="excluirColuna(\''+col.id+'\',event)" style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;padding:2px 4px;border-radius:5px;transition:color .15s;flex-shrink:0;" title="Excluir coluna" onmouseover="this.style.color=\'#fca5a5\'" onmouseout="this.style.color=\'rgba(255,255,255,.35)\'">'+icon('trash')+'</button>':"")
+      +(isMestre&&isEmpty?'<button onclick="delColuna(\''+col.id+'\',event)" style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;padding:2px 4px;border-radius:5px;" title="Excluir coluna" onmouseover="this.style.color=\'#fca5a5\'" onmouseout="this.style.color=\'rgba(255,255,255,.35)\'">'+ic('trash')+'</button>':"")
       +'</div>'
-      +'<div class="col-cards drop-zone" id="col-cards-'+col.id+'"'
-      +(canEdit?' ondragover="onColDragOver(event,\''+col.id+'\')" ondragleave="onColDragLeave(event,\''+col.id+'\')" ondrop="onColDrop(event,\''+col.id+'\')"':"")
-      +'>'+inner+'</div></div>';
+      +'<div class="col-cards drop-zone" id="col-cards-'+col.id+'"'+(ce?' ondragover="onColDragOver(event,\''+col.id+'\')" ondragleave="onColDragLeave(event,\''+col.id+'\')" ondrop="onColDrop(event,\''+col.id+'\')"':"")+'>'
+      +inner+'</div></div>';
   }).join("");
-
-  var addBtn=isMestre?'<button class="add-col-btn" onclick="adicionarColuna()">'+icon('plus')+' Adicionar coluna</button>':"";
-  var app=document.getElementById("app");app.className="";
-  app.innerHTML=headerHTML("kanban")+toolbarHTML(canEdit)+'<div class="board-outer"><div class="board-inner">'+colsHtml+addBtn+'</div></div>';
-  bindFilterClienteInput();
+  var addBtn=isMestre?'<button class="add-col-btn" onclick="addColuna()">'+ic('plus')+' Adicionar coluna</button>':"";
+  var app=document.getElementById("app");app.className="kanban-mode";
+  app.innerHTML=headerHTML("kanban")+toolbarHTML(ce)+'<div class="board-outer"><div class="board-inner">'+colsHtml+addBtn+'</div></div>';
+  bindFCI();
 }
 
 // ── LISTA ──
 function renderLista(){
-  viewMode="lista";var canEdit=perfil==="mestre"||perfil==="advogado";var filtered=getFiltered();
+  viewMode="lista";var ce=perfil==="mestre"||perfil==="advogado";var filtered=getFiltered();
   var app=document.getElementById("app");app.className="page-mode";
-  var rows=filtered.length===0?'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma demanda</td></tr>':filtered.map(function(card){var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",badgeBg:"#f1f5f9",badgeText:"#475569",dot:"#94a3b8"};var sp='<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';"><span style="width:6px;height:6px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</span>';var nc=(card.comentarios||[]).length;var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"—");var ac=canEdit?'<button onclick="openCardModal(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;margin-right:3px;">Abrir</button><button onclick="deleteCard(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"—";return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'+'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+card.titulo+'</td>'+'<td style="padding:11px 14px;">'+sp+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);font-weight:500;">'+ccTd+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"—")+'</td>'+'<td style="padding:11px 14px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text3);">'+(nc?'<span style="display:flex;align-items:center;gap:3px;">'+icon('comment')+' '+nc+'</span>':"—")+'</td>'+'<td style="padding:11px 14px;" onclick="event.stopPropagation()">'+ac+'</td></tr>';}).join("");
-  app.innerHTML=headerHTML("lista")+toolbarHTML(canEdit)+'<div style="padding:16px 16px 40px;max-width:1400px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Título','Status','C/C','Resp.','Tipos','Início','Encerramento','Com.','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
-  bindFilterClienteInput();
+  var rows=filtered.length===0?'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma demanda</td></tr>':filtered.map(function(card){var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",badgeBg:"#f1f5f9",badgeText:"#475569",dot:"#94a3b8"};var sp='<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';"><span style="width:6px;height:6px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</span>';var nc=getCmts(card).length;var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"—");var ac=ce?'<button onclick="openCardModal(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;margin-right:3px;">Abrir</button><button onclick="confirmDelCard(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"—";return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'+'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+card.titulo+'</td>'+'<td style="padding:11px 14px;">'+sp+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"—")+'</td>'+'<td style="padding:11px 14px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text3);">'+(nc?'<span style="display:flex;align-items:center;gap:3px;">'+ic('comment')+' '+nc+'</span>':"—")+'</td>'+'<td style="padding:11px 14px;" onclick="event.stopPropagation()">'+ac+'</td></tr>';}).join("");
+  app.innerHTML=headerHTML("lista")+toolbarHTML(ce)+'<div style="padding:16px 16px 40px;max-width:1400px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Título','Status','C/C','Resp.','Tipos','Início','Encerramento','Com.','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+  bindFCI();
 }
 
-// ── IMPORTAR, ETIQUETAS, LOGS, USUÁRIOS (compactos) ──
-function renderImportar(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("importar")+'<div style="padding:26px;max-width:680px;margin:0 auto;"><div style="margin-bottom:18px;"><div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Importar planilha</div></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);padding:24px;box-shadow:var(--shadow);"><div style="margin-bottom:16px;padding:11px 13px;background:rgba(37,63,79,.05);border:1px solid rgba(37,63,79,.1);border-radius:9px;font-size:13px;color:var(--bt-navy);">A planilha deve ter as colunas: <strong>Cliente</strong>, <strong>Caso</strong>, <strong>Nome da Consulta</strong>, <strong>Objeto</strong>, <strong>Situação</strong>.</div><div class="field"><label>Arquivo Excel (.xlsx)</label><input type="file" id="import-file" accept=".xlsx,.xls" style="padding:8px;"/></div><button class="btn btn-primary" onclick="processarImport()" style="display:flex;align-items:center;gap:6px;">'+icon('upload')+' Importar</button><div id="import-result" style="margin-top:12px;"></div></div></div>';}
-async function processarImport(){var fileInput=document.getElementById("import-file");if(!fileInput||!fileInput.files||!fileInput.files[0]){toast("Selecione um arquivo",true);return;}var resultDiv=document.getElementById("import-result");resultDiv.innerHTML='<div style="color:var(--text3);font-size:13px;">Processando...</div>';try{var data=await fileInput.files[0].arrayBuffer();var wb=XLSX.read(data,{type:"array"});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:""});var clientesMap={};var casosArr=[];rows.forEach(function(row){var cliStr=String(row["Cliente"]||"").trim();var casoStr=String(row["Caso"]||"").trim();var cliNum=numFromStr(cliStr);var casoNum=numFromStr(casoStr);if(!cliNum||!casoNum)return;clientesMap[cliNum]={numero:cliNum,nome:cliStr.replace(/^\d+\s*-\s*/,"").trim()};casosArr.push({cliNum,casoNum,descricao:casoStr.replace(/^\d+\s*-\s*/,"").trim(),nome_consulta:String(row["Nome da Consulta"]||"").trim(),objeto:String(row["Objeto"]||"").trim(),situacao:String(row["Situação"]||row["Situacao"]||"").trim()});});var clientesList=Object.values(clientesMap);var CHUNK=50;for(var i=0;i<clientesList.length;i+=CHUNK)await fetch(SB+"/rest/v1/clientes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(clientesList.slice(i,i+CHUNK))});await loadClientes();var casosComId=casosArr.map(function(c){var cl=clientesDB.find(function(x){return x.numero===c.cliNum;});if(!cl)return null;return {numero:c.casoNum,cliente_id:cl.id,descricao:c.descricao,nome_consulta:c.nome_consulta,objeto:c.objeto,situacao:c.situacao};}).filter(Boolean);for(var j=0;j<casosComId.length;j+=CHUNK)await fetch(SB+"/rest/v1/casos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(casosComId.slice(j,j+CHUNK))});await loadCasos();resultDiv.innerHTML='<div style="padding:11px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:13px;color:#14532d;">Importação concluída! <strong>'+clientesList.length+' clientes</strong> e <strong>'+casosComId.length+' casos</strong> processados.</div>';toast("Importação concluída!");}catch(e){resultDiv.innerHTML='<div style="padding:11px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:13px;color:#dc2626;">Erro: '+e.message+'</div>';}}
+// ── IMPORTAR ──
+function renderImp(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("imp")+'<div style="padding:26px;max-width:680px;margin:0 auto;"><div style="margin-bottom:18px;"><div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Importar planilha</div></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);padding:24px;box-shadow:var(--shadow);"><div style="margin-bottom:16px;padding:11px 13px;background:rgba(37,63,79,.05);border:1px solid rgba(37,63,79,.1);border-radius:9px;font-size:13px;color:var(--bt-navy);">A planilha deve ter as colunas: <strong>Cliente</strong>, <strong>Caso</strong>, <strong>Nome da Consulta</strong>, <strong>Objeto</strong>, <strong>Situação</strong>.</div><div class="field"><label>Arquivo Excel (.xlsx)</label><input type="file" id="import-file" accept=".xlsx,.xls" style="padding:8px;"/></div><button class="btn btn-primary" onclick="processarImp()" style="display:flex;align-items:center;gap:6px;">'+ic('upload')+' Importar</button><div id="imp-result" style="margin-top:12px;"></div></div></div>';}
+async function processarImp(){var fi=document.getElementById("import-file");if(!fi||!fi.files||!fi.files[0]){toast("Selecione um arquivo",true);return;}var rd=document.getElementById("imp-result");rd.innerHTML='<div style="color:var(--text3);font-size:13px;">Processando...</div>';try{var data=await fi.files[0].arrayBuffer();var wb=XLSX.read(data,{type:"array"});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:""});var cm={};var ca=[];rows.forEach(function(row){var cs=String(row["Cliente"]||"").trim();var cas=String(row["Caso"]||"").trim();var cn=numFromStr(cs);var can=numFromStr(cas);if(!cn||!can)return;cm[cn]={numero:cn,nome:cs.replace(/^\d+\s*-\s*/,"").trim()};ca.push({cliNum:cn,casoNum:can,descricao:cas.replace(/^\d+\s*-\s*/,"").trim(),nome_consulta:String(row["Nome da Consulta"]||"").trim(),objeto:String(row["Objeto"]||"").trim(),situacao:String(row["Situação"]||row["Situacao"]||"").trim()});});var cl=Object.values(cm);var CHUNK=50;for(var i=0;i<cl.length;i+=CHUNK)await fetch(SB+"/rest/v1/clientes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(cl.slice(i,i+CHUNK))});await loadClientes();var ci=ca.map(function(c){var x=clientesDB.find(function(x){return x.numero===c.cliNum;});if(!x)return null;return {numero:c.casoNum,cliente_id:x.id,descricao:c.descricao,nome_consulta:c.nome_consulta,objeto:c.objeto,situacao:c.situacao};}).filter(Boolean);for(var j=0;j<ci.length;j+=CHUNK)await fetch(SB+"/rest/v1/casos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(ci.slice(j,j+CHUNK))});await loadCasos();rd.innerHTML='<div style="padding:11px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:13px;color:#14532d;">Importação concluída! <strong>'+cl.length+' clientes</strong> e <strong>'+ci.length+' casos</strong> processados.</div>';toast("Importação concluída!");}catch(e){rd.innerHTML='<div style="padding:11px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:13px;color:#dc2626;">Erro: '+e.message+'</div>';}}
 
-function renderEtiquetas(){var app=document.getElementById("app");app.className="page-mode";var rows=TIPOS.map(function(t){var c=TC[t],isDef=!!TC_DEFAULT[t];var podeExcluir=perfil==="mestre"||!isDef;var ac='<div style="display:flex;gap:5px;"><button onclick="iniciarEdicaoEtiqueta(\''+t+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+icon('edit')+' Editar</button>'+(podeExcluir?'<button onclick="deletarEtiqueta(\''+t+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+icon('trash')+' Excluir</button>':"")+'</div>';return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:11px 14px;"><span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span></td><td style="padding:11px 14px;">'+(isDef&&perfil!=="mestre"?'<span style="font-size:11px;color:var(--text3);">padrão</span>':ac)+'</td></tr>';}).join("");var pal=PALETA.map(function(p,i){return '<div onclick="selecionarCor('+i+')" id="cor-'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+p.bg+';border:2px solid '+p.border+';cursor:pointer;transition:transform .12s;"></div>';}).join("");var isEd=editingEtiqueta!==null;app.innerHTML=headerHTML("etiquetas")+'<div style="padding:24px;max-width:660px;margin:0 auto;"><div style="margin-bottom:18px;"><div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Etiquetas</div></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);"><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">Etiqueta</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="background:#fff;border-radius:14px;border:'+(isEd?'2px solid var(--bt-orange)':'1px solid var(--border)')+';padding:20px 24px;box-shadow:var(--shadow);"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--bt-navy);">'+(isEd?'Editando: <span style="color:var(--bt-orange);">'+editingEtiqueta+'</span>':'Nova etiqueta')+'</div><div class="field"><label>Nome</label><input id="et-nome" placeholder="Ex: Regulatório" style="max-width:280px;" value="'+(isEd?editingEtiqueta:'')+'"/></div><div class="field"><label>Cor</label><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;" id="paleta-cores">'+pal+'</div></div><div style="display:flex;gap:7px;margin-top:7px;">'+(isEd?'<button class="btn" onclick="cancelarEdicaoEtiqueta()">Cancelar</button>':"")+'<button class="btn btn-primary" onclick="'+(isEd?'salvarEdicaoEtiqueta()':'criarEtiqueta()')+'" style="display:flex;align-items:center;gap:5px;">'+(isEd?icon('edit')+' Salvar':icon('plus')+' Criar')+'</button></div></div></div>';var ci=0;if(isEd){var idx=PALETA.findIndex(function(p){return p.border===TC[editingEtiqueta].border;});if(idx>=0)ci=idx;}selecionarCor(ci);}
-function selecionarCor(i){corSelecionada=i;PALETA.forEach(function(_,j){var el=document.getElementById("cor-"+j);if(el)el.style.transform=j===i?"scale(1.3)":"scale(1)";});}
-function iniciarEdicaoEtiqueta(n){editingEtiqueta=n;renderEtiquetas();}
-function cancelarEdicaoEtiqueta(){editingEtiqueta=null;renderEtiquetas();}
-function criarEtiqueta(){var n=(document.getElementById("et-nome").value||"").trim();if(!n){toast("Informe o nome",true);return;}if(TC[n]){toast("Já existe",true);return;}TC[n]=PALETA[corSelecionada];TIPOS=Object.keys(TC);saveEtiquetas();toast("Criada!");renderEtiquetas();}
-function salvarEdicaoEtiqueta(){var novo=(document.getElementById("et-nome").value||"").trim();if(!novo){toast("Informe o nome",true);return;}var cor=PALETA[corSelecionada];if(novo!==editingEtiqueta){if(TC[novo]){toast("Já existe",true);return;}cards=cards.map(function(c){if(c.tipos&&c.tipos.includes(editingEtiqueta)){c.tipos=c.tipos.map(function(t){return t===editingEtiqueta?novo:t;});}return c;});if(TC_DEFAULT[editingEtiqueta])TC_DEFAULT[editingEtiqueta]=cor;delete TC[editingEtiqueta];}TC[novo]=cor;TIPOS=Object.keys(TC);saveEtiquetas();toast("Atualizada!");editingEtiqueta=null;renderEtiquetas();}
-function deletarEtiqueta(n){if(!confirm('Excluir "'+n+'"?'))return;delete TC[n];if(TC_DEFAULT[n])delete TC_DEFAULT[n];TIPOS=Object.keys(TC);saveEtiquetas();toast("Excluída!");editingEtiqueta=null;renderEtiquetas();}
+// ── ETIQUETAS ──
+function renderEtq(){var app=document.getElementById("app");app.className="page-mode";var rows=TIPOS.map(function(t){var c=TC[t],isD=!!TC_DEF[t];var pE=perfil==="mestre"||!isD;var ac='<div style="display:flex;gap:5px;"><button onclick="startEditEtq(\''+t+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('edit')+' Editar</button>'+(pE?'<button onclick="delEtq(\''+t+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('trash')+' Excluir</button>':"")+'</div>';return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:11px 14px;"><span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span></td><td style="padding:11px 14px;">'+(isD&&perfil!=="mestre"?'<span style="font-size:11px;color:var(--text3);">padrão</span>':ac)+'</td></tr>';}).join("");var pal=PALETA.map(function(p,i){return '<div onclick="selCor('+i+')" id="cor-'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+p.bg+';border:2px solid '+p.border+';cursor:pointer;transition:transform .12s;"></div>';}).join("");var isEd=editingEtq!==null;app.innerHTML=headerHTML("etq")+'<div style="padding:24px;max-width:660px;margin:0 auto;"><div style="margin-bottom:18px;"><div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Etiquetas</div></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);"><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">Etiqueta</th><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">Ações</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="background:#fff;border-radius:14px;border:'+(isEd?'2px solid var(--bt-orange)':'1px solid var(--border)')+';padding:20px 24px;box-shadow:var(--shadow);"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--bt-navy);">'+(isEd?'Editando: <span style="color:var(--bt-orange);">'+editingEtq+'</span>':'Nova etiqueta')+'</div><div class="field"><label>Nome</label><input id="etq-nome" placeholder="Ex: Regulatório" style="max-width:280px;" value="'+(isEd?editingEtq:'')+'"/></div><div class="field"><label>Cor</label><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;" id="paleta-cores">'+pal+'</div></div><div style="display:flex;gap:7px;margin-top:7px;">'+(isEd?'<button class="btn" onclick="cancelEditEtq()">Cancelar</button>':"")+'<button class="btn btn-primary" onclick="'+(isEd?'saveEditEtq()':'criarEtq()')+'" style="display:flex;align-items:center;gap:5px;">'+(isEd?ic('edit')+' Salvar':ic('plus')+' Criar')+'</button></div></div></div>';var ci=0;if(isEd){var idx=PALETA.findIndex(function(p){return p.border===TC[editingEtq].border;});if(idx>=0)ci=idx;}selCor(ci);}
+function selCor(i){corSel=i;PALETA.forEach(function(_,j){var el=document.getElementById("cor-"+j);if(el)el.style.transform=j===i?"scale(1.3)":"scale(1)";});}
+function startEditEtq(n){editingEtq=n;renderEtq();}
+function cancelEditEtq(){editingEtq=null;renderEtq();}
+function criarEtq(){var n=(document.getElementById("etq-nome").value||"").trim();if(!n){toast("Informe o nome",true);return;}if(TC[n]){toast("Já existe",true);return;}TC[n]=PALETA[corSel];TIPOS=Object.keys(TC);saveEtq();toast("Criada!");renderEtq();}
+function saveEditEtq(){var novo=(document.getElementById("etq-nome").value||"").trim();if(!novo){toast("Informe o nome",true);return;}var cor=PALETA[corSel];if(novo!==editingEtq){if(TC[novo]){toast("Já existe",true);return;}cards=cards.map(function(c){if(c.tipos&&c.tipos.includes(editingEtq)){c.tipos=c.tipos.map(function(t){return t===editingEtq?novo:t;});}return c;});if(TC_DEF[editingEtq])TC_DEF[editingEtq]=cor;delete TC[editingEtq];}TC[novo]=cor;TIPOS=Object.keys(TC);saveEtq();toast("Atualizada!");editingEtq=null;renderEtq();}
+function delEtq(n){if(!confirm('Excluir "'+n+'"?'))return;delete TC[n];if(TC_DEF[n])delete TC_DEF[n];TIPOS=Object.keys(TC);saveEtq();toast("Excluída!");editingEtq=null;renderEtq();}
 
+// ── LOGS ──
 async function renderLogs(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("logs")+'<div style="padding:24px;max-width:1100px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';try{var logs=await dbFetchLogs();var rows=logs.length===0?'<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text3);">Nenhum registro</td></tr>':logs.map(function(l){var dt=new Date(l.criado_em).toLocaleString("pt-BR");var b=l.perfil==="mestre"?'<span class="badge" style="background:rgba(168,85,247,.1);color:#7c3aed;">Mestre</span>':l.perfil==="advogado"?'<span class="badge" style="background:rgba(250,81,14,.1);color:var(--bt-orange);">Advogado</span>':'<span class="badge" style="background:var(--surface);color:#64748b;border:1px solid var(--border);">Cliente</span>';return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:11px 14px;font-size:12px;color:var(--text3);white-space:nowrap;">'+dt+'</td><td style="padding:11px 14px;">'+b+'</td><td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+l.acao+'</td><td style="padding:11px 14px;font-size:13px;color:var(--text2);">'+(l.detalhe||"")+'</td></tr>';}).join("");app.innerHTML=headerHTML("logs")+'<div style="padding:24px;max-width:1100px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Data/hora','Perfil','Ação','Detalhe'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';}catch(e){toast("Erro",true);}}
 
-async function renderUsuarios(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("usuarios")+'<div style="padding:24px;max-width:900px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';try{var us=await dbFetchUsuarios();var rows=us.map(function(u){var b=u.perfil==="mestre"?'<span class="badge" style="background:rgba(168,85,247,.1);color:#7c3aed;">Mestre</span>':u.perfil==="advogado"?'<span class="badge" style="background:rgba(250,81,14,.1);color:var(--bt-orange);">Advogado</span>':'<span class="badge" style="background:var(--surface);color:#64748b;border:1px solid var(--border);">Cliente</span>';var isMestre=u.perfil==="mestre";var ac=isMestre?'<span style="font-size:11px;color:var(--text3);">conta principal</span>':'<div style="display:flex;gap:5px;"><button onclick="abrirModalUsuario(\''+u.id+'\',\''+escQ(u.nome)+'\',\''+u.email+'\',\''+u.perfil+'\',\''+(u.sigla||'')+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+icon('edit')+' Editar</button><button onclick="deletarUsuario(\''+u.id+'\',\''+escQ(u.nome)+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+icon('trash')+' Excluir</button></div>';return '<tr style="border-bottom:1px solid var(--border);transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+u.nome+'</td><td style="padding:11px 14px;font-size:13px;color:var(--text2);">'+u.email+'</td><td style="padding:11px 14px;">'+b+'</td><td style="padding:11px 14px;font-size:12px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||'—')+'</td><td style="padding:11px 14px;"><span style="font-size:12px;font-weight:600;color:'+(u.ativo?"#16a34a":"#dc2626")+';">'+(u.ativo?"● Ativo":"● Inativo")+'</span></td><td style="padding:11px 14px;">'+ac+'</td></tr>';}).join("");app.innerHTML=headerHTML("usuarios")+'<div style="padding:24px;max-width:900px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div><div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Usuários</div></div><button class="btn btn-accent" onclick="abrirModalUsuario()" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+icon('plus')+' Novo usuário</button></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Nome','E-mail','Perfil','Sigla','Status','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';}catch(e){toast("Erro",true);}}
-function abrirModalUsuario(id,nome,email,perf,sigla){var isEdit=!!id;document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">'+(isEdit?"Editar usuário":"Novo usuário")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+icon('close')+'</button></div><div class="field"><label>Nome</label><input id="mu-nome" value="'+(nome||"")+'" placeholder="Nome completo"/></div><div class="field"><label>E-mail</label><input id="mu-email" type="email" value="'+(email||"")+'" placeholder="email@btlaw.com.br"/></div><div class="field"><label>'+(isEdit?"Nova senha (deixe vazio para manter)":"Senha")+'</label><input id="mu-senha" type="password" placeholder="'+(isEdit?"Nova senha...":"Senha de acesso...")+'"/></div><div class="field"><label>Perfil</label><select id="mu-perfil" onchange="toggleSigla()" style="width:100%;"><option value="advogado"'+(perf==="advogado"?" selected":"")+'>Advogado</option><option value="cliente"'+(perf==="cliente"?" selected":"")+'>Cliente</option></select></div><div class="field" id="sigla-field" style="'+((!perf||perf==="cliente")?"display:none;":"")+'"><label>Sigla</label><input id="mu-sigla" value="'+(sigla||"")+'" placeholder="Ex: VOL" style="max-width:120px;text-transform:uppercase;"/></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarUsuario(\''+(id||"")+'\')">Salvar</button></div></div></div>';}
+// ── USUÁRIOS ──
+async function renderUsers(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("usr")+'<div style="padding:24px;max-width:900px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';try{var us=await dbFetchUsers();var rows=us.map(function(u){var b=u.perfil==="mestre"?'<span class="badge" style="background:rgba(168,85,247,.1);color:#7c3aed;">Mestre</span>':u.perfil==="advogado"?'<span class="badge" style="background:rgba(250,81,14,.1);color:var(--bt-orange);">Advogado</span>':'<span class="badge" style="background:var(--surface);color:#64748b;border:1px solid var(--border);">Cliente</span>';var isM=u.perfil==="mestre";var ac=isM?'<span style="font-size:11px;color:var(--text3);">conta principal</span>':'<div style="display:flex;gap:5px;"><button onclick="openEditUser(\''+u.id+'\',\''+escQ(u.nome)+'\',\''+u.email+'\',\''+u.perfil+'\',\''+(u.sigla||'')+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('edit')+' Editar</button><button onclick="delUser(\''+u.id+'\',\''+escQ(u.nome)+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('trash')+' Excluir</button></div>';return '<tr style="border-bottom:1px solid var(--border);transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+u.nome+'</td><td style="padding:11px 14px;font-size:13px;color:var(--text2);">'+u.email+'</td><td style="padding:11px 14px;">'+b+'</td><td style="padding:11px 14px;font-size:12px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||'—')+'</td><td style="padding:11px 14px;"><span style="font-size:12px;font-weight:600;color:'+(u.ativo?"#16a34a":"#dc2626")+';">'+(u.ativo?"● Ativo":"● Inativo")+'</span></td><td style="padding:11px 14px;">'+ac+'</td></tr>';}).join("");app.innerHTML=headerHTML("usr")+'<div style="padding:24px;max-width:900px;margin:0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Usuários</div><button class="btn btn-accent" onclick="openEditUser()" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+ic('plus')+' Novo usuário</button></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Nome','E-mail','Perfil','Sigla','Status','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';}catch(e){toast("Erro",true);}}
+function openEditUser(id,nome,email,perf,sigla){var isE=!!id;document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">'+(isE?"Editar usuário":"Novo usuário")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button></div><div class="field"><label>Nome</label><input id="mu-nome" value="'+(nome||"")+'" placeholder="Nome completo"/></div><div class="field"><label>E-mail</label><input id="mu-email" type="email" value="'+(email||"")+'" placeholder="email@btlaw.com.br"/></div><div class="field"><label>'+(isE?"Nova senha (deixe vazio para manter)":"Senha")+'</label><input id="mu-senha" type="password" placeholder="'+(isE?"Nova senha...":"Senha de acesso...")+'"/></div><div class="field"><label>Perfil</label><select id="mu-perfil" onchange="toggleSigla()" style="width:100%;"><option value="advogado"'+(perf==="advogado"?" selected":"")+'>Advogado</option><option value="cliente"'+(perf==="cliente"?" selected":"")+'>Cliente</option></select></div><div class="field" id="sigla-field" style="'+((!perf||perf==="cliente")?"display:none;":"")+'"><label>Sigla</label><input id="mu-sigla" value="'+(sigla||"")+'" placeholder="Ex: VOL" style="max-width:120px;text-transform:uppercase;"/></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveUser(\''+(id||"")+'\')">Salvar</button></div></div></div>';}
 function toggleSigla(){var p=document.getElementById("mu-perfil").value;var f=document.getElementById("sigla-field");if(f)f.style.display=p==="advogado"?"":"none";}
-async function salvarUsuario(id){var nome=(document.getElementById("mu-nome").value||"").trim();var email=(document.getElementById("mu-email").value||"").trim().toLowerCase();var senha=document.getElementById("mu-senha").value;var perf=document.getElementById("mu-perfil").value;var siglEl=document.getElementById("mu-sigla");var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():"";if(!nome||!email){toast("Preencha nome e e-mail",true);return;}if(!id&&!senha){toast("Informe a senha",true);return;}var u={nome,email,perfil:perf,ativo:true,sigla:(perf==="advogado"||perf==="mestre")?sigla:null};if(id)u.id=id;if(senha)u.senha=senha;try{await dbSaveUsuario(u);await dbLog(id?"Editou usuário":"Criou usuário",nome);await loadResponsaveis();toast(id?"Atualizado!":"Criado!");closeModal();renderUsuarios();}catch(e){toast("Erro",true);}}
-async function deletarUsuario(id,nome){if(!confirm('Excluir "'+nome+'"?'))return;try{await dbDeleteUsuario(id);await dbLog("Excluiu usuário",nome);await loadResponsaveis();toast("Excluído!");renderUsuarios();}catch(e){toast("Erro",true);}}
-async function deleteCard(id){if(!confirm("Excluir esta demanda?"))return;var card=cards.find(function(c){return c.id===id;});try{await dbDelete(id);await dbLog("Excluiu demanda",card?card.titulo:id);cards=cards.filter(function(c){return c.id!==id;});renderView();}catch(e){toast("Erro",true);}}
+async function saveUser(id){var nome=(document.getElementById("mu-nome").value||"").trim();var email=(document.getElementById("mu-email").value||"").trim().toLowerCase();var senha=document.getElementById("mu-senha").value;var perf=document.getElementById("mu-perfil").value;var siglEl=document.getElementById("mu-sigla");var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():"";if(!nome||!email){toast("Preencha nome e e-mail",true);return;}if(!id&&!senha){toast("Informe a senha",true);return;}var u={nome,email,perfil:perf,ativo:true,sigla:(perf==="advogado"||perf==="mestre")?sigla:null};if(id)u.id=id;if(senha)u.senha=senha;try{await dbSaveUser(u);await dbLog(id?"Editou usuário":"Criou usuário",nome);await loadResp();toast(id?"Atualizado!":"Criado!");closeModal();renderUsers();}catch(e){toast("Erro",true);}}
+async function delUser(id,nome){if(!confirm('Excluir "'+nome+'"?'))return;try{await dbDelUser(id);await dbLog("Excluiu usuário",nome);await loadResp();toast("Excluído!");renderUsers();}catch(e){toast("Erro",true);}}
 
-// ── AUTOCOMPLETE ──
-function buildAcList(q){if(!q||q.length<1)return [];var ql=q.toLowerCase();return clientesDB.filter(function(c){return String(c.numero).startsWith(ql)||(c.nome&&c.nome.toLowerCase().includes(ql));}).slice(0,8);}
-function renderAcList(m){var list=document.getElementById("ac-list");if(!list)return;if(!m||!m.length){list.style.display="none";acIndex=-1;return;}list.innerHTML=m.map(function(c,i){return '<div class="autocomplete-item" id="ac-item-'+i+'" onmousedown="selectCliente('+c.numero+')" onmouseover="acIndex='+i+';highlightAc()"><strong>'+c.numero+'</strong>'+(c.nome?' — '+trunc(c.nome,40):'')+'</div>';}).join("");list.style.display="block";acIndex=-1;}
-function highlightAc(){document.querySelectorAll(".autocomplete-item").forEach(function(el,i){el.classList.toggle("active",i===acIndex);});}
-function onClienteInput(val){renderAcList(buildAcList(val));updateFormCaso(null);}
-function onClienteKeydown(e){var list=document.getElementById("ac-list");var items=list?list.querySelectorAll(".autocomplete-item"):[];if(e.key==="ArrowDown"){e.preventDefault();acIndex=Math.min(acIndex+1,items.length-1);highlightAc();}else if(e.key==="ArrowUp"){e.preventDefault();acIndex=Math.max(acIndex-1,0);highlightAc();}else if(e.key==="Enter"&&acIndex>=0){e.preventDefault();var m=buildAcList(document.getElementById("f-cliente-text").value||"");if(m[acIndex])selectCliente(m[acIndex].numero);}else if(e.key==="Escape"){hideAc();}}
-function hideAc(){var list=document.getElementById("ac-list");if(list)list.style.display="none";acIndex=-1;}
-function selectCliente(num){var c=clientesDB.find(function(x){return x.numero===num;});var inp=document.getElementById("f-cliente-text");var hid=document.getElementById("f-cliente");if(inp)inp.value=num+(c&&c.nome?" — "+c.nome:"");if(hid)hid.value=num;hideAc();updateFormCaso(num);}
-function updateFormCaso(cliNum){var wrap=document.getElementById("caso-cascade-wrap");if(!wrap)return;var casos=cliNum?casosDoCliente(parseInt(cliNum)):[];if(casos.length>0){wrap.innerHTML='<select id="f-caso" style="width:100%;"><option value="">Selecione o caso...</option>'+casos.map(function(c){return '<option value="'+c.numero+'">'+c.numero+(c.descricao?' — '+trunc(c.descricao,40):'')+'</option>';}).join("")+'</select>';}else{wrap.innerHTML='<input id="f-caso" type="number" min="1" max="9999" value="" placeholder="Ex: 745"/>';}}
-
-// ── FORM (nova demanda) ──
+// ── FORM ──
 function renderForm(){
   var app=document.getElementById("app");app.className="page-mode";
   var card=editingId?cards.find(function(c){return c.id===editingId;}):null;
@@ -804,29 +692,38 @@ function renderForm(){
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(v.status===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
   var cliTextVal="";if(v.clienteNum){var cliObj=clientesDB.find(function(c){return c.numero===v.clienteNum;});cliTextVal=v.clienteNum+(cliObj&&cliObj.nome?" — "+cliObj.nome:"");}
   var casos=v.clienteNum?casosDoCliente(parseInt(v.clienteNum)):[];
-  var casoFieldInner=casos.length>0?'<select id="f-caso" style="width:100%;"><option value="">Selecione o caso...</option>'+casos.map(function(c){return '<option value="'+c.numero+'"'+(String(v.casoNum)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' — '+trunc(c.descricao,40):'')+'</option>';}).join("")+'</select>':'<input id="f-caso" type="number" min="1" max="9999" value="'+(v.casoNum||"")+'" placeholder="Ex: 745"/>';
-  app.innerHTML='<div style="background:var(--surface);min-height:100vh;padding-bottom:40px;"><div style="background:linear-gradient(135deg,#1a2e3a,#253f4f);height:52px;padding:0 14px;display:flex;align-items:center;gap:14px;"><button onclick="renderView()" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.75);font-size:13px;font-weight:500;padding:5px 12px;border-radius:7px;font-family:inherit;">'+icon('back')+' Voltar</button><span style="color:rgba(255,255,255,.25);">/</span><span style="color:#fff;font-weight:600;font-size:14px;">'+(editingId?"Editar demanda":"Nova demanda")+'</span></div><div style="max-width:560px;margin:22px auto;padding:0 14px;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);padding:24px 28px;box-shadow:var(--shadow-md);"><div class="field"><label>Título *</label><input id="f-titulo" value="'+v.titulo+'" placeholder="Ex: Análise de contrato CRI"/></div><div class="field"><label>Cliente</label><div class="autocomplete-wrap"><input id="f-cliente-text" autocomplete="off" value="'+cliTextVal+'" placeholder="Digite nome ou número..." oninput="onClienteInput(this.value)" onkeydown="onClienteKeydown(event)" onblur="setTimeout(hideAc,150)"/><input type="hidden" id="f-cliente" value="'+(v.clienteNum||"")+'"/><div id="ac-list" class="autocomplete-list" style="display:none;"></div></div></div><div class="field"><label>Caso</label><div id="caso-cascade-wrap">'+casoFieldInner+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field"><div><label>Responsável</label><select id="f-responsavel" style="width:100%;"><option value="">Selecione...</option>'+rO+'</select></div><div><label>Status</label><select id="f-status" style="width:100%;">'+sO+'</select></div></div><div class="field"><label>E-mail da solicitação</label><input id="f-email" value="'+(v.email||"")+'" placeholder="Ex: Fwd: Assembleia Geral"/></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" class="field"><div><label>Início</label><input type="date" id="f-dataInicio" value="'+(v.dataInicio||"")+'"/></div><div><label>Encerramento</label><input type="date" id="f-dataFim" value="'+(v.dataFim||"")+'"/></div><div><label>Horas</label><input type="number" id="f-horas" value="'+(v.horas||"")+'" placeholder="Ex: 2.5" step="0.5"/></div></div><div class="field"><label>Tipo(s)</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;">'+tBtns+'</div></div><div class="field"><label>Observações</label><textarea id="f-obs" rows="3" style="resize:vertical;line-height:1.6;">'+(v.obs||"")+'</textarea></div><div style="height:1px;background:var(--border);margin:16px 0;"></div><div style="display:flex;gap:9px;justify-content:flex-end;"><button class="btn" onclick="renderView()">Cancelar</button><button class="btn btn-primary" onclick="saveCard()" style="display:flex;align-items:center;gap:5px;">'+icon('spark')+' Salvar demanda</button></div></div></div></div>';
+  var casoFI=casos.length>0?'<select id="f-caso" style="width:100%;"><option value="">Selecione o caso...</option>'+casos.map(function(c){return '<option value="'+c.numero+'"'+(String(v.casoNum)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' — '+trunc(c.descricao,40):'')+'</option>';}).join("")+'</select>':'<input id="f-caso" type="number" min="1" max="9999" value="'+(v.casoNum||"")+'" placeholder="Ex: 745"/>';
+  app.innerHTML='<div style="background:var(--surface);min-height:100vh;padding-bottom:40px;"><div style="background:linear-gradient(135deg,#1a2e3a,#253f4f);height:52px;padding:0 14px;display:flex;align-items:center;gap:14px;"><button onclick="renderView()" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.75);font-size:13px;font-weight:500;padding:5px 12px;border-radius:7px;font-family:inherit;">'+ic('back')+' Voltar</button><span style="color:rgba(255,255,255,.25);">/</span><span style="color:#fff;font-weight:600;font-size:14px;">'+(editingId?"Editar demanda":"Nova demanda")+'</span></div><div style="max-width:560px;margin:22px auto;padding:0 14px;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);padding:24px 28px;box-shadow:var(--shadow-md);"><div class="field"><label>Título *</label><input id="f-titulo" value="'+v.titulo+'" placeholder="Ex: Análise de contrato CRI"/></div><div class="field"><label>Cliente</label><div class="ac-wrap"><input id="f-cli-txt" autocomplete="off" value="'+cliTextVal+'" placeholder="Digite nome ou número..." oninput="fAcInput(this.value)" onkeydown="fAcKd(event)" onblur="setTimeout(fHideAc,150)"/><input type="hidden" id="f-cli" value="'+(v.clienteNum||"")+'" /><div id="f-ac-list" class="ac-list" style="display:none;"></div></div></div><div class="field"><label>Caso</label><div id="caso-wrap">'+casoFI+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field"><div><label>Responsável</label><select id="f-resp" style="width:100%;"><option value="">Selecione...</option>'+rO+'</select></div><div><label>Status</label><select id="f-status" style="width:100%;">'+sO+'</select></div></div><div class="field"><label>E-mail da solicitação</label><input id="f-email" value="'+(v.email||"")+'" placeholder="Ex: Fwd: Assembleia Geral"/></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" class="field"><div><label>Início</label><input type="date" id="f-di" value="'+(v.dataInicio||"")+'" /></div><div><label>Encerramento</label><input type="date" id="f-df" value="'+(v.dataFim||"")+'" /></div><div><label>Horas</label><input type="number" id="f-horas" value="'+(v.horas||"")+'" placeholder="Ex: 2.5" step="0.5"/></div></div><div class="field"><label>Tipo(s)</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;">'+tBtns+'</div></div><div class="field"><label>Observações</label><textarea id="f-obs" rows="3" style="resize:vertical;line-height:1.6;">'+(v.obs||"")+'</textarea></div><div style="height:1px;background:var(--border);margin:16px 0;"></div><div style="display:flex;gap:9px;justify-content:flex-end;"><button class="btn" onclick="renderView()">Cancelar</button><button class="btn btn-primary" onclick="saveCard()" style="display:flex;align-items:center;gap:5px;">'+ic('spark')+' Salvar demanda</button></div></div></div></div>';
 }
+
+// Form autocomplete
+var _fAcM=[],_fAcI=-1;
+function fAcInput(val){_fAcM=buildAcList(val);_fAcI=-1;var list=document.getElementById("f-ac-list");if(!list)return;if(!_fAcM.length){list.style.display="none";return;}list.innerHTML=_fAcM.map(function(c,i){return '<div class="ac-item" id="fac-'+i+'" onmousedown="fAcSel('+c.numero+')" onmouseover="_fAcI='+i+';fAcHL()"><strong>'+c.numero+'</strong>'+(c.nome?' — '+trunc(c.nome,40):'')+'</div>';}).join("");list.style.display="block";updateFormCaso(null);}
+function fAcHL(){document.querySelectorAll("[id^='fac-']").forEach(function(el,i){el.classList.toggle("active",i===_fAcI);});}
+function fAcKd(e){if(e.key==="ArrowDown"){e.preventDefault();_fAcI=Math.min(_fAcI+1,_fAcM.length-1);fAcHL();}else if(e.key==="ArrowUp"){e.preventDefault();_fAcI=Math.max(_fAcI-1,0);fAcHL();}else if(e.key==="Enter"&&_fAcI>=0){e.preventDefault();if(_fAcM[_fAcI])fAcSel(_fAcM[_fAcI].numero);}else if(e.key==="Escape"){fHideAc();}}
+function fHideAc(){var list=document.getElementById("f-ac-list");if(list)list.style.display="none";_fAcI=-1;}
+function fAcSel(num){var c=clientesDB.find(function(x){return x.numero===num;});var inp=document.getElementById("f-cli-txt");var hid=document.getElementById("f-cli");if(inp)inp.value=num+(c&&c.nome?" — "+c.nome:"");if(hid)hid.value=num;fHideAc();updateFormCaso(num);}
+function updateFormCaso(cliNum){var wrap=document.getElementById("caso-wrap");if(!wrap)return;var casos=cliNum?casosDoCliente(parseInt(cliNum)):[];if(casos.length>0){wrap.innerHTML='<select id="f-caso" style="width:100%;"><option value="">Selecione o caso...</option>'+casos.map(function(c){return '<option value="'+c.numero+'">'+c.numero+(c.descricao?' — '+trunc(c.descricao,40):'')+'</option>';}).join("")+'</select>';}else{wrap.innerHTML='<input id="f-caso" type="number" min="1" max="9999" value="" placeholder="Ex: 745"/>';}}
+
 function toggleTipo(t){var idx=formTipos.indexOf(t);if(idx>=0)formTipos.splice(idx,1);else formTipos.push(t);var c=TC[t],sel=formTipos.includes(t),btn=document.getElementById("tipo-"+t);if(!btn)return;btn.style.background=sel?c.bg:"var(--surface)";btn.style.border=sel?"1.5px solid "+c.border:"1.5px solid var(--border)";btn.style.color=sel?c.text:"var(--text2)";}
 function openNew(){editingId=null;formTipos=[];renderForm();}
-function openEdit(id){editingId=id;var card=cards.find(function(c){return c.id===id;});formTipos=card&&card.tipos?card.tipos.slice():[];renderForm();}
 async function saveCard(){
   var titulo=(document.getElementById("f-titulo").value||"").trim();if(!titulo){toast("Informe o título",true);return;}
   var id=editingId||Date.now().toString();var existing=editingId?cards.find(function(c){return c.id===editingId;}):null;
-  var cliVal=document.getElementById("f-cliente").value;var casoEl=document.getElementById("f-caso");var casoVal=casoEl?casoEl.value:"";
-  var card={id,titulo,clienteNum:cliVal?parseInt(cliVal):null,casoNum:casoVal?parseInt(casoVal):null,responsavel:document.getElementById("f-responsavel").value,status:document.getElementById("f-status").value,email:document.getElementById("f-email").value,dataInicio:document.getElementById("f-dataInicio").value,dataFim:document.getElementById("f-dataFim").value,horas:document.getElementById("f-horas").value,obs:document.getElementById("f-obs").value,tipos:formTipos.slice(),comentarios:existing?existing.comentarios||[]:[]};
-  if(existing)card.ordem=existing.ordem||0;else{var colCards=cards.filter(function(c){return c.status===card.status;});card.ordem=colCards.length;}
+  var cliVal=document.getElementById("f-cli").value;var casoEl=document.getElementById("f-caso");var casoVal=casoEl?casoEl.value:"";
+  var card={id,titulo,clienteNum:cliVal?parseInt(cliVal):null,casoNum:casoVal?parseInt(casoVal):null,responsavel:document.getElementById("f-resp").value,status:document.getElementById("f-status").value,email:document.getElementById("f-email").value,dataInicio:document.getElementById("f-di").value,dataFim:document.getElementById("f-df").value,horas:document.getElementById("f-horas").value,obs:document.getElementById("f-obs").value,tipos:formTipos.slice(),comentarios:existing?existing.comentarios||[]:[]};
+  if(existing)card.ordem=existing.ordem||0;else{var cc=cards.filter(function(c){return c.status===card.status;});card.ordem=cc.length;}
   try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");editingId=null;renderView();}catch(e){toast("Erro",true);}
 }
 
 // ── INIT ──
 async function init(){
-  var app=document.getElementById("app");app.className="";
+  var app=document.getElementById("app");app.className="kanban-mode";
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;"><div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#fff;">BT</span></div><div style="width:28px;height:3px;background:linear-gradient(90deg,#ff8204,#e20500);border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div><style>@keyframes pulse{0%,100%{opacity:.4;transform:scaleX(.8)}50%{opacity:1;transform:scaleX(1)}}</style><div style="font-size:13px;color:rgba(255,255,255,.35);">Carregando BTDesk...</div></div>';
-  try{await Promise.all([loadResponsaveis(),loadClientes(),loadCasos(),dbLoadCols()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});}catch(e){toast("Erro ao carregar",true);}
-  loadEtiquetas();renderKanban();
+  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});}catch(e){toast("Erro ao carregar",true);}
+  loadEtq();renderKanban();
 }
-if(checkAuth()){loadEtiquetas();init();}else{renderLogin();}
+if(checkAuth()){loadEtq();init();}else{renderLogin();}
 </script>
 </body>
 </html>
