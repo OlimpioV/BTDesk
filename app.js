@@ -317,21 +317,27 @@ function stopEditObs(cardId,val){var block=document.getElementById("obs-block-"+
 
 // ── TAREFAS ──
 function getTarefas(card){return card.tarefas||[];}
+function refreshTarefasPanel(cardId){
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var panel=document.getElementById("tarefas-panel-"+cardId);
+  if(panel)panel.innerHTML=buildTarefasHTML(card,ce);
+}
 async function addTarefa(cardId,texto,resp,di,df,st){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   var t={id:uid(),texto:texto,responsavel:resp||"",dataInicio:di||"",dataFim:df||"",status:st||(COLS[0]?COLS[0].id:"aberto"),criado:new Date().toISOString()};
   card.tarefas=getTarefas(card);card.tarefas.push(t);
-  await dbUpsert(card);toast("Tarefa adicionada!");renderModal();
+  await dbUpsert(card);toast("Tarefa adicionada!");refreshTarefasPanel(cardId);
 }
 async function updateTarefa(cardId,tarefaId,fields){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   card.tarefas=(card.tarefas||[]).map(function(t){return t.id===tarefaId?Object.assign({},t,fields):t;});
-  await dbUpsert(card);renderModal();
+  await dbUpsert(card);refreshTarefasPanel(cardId);
 }
 async function delTarefa(cardId,tarefaId){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   card.tarefas=(card.tarefas||[]).filter(function(t){return t.id!==tarefaId;});
-  await dbUpsert(card);toast("Tarefa excluída!");renderModal();
+  await dbUpsert(card);toast("Tarefa excluída!");refreshTarefasPanel(cardId);
 }
 function _mc2(){var el=document.getElementById("modal-container2");if(!el){el=document.createElement("div");el.id="modal-container2";document.body.appendChild(el);}return el;}
 function _mc2Close(){var el=document.getElementById("modal-container2");if(el)el.innerHTML="";}
@@ -407,7 +413,7 @@ async function saveTarefaInline(cardId,tarefaId){
     dataFim:document.getElementById("ti-df-"+tarefaId).value
   };
   card.tarefas=(card.tarefas||[]).map(function(t){return t.id===tarefaId?Object.assign({},t,fields):t;});
-  try{await dbUpsert(card);toast("Salvo!");renderModal();}catch(e){toast("Erro",true);}
+  try{await dbUpsert(card);toast("Salvo!");refreshTarefasPanel(cardId);}catch(e){toast("Erro",true);}
 }
 function buildTarefasHTML(card,ce){
   var tarefas=getTarefas(card);
@@ -529,7 +535,7 @@ function renderModal(){
   var etqEl=ce
     ?'<div style="display:flex;flex-wrap:wrap;gap:4px;">'+tiposOpts+'</div>'
     :(card.tipos&&card.tipos.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;">'+card.tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("")+'</div>':'<span style="font-size:12px;color:var(--text3);">Nenhuma</span>');
-  var tarefasPanel='<div style="background:#ebecf0;padding:14px 12px;overflow-y:auto;border-left:1px solid #dfe1e6;">'+buildTarefasHTML(card,ce)+'</div>';
+  var tarefasPanel='<div id="tarefas-panel-'+id+'" style="background:#ebecf0;padding:14px 12px;overflow-y:auto;border-left:1px solid #dfe1e6;">'+buildTarefasHTML(card,ce)+'</div>';
   document.getElementById("modal-container").innerHTML=
     '<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-trello" style="width:'+mw+';" onclick="event.stopPropagation()">'
     +'<div class="modal-cover" style="background:'+cv+';" id="mcover">'
