@@ -27,7 +27,7 @@ function onColDrop(e,colId){
   var antes=card.status;card.status=colId;col.splice(ins,0,card);col.forEach(function(c,i){c.ordem=i;});
   renderKanban();
   Promise.all(col.map(function(c){return dbUpsert(c);})).then(function(){
-    if(antes!==colId){var al=COLS.find(function(c){return c.id===antes;});var dl=COLS.find(function(c){return c.id===colId;});dbLog("Moveu demanda",card.titulo+": "+(al?al.label:antes)+" \u2192 "+(dl?dl.label:colId));}
+    if(antes!==colId){var al=COLS.find(function(c){return c.id===antes;});var dl=COLS.find(function(c){return c.id===colId;});dbLog("Moveu demanda",card.titulo+": "+(al?al.label:antes)+" > "+(dl?dl.label:colId));}
   }).catch(function(){toast("Erro ao salvar",true);});
 }
 
@@ -165,24 +165,38 @@ function obsKd(e,cardId){if(e.key==="Escape"){e.preventDefault();stopEditObs(car
 async function saveObsModal(cardId){var ta=document.getElementById("obs-inp-"+cardId);var val=ta?ta.value:"";var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.obs=val;stopEditObs(cardId,val);var faceObs=document.getElementById("co-"+cardId);if(faceObs){if(val){faceObs.style.display="";faceObs.textContent=trunc(val,90);}else{faceObs.style.display="none";}}try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}}
 function stopEditObs(cardId,val){var block=document.getElementById("obs-block-"+cardId);var textEl=document.getElementById("obs-txt-"+cardId);var inpEl=document.getElementById("obs-inp-"+cardId);if(block)block.classList.remove("open");if(inpEl)inpEl.style.display="none";if(textEl){textEl.style.display="";if(val!==null){if(val){textEl.className="obs-text";textEl.textContent=val;}else{textEl.className="obs-ph";textEl.textContent="Clique para adicionar observações...";}}}if(_ef==="obs"){_ef=null;_ecid=null;}}
 
-
 // ── KANBAN ──
 function renderView(){if(viewMode==="lista")renderLista();else renderKanban();}
-function taskChipHTML(card){
-  var tarefas=card.tarefas||[];if(!tarefas.length)return "";
+
+function taskChipHTML(cardId){
+  var tarefas=getTarefas(cardId);if(!tarefas.length)return "";
   var today=new Date().toISOString().split("T")[0];
   var total=tarefas.length;
   var done=tarefas.filter(function(t){return t.status==="concluido";}).length;
-  var atrasada=tarefas.some(function(t){return t.status!=="concluido"&&t.dataFim&&t.dataFim<today;});
-  if(atrasada)return '<span class="chip" style="background:#fef2f2;color:#dc2626;font-weight:700;">'+ic("check")+" "+done+"/"+total+" \u00b7 atraso</span>";
-  if(done===total)return '<span class="chip" style="background:#dcfce7;color:#15803d;font-weight:700;">'+ic("check")+" "+done+"/"+total+" \u00b7 ok</span>";
+  var atrasada=tarefas.some(function(t){return t.status!=="concluido"&&t.data_fim&&t.data_fim<today;});
+  if(atrasada)return '<span class="chip" style="background:#fef2f2;color:#dc2626;font-weight:700;">'+ic("check")+" "+done+"/"+total+" · atraso</span>";
+  if(done===total)return '<span class="chip" style="background:#dcfce7;color:#15803d;font-weight:700;">'+ic("check")+" "+done+"/"+total+" · ok</span>";
   return '<span class="chip">'+ic("check")+" "+done+"/"+total+"</span>";
 }
+
 function buildCardHTML(card,ce){
   var nc=getCmts(card).length;var cv=coverColor(card);var labels=buildLabels(card);var cc2=ccHTML(card);
   var obsP=card.obs?'<div class="card-obs" id="co-'+card.id+'">'+trunc(card.obs,90)+'</div>':'<div class="card-obs" id="co-'+card.id+'" style="display:none;"></div>';
-  var taskChip=taskChipHTML(card);
-  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+card.titulo+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(nc?'<span class="chip">'+ic("comment")+" "+nc+"</span>":"")+(card.dataFim?'<span class="chip">'+ic("cal")+" "+card.dataFim+"</span>":"")+(taskChip||"")+'</div></div></div>';
+  var taskChip=taskChipHTML(card.id);
+  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'
+    +'<div class="card-cover" style="background:'+cv+';"></div>'
+    +'<div class="card-body">'
+    +(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")
+    +'<div class="card-title" id="ct-'+card.id+'">'+card.titulo+'</div>'
+    +obsP
+    +'<div class="card-meta" id="task-chip-'+card.id+'">'
+    +(cc2||"")
+    +(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")
+    +(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")
+    +(nc?'<span class="chip">'+ic("comment")+" "+nc+"</span>":"")
+    +(card.dataFim?'<span class="chip">'+ic("cal")+" "+card.dataFim+"</span>":"")
+    +(taskChip||"")
+    +'</div></div></div>';
 }
 
 function renderKanban(){
@@ -214,11 +228,68 @@ function renderKanban(){
 }
 
 // ── LISTA ──
+function toggleListaRow(cardId){
+  var row=document.getElementById("lista-expand-"+cardId);
+  if(!row)return;
+  var isOpen=row.style.display!=="none";
+  row.style.display=isOpen?"none":"table-row";
+}
+
 function renderLista(){
   viewMode="lista";var ce=perfil==="mestre"||perfil==="advogado";var filtered=getFiltered();
   var app=document.getElementById("app");app.className="page-mode";
-  var rows=filtered.length===0?'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma demanda</td></tr>':filtered.map(function(card){var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",badgeBg:"#f1f5f9",badgeText:"#475569",dot:"#94a3b8"};var sp='<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';"><span style="width:6px;height:6px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</span>';var nc=getCmts(card).length;var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"—");var ac=ce?'<button onclick="openCardModal(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;margin-right:3px;">Abrir</button><button onclick="confirmDelCard(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"—";return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'+'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+card.titulo+'</td>'+'<td style="padding:11px 14px;">'+sp+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"—")+'</td>'+'<td style="padding:11px 14px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text3);">'+(nc?'<span style="display:flex;align-items:center;gap:3px;">'+ic('comment')+' '+nc+'</span>':"—")+'</td>'+'<td style="padding:11px 14px;" onclick="event.stopPropagation()">'+ac+'</td></tr>';}).join("");
-  app.innerHTML=headerHTML("lista")+toolbarHTML(ce)+'<div style="padding:16px 16px 40px;max-width:1400px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Título','Status','C/C','Resp.','Tipos','Início','Encerramento','Com.','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+  var rows=filtered.length===0
+    ?'<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma demanda</td></tr>'
+    :filtered.map(function(card){
+      var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",badgeBg:"#f1f5f9",badgeText:"#475569",dot:"#94a3b8"};
+      var sp='<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';"><span style="width:6px;height:6px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</span>';
+      var nc=getCmts(card).length;
+      var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"—");
+      var ac=ce?'<button onclick="openCardModal(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;margin-right:3px;">Abrir</button><button onclick="confirmDelCard(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"—";
+      var tarefas=getTarefas(card.id);
+      var total=tarefas.length;
+      var done=total?tarefas.filter(function(t){return t.status==="concluido";}).length:0;
+      var today=new Date().toISOString().split("T")[0];
+      var atrasada=tarefas.some(function(t){return t.status!=="concluido"&&t.data_fim&&t.data_fim<today;});
+      var chipStyle=atrasada?"background:#fef2f2;color:#dc2626;font-weight:700;":done&&done===total?"background:#dcfce7;color:#15803d;font-weight:700;":"";
+      var tarefaChip=total?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 7px;border-radius:4px;background:#f4f5f7;'+chipStyle+'">'+ic("check")+" "+done+"/"+total+"</span>":"—";
+      var chevron=total?'<button onclick="toggleListaRow(\''+card.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 5px;border-radius:5px;font-size:11px;display:inline-flex;align-items:center;gap:3px;">'+ic("check")+" Ver tarefas</button>':"";
+
+      // linha de tarefas expandível
+      var tarefasExpand='<tr id="lista-expand-'+card.id+'" style="display:none;"><td colspan="10" style="padding:0;background:#f8fafc;border-bottom:1px solid var(--border);">'
+        +'<div style="padding:12px 24px 16px;">'
+        +'<div style="font-size:11px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Tarefas</div>'
+        +(tarefas.length===0?'<div style="font-size:12px;color:#94a3b8;font-style:italic;">Nenhuma tarefa</div>'
+          :tarefas.map(function(t){
+            var tcol=COLS.find(function(co){return co.id===t.status;})||{label:"?",dot:"#94a3b8",badgeBg:"#f1f5f9",badgeText:"#475569"};
+            var tat=t.status!=="concluido"&&t.data_fim&&t.data_fim<today;
+            var tcon=t.status==="concluido";
+            var bLeft=tat?"#dc2626":tcon?"#22c55e":"#e2e8f0";
+            var tStyle="font-size:12px;font-weight:600;color:"+(tcon?"#94a3b8":"#172b4d")+";"+(tcon?"text-decoration:line-through;":"");
+            return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#fff;border-radius:8px;margin-bottom:5px;border-left:3px solid '+bLeft+';">'
+              +'<div style="flex:1;'+tStyle+'">'+t.texto+'</div>'
+              +(t.responsavel?'<span style="font-size:10px;font-weight:600;background:#f4f5f7;border-radius:4px;padding:2px 6px;color:#5e6c84;">'+t.responsavel+'</span>':"")
+              +'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:'+tcol.badgeBg+';color:'+tcol.badgeText+';">'
+              +'<span style="width:5px;height:5px;border-radius:50%;background:'+tcol.dot+';"></span>'+tcol.label+'</span>'
+              +(t.data_fim?'<span style="font-size:10px;color:'+(tat?"#dc2626":"#94a3b8")+';">'+(tat?"<b>":"")+t.data_fim.split("-").reverse().join("/")+(tat?"</b>":"")+'</span>':"")
+              +'</div>';
+          }).join(""))
+        +'</div></td></tr>';
+
+      return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'
+        +'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+card.titulo+'</td>'
+        +'<td style="padding:11px 14px;">'+sp+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"—")+'</td>'
+        +'<td style="padding:11px 14px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"—")+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"—")+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"—")+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text3);">'+(nc?'<span style="display:flex;align-items:center;gap:3px;">'+ic('comment')+' '+nc+'</span>':"—")+'</td>'
+        +'<td style="padding:11px 14px;" onclick="event.stopPropagation()">'+tarefaChip+' '+chevron+'</td>'
+        +'<td style="padding:11px 14px;" onclick="event.stopPropagation()">'+ac+'</td>'
+        +'</tr>'
+        +tarefasExpand;
+    }).join("");
+  app.innerHTML=headerHTML("lista")+toolbarHTML(ce)+'<div style="padding:16px 16px 40px;max-width:1400px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Título','Status','C/C','Resp.','Tipos','Início','Encerramento','Com.','Tarefas','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
   bindFCI();
 }
-

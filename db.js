@@ -1,6 +1,6 @@
 // ── DB ──
 async function dbFetch(){var r=await fetch(SB+"/rest/v1/demandas?select=id,data",{headers:H});if(!r.ok)throw new Error();return (await r.json()).map(function(x){return Object.assign({id:x.id},x.data);});}
-async function dbUpsert(card){var id=card.id,data=Object.assign({},card);delete data.id;var r=await fetch(SB+"/rest/v1/demandas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id,data})});if(!r.ok)throw new Error();}
+async function dbUpsert(card){var id=card.id,data=Object.assign({},card);delete data.id;delete data.tarefas;var r=await fetch(SB+"/rest/v1/demandas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id,data})});if(!r.ok)throw new Error();}
 async function dbDel(id){await fetch(SB+"/rest/v1/demandas?id=eq."+id,{method:"DELETE",headers:H});}
 async function dbLog(a,d){await fetch(SB+"/rest/v1/logs",{method:"POST",headers:H,body:JSON.stringify({perfil,acao:a,detalhe:d})});}
 async function dbFetchLogs(){var r=await fetch(SB+"/rest/v1/logs?select=*&order=criado_em.desc&limit=100",{headers:H});if(!r.ok)throw new Error();return r.json();}
@@ -13,3 +13,29 @@ async function loadResp(){try{var r=await fetch(SB+"/rest/v1/usuarios?ativo=eq.t
 async function loadClientes(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/clientes?select=*&order=numero&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}clientesDB=all;}catch(e){}}
 async function loadCasos(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/casos?select=*&order=numero&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}casosDB=all;}catch(e){}}
 
+// ── TAREFAS DB ──
+async function dbFetchTarefas(cardId){
+  var url=SB+"/rest/v1/tarefas?card_id=eq."+cardId+"&order=criado_em";
+  var r=await fetch(url,{headers:H});if(!r.ok)return [];
+  return r.json();
+}
+async function dbFetchTodasTarefas(){
+  var all=[],from=0,chunk=1000;
+  while(true){
+    var r=await fetch(SB+"/rest/v1/tarefas?select=*&order=criado_em&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});
+    if(!r.ok)break;
+    var rows=await r.json();all=all.concat(rows);
+    if(rows.length<chunk)break;from+=chunk;
+  }
+  return all;
+}
+async function dbUpsertTarefa(t){
+  var r=await fetch(SB+"/rest/v1/tarefas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(t)});
+  if(!r.ok)throw new Error();
+}
+async function dbDelTarefa(id){
+  await fetch(SB+"/rest/v1/tarefas?id=eq."+id,{method:"DELETE",headers:H});
+}
+async function dbDelTarefasDoCard(cardId){
+  await fetch(SB+"/rest/v1/tarefas?card_id=eq."+cardId,{method:"DELETE",headers:H});
+}
