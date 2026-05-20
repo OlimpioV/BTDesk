@@ -1,3 +1,13 @@
+function checkAuth(){var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email"),i=sessionStorage.getItem("bari_id");if(p){perfil=p;nomeUser=n;emailUser=e;userDbId=i;return true;}return false;}
+function logout(){sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;userDbId=null;renderLogin();}
+async function doLogin(){
+  var email=(document.getElementById("login-email").value||"").trim().toLowerCase();
+  var senha=document.getElementById("login-senha").value;
+  if(!email||!senha){renderLogin("Preencha e-mail e senha.");return;}
+  try{
+    var r=await fetch(SB+"/rest/v1/usuarios?email=eq."+encodeURIComponent(email)+"&senha=eq."+encodeURIComponent(senha)+"&ativo=eq.true&select=*",{headers:H});
+    var rows=await r.json();
+    if(!rows||!rows.length){renderLogin("E-mail ou senha incorretos.");return;}
     var u=rows[0];perfil=u.perfil;nomeUser=u.nome;emailUser=u.email;userDbId=u.id;
     sessionStorage.setItem("bari_perfil",u.perfil);sessionStorage.setItem("bari_nome",u.nome);sessionStorage.setItem("bari_email",u.email);sessionStorage.setItem("bari_id",u.id);
     dbLog("Login","Acesso ao sistema");init();

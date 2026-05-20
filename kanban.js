@@ -253,7 +253,7 @@ function renderLista(){
       var atrasada=tarefas.some(function(t){return t.status!=="concluido"&&t.data_fim&&t.data_fim<today;});
       var chipStyle=atrasada?"background:#fef2f2;color:#dc2626;font-weight:700;":done&&done===total?"background:#dcfce7;color:#15803d;font-weight:700;":"";
       var tarefaChip=total?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 7px;border-radius:4px;background:#f4f5f7;'+chipStyle+'">'+ic("check")+" "+done+"/"+total+"</span>":"—";
-      var chevron=total?'<button onclick="toggleListaRow(\''+card.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 5px;border-radius:5px;font-size:11px;display:inline-flex;align-items:center;gap:3px;">'+ic("check")+" Ver tarefas</button>':"";
+      var chevron=total?'<button onclick="toggleListaRow(\''+card.id+'\'" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 5px;border-radius:5px;font-size:11px;display:inline-flex;align-items:center;gap:3px;">'+ic("check")+" Ver tarefas</button>":"";
 
       // linha de tarefas expandível
       var tarefasExpand='<tr id="lista-expand-'+card.id+'" style="display:none;"><td colspan="10" style="padding:0;background:#f8fafc;border-bottom:1px solid var(--border);">'
