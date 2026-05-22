@@ -106,7 +106,7 @@ async function dbDelReuniaoPauta(id){await fetch(SB+"/rest/v1/reuniao_pautas?id=
 // ── PROJETOS INTERNOS DB ──
 async function dbFetchProjetos(equipeId){
   var q=equipeId?"&equipe_id=eq."+equipeId:"";
-  var r=await fetch(SB+"/rest/v1/projetos_internos?select=*&order=criado_em.desc"+q,{headers:H});
+  var r=await fetch(SB+"/rest/v1/projetos_internos?select=*,usuarios(id,nome,sigla)&order=criado_em.desc"+q,{headers:H});
   if(!r.ok)throw new Error();return r.json();
 }
 async function dbUpsertProjeto(p){var r=await fetch(SB+"/rest/v1/projetos_internos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}

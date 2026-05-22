@@ -125,7 +125,7 @@ function _loadReuniaoProjectos(){
   if(!proj.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhum projeto interno.</div>';return;}
   var corStatus={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'}
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'+proj.map(function(p){
-    var resp=responsaveis.indexOf(p.responsavel_id)>=0?p.responsavel_id:"";
+    var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
     var cor=corStatus[p.status]||'#94a3b8';
     return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;">'
@@ -136,7 +136,8 @@ function _loadReuniaoProjectos(){
       +(ce?'<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("comment")+'</button>':'')
       +(ce?'<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>':'')
       +'</div></div>'
-      +(p.descricao?'<div style="font-size:12px;color:var(--text2);margin-top:6px;">'+p.descricao+'</div>':"")
+      +(resp?'<div style="font-size:11px;color:var(--text3);margin-top:4px;">Resp: '+resp+'</div>':"")
+      +(p.descricao?'<div style="font-size:12px;color:var(--text2);margin-top:4px;">'+p.descricao+'</div>':"")
       +'</div>';
   }).join("")+'</div>';
 }
@@ -386,10 +387,13 @@ async function removerPautaDaReuniao(rpId){
 
 // ── PROJETOS INTERNOS ──
 function openNovoProjeto(){openEditProjeto(null);}
-function openEditProjeto(id){
+async function openEditProjeto(id){
   var p=id?projetosDB.find(function(x){return x.id===id;}):null;
   var eqOptions=equipesDB.map(function(e){return '<option value="'+e.id+'"'+(p&&p.equipe_id===e.id?' selected':(!p&&equipeAtiva&&equipeAtiva.id===e.id?' selected':''))+'>'+e.nome+'</option>';}).join("");
-  var respOpts=responsaveis.map(function(r){return '<option value="'+r+'"'+(p&&p.responsavel_id===r?' selected':'')+'>'+r+'</option>';}).join("");
+  var todosUsers=[];
+  try{todosUsers=await dbFetchUsers();}catch(_){}
+  var advs=todosUsers.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});
+  var respOpts=advs.map(function(u){return '<option value="'+u.id+'"'+(p&&p.responsavel_id===u.id?' selected':'')+'>'+((u.sigla||"")||(u.nome||u.email||""))+'</option>';}).join("");
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,500px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">'+(p?"Editar projeto":"Novo projeto interno")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo *</label><input id="proj-titulo" value="'+(p?p.titulo:'')+'"/></div>'
