@@ -37,6 +37,8 @@ const PALETA=[
 
 let cards=[],perfil=null,nomeUser=null,emailUser=null,userDbId=null;
 let equipeAtiva=null,equipesDB=[],demandaEquipesDB={};
+let reunioesDB=[],pautasDB=[],projetosDB=[],notificacoesDB=[];
+let reuniaoAtiva=null;
 let filterResp="",filterTipo="",filterStatus="",filterCliente="",filterCaso="";
 let viewMode="kanban";
 let dragCardId=null,_dOvColId=null,_dOvIdx=null;

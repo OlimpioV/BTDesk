@@ -63,3 +63,45 @@ async function loadDemandaEquipes(){
     all.forEach(function(x){if(!demandaEquipesDB[x.demanda_id])demandaEquipesDB[x.demanda_id]=[];demandaEquipesDB[x.demanda_id].push(x.equipe_id);});
   }catch(e){}
 }
+
+// ── REUNIOES DB ──
+async function dbFetchReunioes(equipeId){
+  var q=equipeId?"&equipe_id=eq."+equipeId:"";
+  var r=await fetch(SB+"/rest/v1/reunioes?select=*&order=data.desc"+q,{headers:H});
+  if(!r.ok)throw new Error();return r.json();
+}
+async function dbUpsertReuniao(rn){var r=await fetch(SB+"/rest/v1/reunioes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(rn)});if(!r.ok)throw new Error();}
+async function dbDelReuniao(id){await fetch(SB+"/rest/v1/reunioes?id=eq."+id,{method:"DELETE",headers:H});}
+async function dbFetchReuniaoParticipantes(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_participantes?reuniao_id=eq."+reuniaoId+"&select=usuario_id,usuarios(id,nome,sigla,email)",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertReuniaoParticipante(p){var r=await fetch(SB+"/rest/v1/reuniao_participantes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}
+async function dbDelReuniaoParticipante(reuniaoId,userId){await fetch(SB+"/rest/v1/reuniao_participantes?reuniao_id=eq."+reuniaoId+"&usuario_id=eq."+userId,{method:"DELETE",headers:H});}
+
+// ── PAUTAS DB ──
+async function dbFetchPautas(equipeId){
+  var q=equipeId?"&equipe_id=eq."+equipeId:"";
+  var r=await fetch(SB+"/rest/v1/pautas?select=*&order=titulo"+q,{headers:H});
+  if(!r.ok)throw new Error();return r.json();
+}
+async function dbUpsertPauta(p){var r=await fetch(SB+"/rest/v1/pautas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}
+async function dbDelPauta(id){await fetch(SB+"/rest/v1/pautas?id=eq."+id,{method:"DELETE",headers:H});}
+async function dbFetchReuniaoPautas(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_pautas?reuniao_id=eq."+reuniaoId+"&select=*&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertReuniaoPauta(rp){var r=await fetch(SB+"/rest/v1/reuniao_pautas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(rp)});if(!r.ok)throw new Error();}
+async function dbDelReuniaoPauta(id){await fetch(SB+"/rest/v1/reuniao_pautas?id=eq."+id,{method:"DELETE",headers:H});}
+
+// ── PROJETOS INTERNOS DB ──
+async function dbFetchProjetos(equipeId){
+  var q=equipeId?"&equipe_id=eq."+equipeId:"";
+  var r=await fetch(SB+"/rest/v1/projetos_internos?select=*&order=criado_em.desc"+q,{headers:H});
+  if(!r.ok)throw new Error();return r.json();
+}
+async function dbUpsertProjeto(p){var r=await fetch(SB+"/rest/v1/projetos_internos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}
+async function dbDelProjeto(id){await fetch(SB+"/rest/v1/projetos_internos?id=eq."+id,{method:"DELETE",headers:H});}
+async function dbFetchProjetoComentarios(projetoId){var r=await fetch(SB+"/rest/v1/projeto_comentarios?projeto_id=eq."+projetoId+"&select=*,usuarios(nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertProjetoComentario(c){var r=await fetch(SB+"/rest/v1/projeto_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();}
+async function dbDelProjetoComentario(id){await fetch(SB+"/rest/v1/projeto_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
+
+// ── NOTIFICACOES DB ──
+async function dbFetchNotificacoes(){var r=await fetch(SB+"/rest/v1/notificacoes?usuario_id=eq."+userDbId+"&order=criado_em.desc&limit=50",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbMarcarNotificacaoLida(id){await fetch(SB+"/rest/v1/notificacoes?id=eq."+id,{method:"PATCH",headers:H,body:JSON.stringify({lida:true})});}
+async function dbMarcarTodasLidas(){await fetch(SB+"/rest/v1/notificacoes?usuario_id=eq."+userDbId+"&lida=eq.false",{method:"PATCH",headers:H,body:JSON.stringify({lida:true})});}
+async function loadNotificacoes(){try{notificacoesDB=await dbFetchNotificacoes();}catch(e){notificacoesDB=[];}}
