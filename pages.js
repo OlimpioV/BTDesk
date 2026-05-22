@@ -1,5 +1,6 @@
 // ── EQUIPES ──
 async function renderEquipes(){
+  if(perfil!=="mestre"){renderView();return;}
   var app=document.getElementById("app");app.className="page-mode";
   app.innerHTML=headerHTML("eq")+'<div style="padding:24px;max-width:900px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
   try{
@@ -200,6 +201,106 @@ async function saveCard(){
   var cliVal=document.getElementById("f-cli").value;var casoEl=document.getElementById("f-caso");var casoVal=casoEl?casoEl.value:"";
   var card={id,titulo,clienteNum:cliVal?parseInt(cliVal):null,casoNum:casoVal?parseInt(casoVal):null,responsavel:document.getElementById("f-resp").value,status:document.getElementById("f-status").value,email:document.getElementById("f-email").value,dataInicio:document.getElementById("f-di").value,dataFim:document.getElementById("f-df").value,horas:document.getElementById("f-horas").value,obs:document.getElementById("f-obs").value,tipos:formTipos.slice(),comentarios:existing?existing.comentarios||[]:[]};
   if(existing)card.ordem=existing.ordem||0;else{var cc=cards.filter(function(c){return c.status===card.status;});card.ordem=cc.length;}
-  try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");editingId=null;document.getElementById("modal-container").innerHTML="";renderView();}catch(e){toast("Erro",true);}
+  try{
+    await dbUpsert(card);
+    await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);
+    if(!editingId&&equipeAtiva){try{await dbUpsertDemandaEquipe({demanda_id:card.id,equipe_id:equipeAtiva.id});}catch(_){}}
+    if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);
+    toast("Salvo!");editingId=null;document.getElementById("modal-container").innerHTML="";renderView();
+  }catch(e){toast("Erro",true);}
+}
+
+// ── EMAILS (admin mestre) ──
+async function renderEmails(){
+  if(perfil!=="mestre"){renderView();return;}
+  var app=document.getElementById("app");app.className="page-mode";
+  app.innerHTML=headerHTML("emails")+'<div style="padding:24px;max-width:1000px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
+  var logs=[],config=[];
+  try{logs=await dbFetchEmailLogs();}catch(e){}
+  try{config=await dbFetchNotifConfig();}catch(e){}
+  _renderEmailsPagina(logs,config);
+}
+
+function _renderEmailsPagina(logs,config){
+  var app=document.getElementById("app");
+  var abaAtiva=window._emailAba||"logs";
+  var tabs='<div style="display:flex;gap:2px;margin-bottom:20px;">'
+    +['logs','config'].map(function(a){var lab={logs:'Historico de envios',config:'Configuracoes'}[a];return '<button onclick="window._emailAba=\''+a+'\';renderEmails()" style="font-size:12px;font-weight:600;padding:6px 16px;border-radius:7px;border:1px solid var(--border);background:'+(abaAtiva===a?'var(--bt-navy)':'#fff')+';color:'+(abaAtiva===a?'#fff':'var(--text2)')+';cursor:pointer;">'+lab+'</button>';}).join("")
+    +'</div>';
+
+  var conteudo="";
+  if(abaAtiva==="logs"){
+    var statusCor={'enviado':'#22c55e','erro':'#ef4444','pendente':'#f59e0b'};
+    var rows=!logs.length?'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text3);">Nenhum e-mail registrado</td></tr>':logs.map(function(l){
+      var cor=statusCor[l.status]||'#94a3b8';
+      var dest=(l.destinatarios||[]).join(', ');
+      var dt=l.criado_em?new Date(l.criado_em).toLocaleString('pt-BR'):'—';
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        +'<td style="padding:9px 12px;font-size:12px;color:var(--text2);">'+dt+'</td>'
+        +'<td style="padding:9px 12px;font-size:12px;font-weight:600;color:var(--bt-navy);">'+(l.tipo||'—')+'</td>'
+        +'<td style="padding:9px 12px;font-size:12px;color:var(--text2);">'+trunc(l.assunto||'',40)+'</td>'
+        +'<td style="padding:9px 12px;font-size:11px;color:var(--text3);">'+trunc(dest,40)+'</td>'
+        +'<td style="padding:9px 12px;"><div style="display:flex;align-items:center;gap:6px;">'
+        +'<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:'+cor+'22;color:'+cor+';">'+l.status+'</span>'
+        +(l.status==='erro'?'<button onclick="reenviarEmail(\''+l.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Reenviar</button>':"")
+        +'</div></td>'
+        +'</tr>';
+    }).join("");
+    conteudo='<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
+      +'<table style="width:100%;border-collapse:collapse;">'
+      +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
+      +['Data','Tipo','Assunto','Destinatarios','Status'].map(function(h){return '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;">'+h+'</th>';}).join("")
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  } else {
+    var tipoLabel={'projeto_sinalizado':'Sinalizar projeto (botao manual)','reuniao_criada':'Reuniao criada automaticamente','tarefa_atrasada':'Tarefa em atraso'};
+    conteudo='<div style="display:flex;flex-direction:column;gap:14px;">'
+      +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;font-size:13px;color:#92400e;">'
+      +'Para ativar o envio, voce precisa: <br/>1. Criar uma conta em <strong>resend.com</strong> e gerar uma API key<br/>'
+      +'2. No painel Supabase, ir em <strong>Edge Functions > enviar-email > Secrets</strong> e adicionar: <code>RESEND_API_KEY</code> e <code>FROM_EMAIL</code><br/>'
+      +'3. Implantar a funcao: copie o codigo de <code>supabase/functions/enviar-email/index.ts</code> no dashboard do Supabase'
+      +'</div>'
+      +config.map(function(c){
+        var lab=tipoLabel[c.tipo]||c.tipo;
+        var extras=(c.emails_extras||[]).join(', ');
+        return '<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+          +'<div style="font-size:14px;font-weight:600;color:var(--bt-navy);">'+lab+'</div>'
+          +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text2);">'
+          +'<input type="checkbox" id="nc-ativo-'+c.id+'"'+(c.ativo?' checked':'')+' onchange="toggleNotifConfig(\''+c.id+'\',this.checked)"/>'
+          +'Ativo</label>'
+          +'</div>'
+          +'<div class="field" style="margin-bottom:0;">'
+          +'<label style="font-size:11px;">E-mails extras (alem dos participantes, separados por virgula)</label>'
+          +'<div style="display:flex;gap:6px;"><input id="nc-ext-'+c.id+'" value="'+extras+'" placeholder="email1@exemplo.com, email2@..." style="flex:1;"/>'
+          +'<button onclick="salvarExtras(\''+c.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Salvar</button>'
+          +'</div></div></div>';
+      }).join("")
+      +'</div>';
+  }
+
+  app.innerHTML=headerHTML("emails")
+    +'<div style="padding:24px;max-width:1000px;margin:0 auto;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Gestao de E-mails</div>'
+    +(abaAtiva==="logs"?'<button onclick="renderEmails()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Atualizar</button>':"")
+    +'</div>'
+    +tabs+conteudo
+    +'</div>';
+}
+
+async function toggleNotifConfig(id,ativo){
+  try{await dbUpsertNotifConfig({id,ativo});toast(ativo?"Notificacao ativada":"Notificacao desativada");}
+  catch(e){toast("Erro",true);}
+}
+async function salvarExtras(id){
+  var inp=document.getElementById("nc-ext-"+id);
+  var val=(inp?inp.value:"").trim();
+  var emails_extras=val?val.split(",").map(function(e){return e.trim();}).filter(Boolean):[];
+  try{await dbUpsertNotifConfig({id,emails_extras});toast("Salvo!");}
+  catch(e){toast("Erro",true);}
+}
+async function reenviarEmail(logId){
+  try{await dbReenviarEmail(logId);toast("Reenviado!");renderEmails();}
+  catch(e){toast("Erro ao reenviar: "+e.message,true);}
 }
 

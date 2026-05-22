@@ -105,3 +105,24 @@ async function dbFetchNotificacoes(){var r=await fetch(SB+"/rest/v1/notificacoes
 async function dbMarcarNotificacaoLida(id){await fetch(SB+"/rest/v1/notificacoes?id=eq."+id,{method:"PATCH",headers:H,body:JSON.stringify({lida:true})});}
 async function dbMarcarTodasLidas(){await fetch(SB+"/rest/v1/notificacoes?usuario_id=eq."+userDbId+"&lida=eq.false",{method:"PATCH",headers:H,body:JSON.stringify({lida:true})});}
 async function loadNotificacoes(){try{notificacoesDB=await dbFetchNotificacoes();}catch(e){notificacoesDB=[];}}
+
+// ── EMAIL LOGS ──
+async function dbFetchEmailLogs(){var r=await fetch(SB+"/rest/v1/email_logs?select=*&order=criado_em.desc&limit=100",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbFetchNotifConfig(){var r=await fetch(SB+"/rest/v1/notif_config?select=*&order=tipo",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbUpsertNotifConfig(c){var r=await fetch(SB+"/rest/v1/notif_config",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();}
+async function enviarEmail(opts){
+  var r=await fetch(SB+"/functions/v1/enviar-email",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":SK,"Authorization":"Bearer "+SK},
+    body:JSON.stringify(Object.assign({criado_por:userDbId},opts))
+  });
+  if(!r.ok){var t=await r.text();throw new Error(t);}
+  return r.json();
+}
+async function dbReenviarEmail(logId){
+  var r=await fetch(SB+"/rest/v1/email_logs?id=eq."+logId+"&select=*",{headers:H});
+  if(!r.ok)throw new Error();
+  var rows=await r.json();if(!rows.length)throw new Error();
+  var log=rows[0];
+  return enviarEmail({destinatarios:log.destinatarios,assunto:log.assunto,corpo_html:log.corpo_html,tipo:log.tipo,referencia_id:log.referencia_id});
+}

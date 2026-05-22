@@ -131,6 +131,7 @@ function _loadReuniaoProjectos(){
       +'<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:'+cor+'22;color:'+cor+';">'+p.status.replace('_',' ')+'</span>'
       +(ce?'<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>':'')
       +(ce?'<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("comment")+'</button>':'')
+      +(ce?'<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>':'')
       +'</div></div>'
       +(p.descricao?'<div style="font-size:12px;color:var(--text2);margin-top:6px;">'+p.descricao+'</div>':"")
       +'</div>';
@@ -457,4 +458,43 @@ async function gerarAta(reuniaoId){
   var a=document.createElement("a");a.href=url;a.download="ata-"+dataFmt.replace(/\//g,"-")+".txt";a.click();
   setTimeout(function(){URL.revokeObjectURL(url);},1000);
   toast("Ata gerada!");
+}
+
+// ── SINALIZAR PROJETO ──
+async function sinalizarProjeto(projetoId){
+  var p=projetosDB.find(function(x){return x.id===projetoId;});
+  if(!p){toast("Projeto nao encontrado",true);return;}
+  var assunto="[BTDesk] Sinalizacao: "+p.titulo;
+  var corpo_html="<h2>Sinalizacao de projeto</h2>"
+    +"<p><strong>Projeto:</strong> "+p.titulo+"</p>"
+    +(p.descricao?"<p>"+p.descricao+"</p>":"")
+    +"<p><strong>Status:</strong> "+p.status.replace("_"," ")+"</p>"
+    +"<p><strong>Sinalizado por:</strong> "+nomeUser+"</p>"
+    +"<hr/><p style='font-size:12px;color:#888;'>BTDesk - Barcellos Tucunduva Advogados</p>";
+
+  // Busca e-mails dos participantes da reuniao ativa
+  var destinatarios=[];
+  if(reuniaoAtiva){
+    try{
+      var parts=await dbFetchReuniaoParticipantes(reuniaoAtiva.id);
+      parts.forEach(function(pr){if(pr.usuarios&&pr.usuarios.email)destinatarios.push(pr.usuarios.email);});
+    }catch(_){}
+  }
+
+  if(!destinatarios.length&&!p.responsavel_id){
+    toast("Nenhum destinatario encontrado. Configure participantes da reuniao ou e-mails extras em E-mails > Configuracoes.",true);
+    return;
+  }
+
+  try{
+    var btn=document.querySelector("[onclick=\"sinalizarProjeto('"+projetoId+"')\"]");
+    if(btn){btn.textContent="Enviando...";btn.disabled=true;}
+    await enviarEmail({destinatarios,assunto,corpo_html,tipo:"projeto_sinalizado",referencia_id:projetoId});
+    toast("Sinalizacao enviada por e-mail!");
+    if(btn){btn.textContent="! Sinalizar";btn.disabled=false;}
+  }catch(e){
+    toast("Erro ao enviar: "+e.message,true);
+    var btn2=document.querySelector("[onclick=\"sinalizarProjeto('"+projetoId+"')\"]");
+    if(btn2){btn2.textContent="! Sinalizar";btn2.disabled=false;}
+  }
 }
