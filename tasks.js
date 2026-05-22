@@ -26,7 +26,7 @@ function refreshTarefasPanel(cardId){
 }
 
 async function addTarefa(cardId,texto,resp,di,df,st){
-  var t={id:uid(),card_id:cardId,texto:texto,responsavel:resp||"",data_inicio:di||"",data_fim:df||"",status:st||(COLS[0]?COLS[0].id:"aberto"),criado_em:new Date().toISOString()};
+  var t={id:uid(),card_id:cardId,texto:texto,responsavel:resp||"",data_inicio:di||"",data_fim:df||"",status:st||(COLS[0]?COLS[0].id:"aberto"),criado_em:new Date().toISOString(),equipe_id:equipeAtiva?equipeAtiva.id:null};
   if(!tarefasDB[cardId])tarefasDB[cardId]=[];
   tarefasDB[cardId].push(t);
   await dbUpsertTarefa(t);

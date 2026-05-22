@@ -70,7 +70,22 @@ async function dbFetchReunioes(equipeId){
   var r=await fetch(SB+"/rest/v1/reunioes?select=*&order=data.desc"+q,{headers:H});
   if(!r.ok)throw new Error();return r.json();
 }
-async function dbUpsertReuniao(rn){var r=await fetch(SB+"/rest/v1/reunioes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(rn)});if(!r.ok)throw new Error();}
+async function dbUpsertReuniao(rn){var r=await fetch(SB+"/rest/v1/reunioes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(rn)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbUpsertNotificacao(n){var r=await fetch(SB+"/rest/v1/notificacoes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(n)});if(!r.ok)throw new Error();}
+async function criarNotifParaMembros(equipeId,tipo,referencia_id,mensagem){
+  try{
+    var r=await fetch(SB+"/rest/v1/equipe_membros?equipe_id=eq."+equipeId+"&select=usuario_id",{headers:H});
+    if(!r.ok)return;var membros=await r.json();
+    await Promise.all(membros.map(function(m){return dbUpsertNotificacao({usuario_id:m.usuario_id,tipo,referencia_id,mensagem});}));
+  }catch(_){}
+}
+async function criarNotifParaParticipantes(reuniaoId,tipo,referencia_id,mensagem){
+  try{
+    var r=await fetch(SB+"/rest/v1/reuniao_participantes?reuniao_id=eq."+reuniaoId+"&select=usuario_id",{headers:H});
+    if(!r.ok)return;var parts=await r.json();
+    await Promise.all(parts.map(function(p){return dbUpsertNotificacao({usuario_id:p.usuario_id,tipo,referencia_id,mensagem});}));
+  }catch(_){}
+}
 async function dbDelReuniao(id){await fetch(SB+"/rest/v1/reunioes?id=eq."+id,{method:"DELETE",headers:H});}
 async function dbFetchReuniaoParticipantes(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_participantes?reuniao_id=eq."+reuniaoId+"&select=usuario_id,usuarios(id,nome,sigla,email)",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertReuniaoParticipante(p){var r=await fetch(SB+"/rest/v1/reuniao_participantes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}

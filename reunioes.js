@@ -75,13 +75,16 @@ function _buildReuniaoDetalhe(r){
       +'</div>':"")
     +'</div>';
   if(r.observacoes){html+='<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--text2);">'+r.observacoes+'</div>';}
+  html+='<div style="margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:700;color:var(--bt-navy);">Participantes</div>'
+    +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("users")+' Gerenciar</button>':"")
+    +'</div><div id="reuniao-part-area" style="min-height:24px;">Carregando...</div></div>';
   html+='<div id="reuniao-pautas-area">Carregando pautas...</div>';
   html+='<div style="margin-top:28px;"><div style="font-size:13px;font-weight:700;color:var(--bt-navy);margin-bottom:12px;">Projetos internos</div>'
     +'<div id="reuniao-projetos-area">Carregando projetos...</div>'
     +(ce?'<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:12px;padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+ic("plus")+' Novo projeto interno</button>':"")
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadReuniaoPautas(r.id);_loadReuniaoProjectos();},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadReuniaoPautas(r.id);_loadReuniaoProjectos();},0);
   return html;
 }
 
@@ -184,11 +187,24 @@ async function salvarReuniao(id){
   if(titulo)obj.titulo=titulo;
   if(id)obj.id=id;
   try{
-    await dbUpsertReuniao(obj);
+    var criada=await dbUpsertReuniao(obj);
     var eqId=equipeAtiva?equipeAtiva.id:null;
     reunioesDB=await dbFetchReunioes(eqId);
-    if(id)reuniaoAtiva=reunioesDB.find(function(r){return r.id===id;})||null;
-    else reuniaoAtiva=null;
+    if(id){
+      reuniaoAtiva=reunioesDB.find(function(r){return r.id===id;})||null;
+    } else if(criada){
+      reuniaoAtiva=reunioesDB.find(function(r){return r.id===criada.id;})||null;
+      // Adiciona pautas recorrentes automaticamente
+      var recorrentes=pautasDB.filter(function(p){return p.recorrente&&(!p.equipe_id||p.equipe_id===equipe_id);});
+      for(var i=0;i<recorrentes.length;i++){
+        try{await dbUpsertReuniaoPauta({reuniao_id:criada.id,pauta_id:recorrentes[i].id,ordem:i,snapshot_json:{notas:null}});}catch(_){}
+      }
+      // Cria notificacoes para membros da equipe
+      if(equipe_id){
+        var titulo_r=obj.titulo||("Reuniao de "+_fmtData(obj.data));
+        await criarNotifParaMembros(equipe_id,"reuniao_criada",criada.id,"Nova reuniao agendada: "+titulo_r+" em "+_fmtData(obj.data));
+      }
+    }
     closeModal();_renderReunioesPagina();toast("Reuniao salva!");
   }catch(e){toast("Erro ao salvar",true);}
 }
@@ -202,6 +218,53 @@ async function delReuniao(id){
       _renderReunioesPagina();toast("Reuniao excluida!");
     }catch(e){toast("Erro",true);}
   });
+}
+
+// ── PARTICIPANTES ──
+async function _loadParticipantesArea(reuniaoId){
+  var el=document.getElementById("reuniao-part-area");if(!el)return;
+  try{
+    var parts=await dbFetchReuniaoParticipantes(reuniaoId);
+    if(!parts.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum participante adicionado.</span>';return;}
+    el.innerHTML=parts.map(function(p){var u=p.usuarios||{};return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;background:#f1f5f9;border-radius:6px;padding:3px 9px;color:#475569;margin-right:4px;margin-bottom:4px;">'+(u.sigla||u.nome||"?")+'</span>';}).join("");
+  }catch(_){if(el)el.innerHTML='';}
+}
+async function openGerenciarParticipantes(reuniaoId){
+  var mc=document.getElementById("modal-container");
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,460px);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Participantes</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+    +'<div id="part-list" style="max-height:320px;overflow-y:auto;margin-bottom:14px;">Carregando...</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarParticipantes(\''+reuniaoId+'\')">Salvar</button></div>'
+    +'</div></div>';
+  try{
+    var [todosUsers,atuais]=await Promise.all([dbFetchUsers(),dbFetchReuniaoParticipantes(reuniaoId)]);
+    var idsAtuais=atuais.map(function(p){return p.usuario_id;});
+    var advs=todosUsers.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});
+    var el=document.getElementById("part-list");if(!el)return;
+    if(!advs.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhum usuario disponivel.</div>';return;}
+    el.innerHTML=advs.map(function(u){
+      var sel=idsAtuais.includes(u.id);
+      return '<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer;">'
+        +'<input type="checkbox" data-uid="'+u.id+'"'+(sel?' checked':'')+'/>'
+        +'<span style="font-size:13px;color:var(--bt-navy);font-weight:600;">'+(u.sigla?u.sigla+' — ':'')+(u.nome||u.email||"")+'</span>'
+        +'<span style="font-size:11px;color:var(--text3);">'+u.email+'</span>'
+        +'</label>';
+    }).join("");
+  }catch(e){var el2=document.getElementById("part-list");if(el2)el2.innerHTML='<div style="color:var(--text3);">Erro ao carregar.</div>';}
+}
+async function salvarParticipantes(reuniaoId){
+  var checks=document.querySelectorAll("#part-list input[data-uid]");
+  var selecionados=[];
+  checks.forEach(function(c){if(c.checked)selecionados.push(c.getAttribute("data-uid"));});
+  try{
+    var atuais=await dbFetchReuniaoParticipantes(reuniaoId);
+    var idsAtuais=atuais.map(function(p){return p.usuario_id;});
+    var adicionar=selecionados.filter(function(id){return !idsAtuais.includes(id);});
+    var remover=idsAtuais.filter(function(id){return !selecionados.includes(id);});
+    await Promise.all(adicionar.map(function(uid){return dbUpsertReuniaoParticipante({reuniao_id:reuniaoId,usuario_id:uid});}));
+    await Promise.all(remover.map(function(uid){return dbDelReuniaoParticipante(reuniaoId,uid);}));
+    closeModal();_loadParticipantesArea(reuniaoId);toast("Participantes salvos!");
+  }catch(e){toast("Erro ao salvar",true);}
 }
 
 // ── PAUTAS ──
@@ -490,7 +553,12 @@ async function sinalizarProjeto(projetoId){
     var btn=document.querySelector("[onclick=\"sinalizarProjeto('"+projetoId+"')\"]");
     if(btn){btn.textContent="Enviando...";btn.disabled=true;}
     await enviarEmail({destinatarios,assunto,corpo_html,tipo:"projeto_sinalizado",referencia_id:projetoId});
-    toast("Sinalizacao enviada por e-mail!");
+    // Notificacao interna para participantes da reuniao ativa
+    if(reuniaoAtiva){
+      await criarNotifParaParticipantes(reuniaoAtiva.id,"projeto_sinalizado",projetoId,"Projeto sinalizado: "+p.titulo);
+      notificacoesDB=await dbFetchNotificacoes();
+    }
+    toast("Sinalizacao enviada!");
     if(btn){btn.textContent="! Sinalizar";btn.disabled=false;}
   }catch(e){
     toast("Erro ao enviar: "+e.message,true);
