@@ -39,3 +39,27 @@ async function dbDelTarefa(id){
 async function dbDelTarefasDoCard(cardId){
   await fetch(SB+"/rest/v1/tarefas?card_id=eq."+cardId,{method:"DELETE",headers:H});
 }
+
+// ── EQUIPES DB ──
+async function dbFetchEquipes(){var r=await fetch(SB+"/rest/v1/equipes?select=*&order=nome",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbUpsertEquipe(e){var r=await fetch(SB+"/rest/v1/equipes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(e)});if(!r.ok)throw new Error();}
+async function dbDelEquipe(id){await fetch(SB+"/rest/v1/equipes?id=eq."+id,{method:"DELETE",headers:H});}
+async function dbFetchEquipeMembros(equipeId){var r=await fetch(SB+"/rest/v1/equipe_membros?equipe_id=eq."+equipeId+"&select=usuario_id,usuarios(id,nome,sigla,email,perfil)",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbUpsertEquipeMembro(m){var r=await fetch(SB+"/rest/v1/equipe_membros",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(m)});if(!r.ok)throw new Error();}
+async function dbDelEquipeMembro(equipeId,userId){await fetch(SB+"/rest/v1/equipe_membros?equipe_id=eq."+equipeId+"&usuario_id=eq."+userId,{method:"DELETE",headers:H});}
+async function dbUpsertDemandaEquipe(de){var r=await fetch(SB+"/rest/v1/demanda_equipes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(de)});if(!r.ok)throw new Error();}
+async function dbDelDemandaEquipe(demandaId,equipeId){await fetch(SB+"/rest/v1/demanda_equipes?demanda_id=eq."+demandaId+"&equipe_id=eq."+equipeId,{method:"DELETE",headers:H});}
+async function loadEquipes(){
+  try{
+    if(perfil==="mestre"){var r=await fetch(SB+"/rest/v1/equipes?select=*&order=nome",{headers:H});if(!r.ok)return;equipesDB=await r.json();}
+    else{var r=await fetch(SB+"/rest/v1/equipe_membros?usuario_id=eq."+userDbId+"&select=equipes(id,nome,cor)",{headers:H});if(!r.ok)return;var rows=await r.json();equipesDB=rows.map(function(x){return x.equipes;}).filter(Boolean);}
+  }catch(e){}
+}
+async function loadDemandaEquipes(){
+  try{
+    var all=[],from=0,chunk=1000;
+    while(true){var r=await fetch(SB+"/rest/v1/demanda_equipes?select=demanda_id,equipe_id&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}
+    demandaEquipesDB={};
+    all.forEach(function(x){if(!demandaEquipesDB[x.demanda_id])demandaEquipesDB[x.demanda_id]=[];demandaEquipesDB[x.demanda_id].push(x.equipe_id);});
+  }catch(e){}
+}

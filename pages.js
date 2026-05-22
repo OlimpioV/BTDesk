@@ -1,3 +1,92 @@
+// ── EQUIPES ──
+async function renderEquipes(){
+  var app=document.getElementById("app");app.className="page-mode";
+  app.innerHTML=headerHTML("eq")+'<div style="padding:24px;max-width:900px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
+  try{
+    var equipes=await dbFetchEquipes();
+    var us=await dbFetchUsers();
+    var rows=equipes.length===0?'<tr><td colspan="3" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma equipe</td></tr>':equipes.map(function(eq){
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        +'<td style="padding:11px 14px;"><span style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--bt-navy);"><span style="width:10px;height:10px;border-radius:50%;background:'+eq.cor+';flex-shrink:0;"></span>'+eq.nome+'</span></td>'
+        +'<td style="padding:11px 14px;" id="eq-mem-'+eq.id+'"><span style="font-size:12px;color:var(--text3);">...</span></td>'
+        +'<td style="padding:11px 14px;"><div style="display:flex;gap:5px;"><button onclick="openEditEquipe(\''+eq.id+'\',\''+eq.nome.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('edit')+' Editar</button><button onclick="openEquipeMembros(\''+eq.id+'\',\''+eq.nome.replace(/'/g,"\\'")+'\',this)" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('users')+' Membros</button><button onclick="delEquipe(\''+eq.id+'\',\''+eq.nome.replace(/'/g,"\\'")+'\')\" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('trash')+' Excluir</button></div></td>'
+        +'</tr>';
+    }).join("");
+    app.innerHTML=headerHTML("eq")
+      +'<div style="padding:24px;max-width:900px;margin:0 auto;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+      +'<div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Equipes</div>'
+      +'<button class="btn btn-accent" onclick="openEditEquipe()" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+ic('plus')+' Nova equipe</button>'
+      +'</div>'
+      +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
+      +'<table style="width:100%;border-collapse:collapse;">'
+      +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
+      +['Nome','Membros','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    equipes.forEach(function(eq){_loadEquipeMembrosCell(eq.id);});
+  }catch(e){toast("Erro",true);}
+}
+async function _loadEquipeMembrosCell(equipeId){
+  try{
+    var rows=await dbFetchEquipeMembros(equipeId);
+    var el=document.getElementById("eq-mem-"+equipeId);if(!el)return;
+    if(!rows.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum</span>';return;}
+    el.innerHTML=rows.map(function(r){var u=r.usuarios;return '<span style="font-size:11px;font-weight:600;background:#f1f5f9;border-radius:4px;padding:2px 7px;color:#475569;margin-right:3px;">'+(u?(u.sigla||u.nome):"?")+'</span>';}).join("");
+  }catch(e){}
+}
+function openEditEquipe(id,nome){
+  var isE=!!id;
+  var corAtual=id?(equipesDB.find(function(e){return e.id===id;})||{cor:"#185FA5"}).cor:"#185FA5";
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">'+(isE?"Editar equipe":"Nova equipe")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button></div>'
+    +'<div class="field"><label>Nome</label><input id="meq-nome" value="'+(nome||"")+'" placeholder="Ex: Societário"/></div>'
+    +'<div class="field"><label>Cor</label><input id="meq-cor" type="color" value="'+corAtual+'" style="width:60px;height:34px;padding:2px;border-radius:8px;border:1px solid var(--border);cursor:pointer;"/></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveEquipe(\''+(id||"")+'\')">Salvar</button></div>'
+    +'</div></div>';
+  setTimeout(function(){var el=document.getElementById("meq-nome");if(el)el.focus();},50);
+}
+async function saveEquipe(id){
+  var nome=(document.getElementById("meq-nome").value||"").trim();var cor=document.getElementById("meq-cor").value;
+  if(!nome){toast("Informe o nome",true);return;}
+  var e={nome,cor};if(id)e.id=id;
+  try{await dbUpsertEquipe(e);await loadEquipes();toast(id?"Atualizada!":"Criada!");closeModal();renderEquipes();}catch(err){toast("Erro",true);}
+}
+function delEquipe(id,nome){
+  modalConfirm('Excluir a equipe "'+nome+'"?',async function(){
+    try{await dbDelEquipe(id);await loadEquipes();toast("Excluída!");renderEquipes();}catch(e){toast("Erro",true);}
+  });
+}
+async function openEquipeMembros(equipeId,equipeNome){
+  var us=await dbFetchUsers();
+  var membros=await dbFetchEquipeMembros(equipeId);
+  var memIds=membros.map(function(m){return m.usuario_id;});
+  var checks=us.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";}).map(function(u){
+    var isMem=memIds.includes(u.id);
+    return '<label style="display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;border-bottom:1px solid var(--border);">'
+      +'<input type="checkbox" id="emem-'+u.id+'" '+(isMem?"checked":"")+' style="width:auto;cursor:pointer;"/>'
+      +'<span style="font-size:13px;color:var(--bt-navy);font-weight:'+(isMem?'600':'400')+'">'+(u.sigla?u.sigla+' — ':'')+u.nome+'</span>'
+      +'</label>';
+  }).join("");
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Membros: '+equipeNome+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button></div>'
+    +'<div style="max-height:320px;overflow-y:auto;margin-bottom:16px;">'+checks+'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveEquipeMembros(\''+equipeId+'\')">Salvar</button></div>'
+    +'</div></div>';
+}
+async function saveEquipeMembros(equipeId){
+  var us=await dbFetchUsers();
+  var membros=await dbFetchEquipeMembros(equipeId);
+  var memIds=membros.map(function(m){return m.usuario_id;});
+  var advs=us.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});
+  try{
+    for(var i=0;i<advs.length;i++){
+      var u=advs[i];var checked=document.getElementById("emem-"+u.id);if(!checked)continue;
+      var quer=checked.checked;var tem=memIds.includes(u.id);
+      if(quer&&!tem)await dbUpsertEquipeMembro({equipe_id:equipeId,usuario_id:u.id});
+      if(!quer&&tem)await dbDelEquipeMembro(equipeId,u.id);
+    }
+    await loadEquipes();toast("Membros atualizados!");closeModal();renderEquipes();
+  }catch(e){toast("Erro",true);}
+}
+
 // ── IMPORTAR ──
 function renderImp(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("imp")+'<div style="padding:26px;max-width:680px;margin:0 auto;"><div style="margin-bottom:18px;"><div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Importar planilha</div></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);padding:24px;box-shadow:var(--shadow);"><div style="margin-bottom:16px;padding:11px 13px;background:rgba(37,63,79,.05);border:1px solid rgba(37,63,79,.1);border-radius:9px;font-size:13px;color:var(--bt-navy);">A planilha deve ter as colunas: <strong>Cliente</strong>, <strong>Caso</strong>, <strong>Nome da Consulta</strong>, <strong>Objeto</strong>, <strong>Situação</strong>.</div><div class="field"><label>Arquivo Excel (.xlsx)</label><input type="file" id="import-file" accept=".xlsx,.xls" style="padding:8px;"/></div><button class="btn btn-primary" onclick="processarImp()" style="display:flex;align-items:center;gap:6px;">'+ic('upload')+' Importar</button><div id="imp-result" style="margin-top:12px;"></div></div></div>';}
 async function processarImp(){var fi=document.getElementById("import-file");if(!fi||!fi.files||!fi.files[0]){toast("Selecione um arquivo",true);return;}var rd=document.getElementById("imp-result");rd.innerHTML='<div style="color:var(--text3);font-size:13px;">Processando...</div>';try{var data=await fi.files[0].arrayBuffer();var wb=XLSX.read(data,{type:"array"});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:""});var cm={};var ca=[];rows.forEach(function(row){var cs=String(row["Cliente"]||"").trim();var cas=String(row["Caso"]||"").trim();var cn=numFromStr(cs);var can=numFromStr(cas);if(!cn||!can)return;cm[cn]={numero:cn,nome:cs.replace(/^\d+\s*-\s*/,"").trim()};ca.push({cliNum:cn,casoNum:can,descricao:cas.replace(/^\d+\s*-\s*/,"").trim(),nome_consulta:String(row["Nome da Consulta"]||"").trim(),objeto:String(row["Objeto"]||"").trim(),situacao:String(row["Situação"]||row["Situacao"]||"").trim()});});var cl=Object.values(cm);var CHUNK=50;for(var i=0;i<cl.length;i+=CHUNK)await fetch(SB+"/rest/v1/clientes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(cl.slice(i,i+CHUNK))});await loadClientes();var ci=ca.map(function(c){var x=clientesDB.find(function(x){return x.numero===c.cliNum;});if(!x)return null;return {numero:c.casoNum,cliente_id:x.id,descricao:c.descricao,nome_consulta:c.nome_consulta,objeto:c.objeto,situacao:c.situacao};}).filter(Boolean);for(var j=0;j<ci.length;j+=CHUNK)await fetch(SB+"/rest/v1/casos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(ci.slice(j,j+CHUNK))});await loadCasos();rd.innerHTML='<div style="padding:11px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:13px;color:#14532d;">Importação concluída! <strong>'+cl.length+' clientes</strong> e <strong>'+ci.length+' casos</strong> processados.</div>';toast("Importação concluída!");}catch(e){rd.innerHTML='<div style="padding:11px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:13px;color:#dc2626;">Erro: '+e.message+'</div>';}}

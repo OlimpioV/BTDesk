@@ -1,5 +1,5 @@
-function checkAuth(){var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email"),i=sessionStorage.getItem("bari_id");if(p){perfil=p;nomeUser=n;emailUser=e;userDbId=i;return true;}return false;}
-function logout(){sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;userDbId=null;renderLogin();}
+function checkAuth(){var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email"),i=sessionStorage.getItem("bari_id");if(p){perfil=p;nomeUser=n;emailUser=e;userDbId=i;var ea=sessionStorage.getItem("bari_equipe");try{equipeAtiva=ea?JSON.parse(ea):null;}catch(_){equipeAtiva=null;}return true;}return false;}
+function logout(){sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;userDbId=null;equipeAtiva=null;equipesDB=[];demandaEquipesDB={};renderLogin();}
 async function doLogin(){
   var email=(document.getElementById("login-email").value||"").trim().toLowerCase();
   var senha=document.getElementById("login-senha").value;
@@ -36,7 +36,7 @@ async function saveMyProfile(){
 function cliNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
 function casoDesc(num,cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return "";var ca=casosDB.find(function(c){return c.numero===num&&c.cliente_id===cl.id;});return ca?ca.descricao:"";}
 function casosDoCliente(cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return [];return casosDB.filter(function(c){return c.cliente_id===cl.id;});}
-function getFiltered(){return cards.filter(function(c){return (!filterResp||c.responsavel===filterResp)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus)&&(!filterCliente||String(c.clienteNum)===String(filterCliente))&&(!filterCaso||String(c.casoNum)===String(filterCaso));}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});}
+function getFiltered(){return cards.filter(function(c){var equipeOk=!equipeAtiva||(demandaEquipesDB[c.id]||[]).includes(equipeAtiva.id);return equipeOk&&(!filterResp||c.responsavel===filterResp)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus)&&(!filterCliente||String(c.clienteNum)===String(filterCliente))&&(!filterCaso||String(c.casoNum)===String(filterCaso));}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});}
 function coverColor(card){if(card.coverColor)return card.coverColor;var col=COLS.find(function(c){return c.id===card.status;});return col?col.cover:"#e2e8f0";}
 function tipoTagsHTML(tipos){if(!tipos||!tipos.length)return "";return tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("");}
 function ccHTML(card){if(card.clienteNum&&card.casoNum)return '<span class="cc">'+card.clienteNum+'/'+card.casoNum+'</span>';if(card.clienteNum)return '<span class="cc">'+card.clienteNum+'</span>';return "";}
@@ -652,14 +652,15 @@ async function saveCard(){
   var cliVal=document.getElementById("f-cli").value;var casoEl=document.getElementById("f-caso");var casoVal=casoEl?casoEl.value:"";
   var card={id,titulo,clienteNum:cliVal?parseInt(cliVal):null,casoNum:casoVal?parseInt(casoVal):null,responsavel:document.getElementById("f-resp").value,status:document.getElementById("f-status").value,email:document.getElementById("f-email").value,dataInicio:document.getElementById("f-di").value,dataFim:document.getElementById("f-df").value,horas:document.getElementById("f-horas").value,obs:document.getElementById("f-obs").value,tipos:formTipos.slice(),comentarios:existing?existing.comentarios||[]:[]};
   if(existing)card.ordem=existing.ordem||0;else{var cc=cards.filter(function(c){return c.status===card.status;});card.ordem=cc.length;}
-  try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");editingId=null;document.getElementById("modal-container").innerHTML="";renderView();}catch(e){toast("Erro",true);}
+  try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(!editingId&&equipeAtiva){await dbUpsertDemandaEquipe({demanda_id:id,equipe_id:equipeAtiva.id});if(!demandaEquipesDB[id])demandaEquipesDB[id]=[];if(!demandaEquipesDB[id].includes(equipeAtiva.id))demandaEquipesDB[id].push(equipeAtiva.id);}if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");editingId=null;document.getElementById("modal-container").innerHTML="";renderView();}catch(e){toast("Erro",true);}
 }
 
 // ── INIT ──
 async function init(){
   var app=document.getElementById("app");app.className="kanban-mode";
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;"><div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#fff;">BT</span></div><div style="width:28px;height:3px;background:linear-gradient(90deg,#ff8204,#e20500);border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div><style>@keyframes pulse{0%,100%{opacity:.4;transform:scaleX(.8)}50%{opacity:1;transform:scaleX(1)}}</style><div style="font-size:13px;color:rgba(255,255,255,.35);">Carregando BTDesk...</div></div>';
-  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await loadTodasTarefas();}catch(e){toast("Erro ao carregar",true);}
+  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await Promise.all([loadTodasTarefas(),loadDemandaEquipes()]);}catch(e){toast("Erro ao carregar",true);}
+  if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   loadEtq();renderKanban();
 }
 if(checkAuth()){loadEtq();init();}else{renderLogin();}
