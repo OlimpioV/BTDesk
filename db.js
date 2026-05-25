@@ -97,7 +97,7 @@ async function dbFetchPautas(equipeId){
   var r=await fetch(SB+"/rest/v1/pautas?select=*&order=titulo"+q,{headers:H});
   if(!r.ok)throw new Error();return r.json();
 }
-async function dbUpsertPauta(p){var r=await fetch(SB+"/rest/v1/pautas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}
+async function dbUpsertPauta(p){var r=await fetch(SB+"/rest/v1/pautas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelPauta(id){await fetch(SB+"/rest/v1/pautas?id=eq."+id,{method:"DELETE",headers:H});}
 async function dbFetchReuniaoPautas(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_pautas?reuniao_id=eq."+reuniaoId+"&select=*&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertReuniaoPauta(rp){var r=await fetch(SB+"/rest/v1/reuniao_pautas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(rp)});if(!r.ok)throw new Error();}
