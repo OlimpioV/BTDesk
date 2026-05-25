@@ -49,6 +49,10 @@ function _fmtData(d){
   var p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];
 }
 
+function _labelTipoPauta(tipo){
+  return {'seminario':'Seminario','projeto':'Projetos','atualizacao_demandas':'Atualizacao de demandas','livre':'Livre','demanda':'Demanda'}[tipo]||tipo||'Livre';
+}
+
 function _buildReuniaoPlaceholder(){
   return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:12px;">'
     +'<div style="font-size:32px;opacity:.3;">'+ic("meeting")+'</div>'
@@ -78,13 +82,12 @@ function _buildReuniaoDetalhe(r){
   html+='<div style="margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:700;color:var(--bt-navy);">Participantes</div>'
     +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("users")+' Gerenciar</button>':"")
     +'</div><div id="reuniao-part-area" style="min-height:24px;">Carregando...</div></div>';
-  html+='<div id="reuniao-pautas-area">Carregando pautas...</div>';
-  html+='<div style="margin-top:28px;"><div style="font-size:13px;font-weight:700;color:var(--bt-navy);margin-bottom:12px;">Projetos internos</div>'
-    +'<div id="reuniao-projetos-area">Carregando projetos...</div>'
-    +(ce?'<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:12px;padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+ic("plus")+' Novo projeto interno</button>':"")
+  html+='<div style="margin-top:20px;">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--bt-navy);margin-bottom:10px;">Pautas</div>'
+    +'<div id="reuniao-pautas-area">Carregando pautas...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadReuniaoPautas(r.id);_loadReuniaoProjectos();},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadReuniaoPautas(r.id);},0);
   return html;
 }
 
@@ -97,19 +100,52 @@ async function _loadReuniaoPautas(reuniaoId){
       el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px 0;">Nenhuma pauta adicionada.'+(ce?' <button onclick="openAdicionarPauta(\''+reuniaoId+'\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px;">Adicionar pauta</button>':'')+'</div>';
       return;
     }
+    var corStatusProj={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'};
+    var eqIdProj=equipeAtiva?equipeAtiva.id:null;
     var html='<div style="display:flex;flex-direction:column;gap:8px;">';
     rps.forEach(function(rp,i){
       var pauta=pautasDB.find(function(p){return p.id===rp.pauta_id;})||{titulo:"Pauta "+i,tipo:"livre"};
       var snap=rp.snapshot_json||{};
+      var tipoBadgeColor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8'}[pauta.tipo]||'#94a3b8';
       html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+pauta.titulo+'</div>'
+        +'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:'+tipoBadgeColor+'22;color:'+tipoBadgeColor+';">'+_labelTipoPauta(pauta.tipo)+'</span>'
+        +'</div>'
         +'<div style="display:flex;gap:4px;">'
-        +(ce?'<button onclick="openEditReuniaoPauta(\''+rp.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Editar</button>':'')
+        +(ce?'<button onclick="openEditReuniaoPauta(\''+rp.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Notas</button>':'')
         +(ce?'<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Remover</button>':'')
-        +'</div></div>'
-        +(snap.notas?'<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;">'+snap.notas+'</div>':'<div style="font-size:12px;color:var(--text3);">Sem notas.</div>')
-        +'</div>';
+        +'</div></div>';
+      if(pauta.tipo==='projeto'){
+        var proj=projetosDB.filter(function(p){return !eqIdProj||p.equipe_id===eqIdProj;});
+        if(!proj.length){html+='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Nenhum projeto de equipe.</div>';}
+        else{
+          html+='<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">';
+          proj.forEach(function(p){
+            var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
+            var cor=corStatusProj[p.status]||'#94a3b8';
+            html+='<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;">'
+              +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">'
+              +'<div style="font-size:12px;font-weight:600;color:var(--bt-navy);">'+p.titulo+'</div>'
+              +'<div style="display:flex;gap:4px;align-items:center;">'
+              +'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:'+cor+'22;color:'+cor+';">'+p.status.replace('_',' ')+'</span>'
+              +(ce?'<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>':'')
+              +(ce?'<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("comment")+'</button>':'')
+              +(ce?'<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>':'')
+              +'</div></div>'
+              +(resp?'<div style="font-size:11px;color:var(--text3);margin-top:2px;">Resp: '+resp+'</div>':"")
+              +(p.descricao?'<div style="font-size:11px;color:var(--text2);margin-top:2px;">'+p.descricao+'</div>':"")
+              +'</div>';
+          });
+          html+='</div>';
+        }
+        if(ce){html+='<button onclick="openNovoProjeto()" style="margin-top:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';}
+        if(snap.notas){html+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Notas da reuniao</div><div style="font-size:12px;color:var(--text2);white-space:pre-wrap;">'+snap.notas+'</div></div>';}
+      }else{
+        html+=(snap.notas?'<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;">'+snap.notas+'</div>':'<div style="font-size:12px;color:var(--text3);">Sem notas.</div>');
+      }
+      html+='</div>';
     });
     html+='</div>';
     if(ce){html+='<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" style="margin-top:8px;font-size:12px;padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+ic("plus")+' Adicionar pauta</button>';}
@@ -280,7 +316,7 @@ async function renderPautas(){
   var rows=!pautasDB.length?'<tr><td colspan="3" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma pauta</td></tr>':pautasDB.map(function(p){
     return '<tr style="border-bottom:1px solid var(--border);">'
       +'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+p.titulo+'</td>'
-      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+p.tipo+(p.recorrente?' (recorrente)':'')+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+_labelTipoPauta(p.tipo)+(p.recorrente?' (recorrente)':'')+'</td>'
       +'<td style="padding:11px 14px;"><div style="display:flex;gap:4px;">'
       +(ce?'<button onclick="openEditPauta(\''+p.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">'+ic("edit")+' Editar</button>':'')
       +(ce?'<button onclick="delPauta(\''+p.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">'+ic("trash")+' Excluir</button>':'')
@@ -304,7 +340,7 @@ function openEditPauta(id){
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,480px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">'+(p?"Editar pauta":"Nova pauta")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo *</label><input id="pf-titulo" value="'+(p?p.titulo:'')+'"/></div>'
-    +'<div class="field"><label>Tipo</label><select id="pf-tipo"><option value="livre"'+((!p||p.tipo==="livre")?" selected":"")+'>Livre</option><option value="projeto"'+((p&&p.tipo==="projeto")?" selected":"")+'>Projeto interno</option><option value="demanda"'+((p&&p.tipo==="demanda")?" selected":"")+'>Demanda</option></select></div>'
+    +'<div class="field"><label>Tipo</label><select id="pf-tipo"><option value="livre"'+((!p||p.tipo==="livre")?" selected":"")+'>Livre</option><option value="seminario"'+((p&&p.tipo==="seminario")?" selected":"")+'>Seminario</option><option value="projeto"'+((p&&p.tipo==="projeto")?" selected":"")+'>Projetos de equipe</option><option value="atualizacao_demandas"'+((p&&p.tipo==="atualizacao_demandas")?" selected":"")+'>Atualizacao de demandas</option></select></div>'
     +'<div class="field"><label>Descricao</label><textarea id="pf-desc" rows="3">'+(p?p.descricao||'':"")+'</textarea></div>'
     +'<div class="field" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="pf-recorrente"'+(p&&p.recorrente?' checked':'')+'/><label for="pf-recorrente" style="margin-bottom:0;cursor:pointer;">Recorrente (aparece em todas as reunioes)</label></div>'
     +(equipesDB.length?'<div class="field"><label>Equipe</label><select id="pf-equipe"><option value="">Selecione...</option>'+eqOptions+'</select></div>':"")
