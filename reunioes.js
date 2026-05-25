@@ -1,4 +1,6 @@
 // ── REUNIOES ──
+var _calMes=(new Date()).getMonth();
+var _calAno=(new Date()).getFullYear();
 
 async function renderReunioes(){
   var app=document.getElementById("app");app.className="page-mode";
@@ -17,31 +19,43 @@ function _renderReunioesPagina(){
   var ce=perfil==="mestre"||perfil==="advogado";
   var hoje=new Date().toISOString().slice(0,10);
   var proximas=reunioesDB.filter(function(r){return r.data>=hoje;}).sort(function(a,b){return a.data.localeCompare(b.data);});
-  var passadas=reunioesDB.filter(function(r){return r.data<hoje;});
+  var passadas=reunioesDB.filter(function(r){return r.data<hoje;}).sort(function(a,b){return b.data.localeCompare(a.data);});
+  var statusCores={'agendada':'#3b82f6','realizada':'#22c55e','cancelada':'#ef4444'};
+  var diasSem=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  var mesesCurtos=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   var listaSidebar=proximas.concat(passadas).slice(0,20).map(function(r){
     var ativa=reuniaoAtiva&&reuniaoAtiva.id===r.id;
-    var dataFmt=_fmtData(r.data);
-    return '<div onclick="selecionarReuniao(\''+r.id+'\')" style="padding:10px 14px;cursor:pointer;border-radius:8px;margin-bottom:4px;background:'+(ativa?"rgba(37,63,79,.12)":"transparent")+';border:1px solid '+(ativa?"var(--border)":"transparent")+';transition:background .15s;" onmouseover="if(!'+ativa+')this.style.background=\'rgba(0,0,0,.04)\'" onmouseout="if(!'+ativa+')this.style.background=\'transparent\'">'
-      +'<div style="font-size:12px;font-weight:600;color:var(--bt-navy);">'+trunc(r.titulo||("Reuniao de "+dataFmt),32)+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+dataFmt+' '+r.hora.slice(0,5)+'</div>'
+    var p=r.data.split('-');
+    var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+    var dataLabel=diasSem[d.getDay()]+', '+p[2]+' '+mesesCurtos[parseInt(p[1])-1];
+    var sc=statusCores[r.status]||'#94a3b8';
+    return '<div onclick="selecionarReuniao(\''+r.id+'\')" class="reun-card'+(ativa?' ativa':'')+'">'
+      +'<div class="reun-card-stripe" style="background:'+sc+';"></div>'
+      +'<div class="reun-card-titulo">'+trunc(r.titulo||('Reuniao de '+dataLabel),34)+'</div>'
+      +'<div class="reun-card-meta">'
+      +'<span class="reun-card-data">'+dataLabel+' '+r.hora.slice(0,5)+'</span>'
+      +'<span class="reun-status-chip" style="background:'+sc+'22;color:'+sc+';">'+r.status+'</span>'
+      +'</div>'
       +'</div>';
   }).join("");
   var mainContent=reuniaoAtiva?_buildReuniaoDetalhe(reuniaoAtiva):_buildReuniaoPlaceholder();
   app.innerHTML=headerHTML("reunioes")
-    +'<div style="display:flex;height:calc(100vh - 104px);overflow:hidden;">'
-    +'<div style="width:260px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:#fff;">'
-    +'<div style="padding:14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">'
-    +'<div style="font-size:13px;font-weight:700;color:var(--bt-navy);">Reunioes</div>'
-    +(ce?'<button onclick="openNovaReuniao()" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("plus")+' Nova</button>':"")
+    +'<div class="reun-wrap">'
+    +'<div class="reun-sidebar">'
+    +'<div class="reun-sidebar-hdr">'
+    +'<span class="reun-sidebar-title">Reunioes</span>'
+    +(ce?'<button onclick="openNovaReuniao()" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("plus")+' Nova</button>':"")
     +'</div>'
-    +'<div style="flex:1;overflow-y:auto;padding:8px;">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
-    +'<div style="border-top:1px solid var(--border);padding:10px 14px;">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Pautas</div>'
-    +(ce?'<button onclick="renderPautas()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;text-align:left;">Gerenciar pautas</button>':"")
+    +'<div id="mini-cal-area"></div>'
+    +'<div class="reun-sidebar-list">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
+    +'<div class="reun-sidebar-footer">'
+    +'<div class="reun-section-label" style="margin-bottom:6px;">Pautas</div>'
+    +(ce?'<button onclick="renderPautas()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:4px;">'+ic("edit")+' Gerenciar pautas</button>':"")
     +'</div>'
     +'</div>'
-    +'<div style="flex:1;overflow-y:auto;background:var(--bg);">'+mainContent+'</div>'
+    +'<div class="reun-main">'+mainContent+'</div>'
     +'</div>';
+  _renderMiniCal();
 }
 
 function _fmtData(d){
@@ -54,36 +68,100 @@ function _labelTipoPauta(tipo){
 }
 
 function _buildReuniaoPlaceholder(){
-  return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:12px;">'
-    +'<div style="font-size:32px;opacity:.3;">'+ic("meeting")+'</div>'
-    +'<div style="font-size:14px;">Selecione ou crie uma reuniao</div>'
+  return '<div class="reun-empty" style="height:100%;">'
+    +'<div class="reun-empty-icon">'+ic("meeting")+'</div>'
+    +'<div class="reun-empty-msg">Selecione ou crie uma reuniao</div>'
     +'</div>';
+}
+
+function _renderMiniCal(){
+  var el=document.getElementById("mini-cal-area");if(!el)return;
+  var hoje=new Date();
+  var hojeD=hoje.getDate(),hojeM=hoje.getMonth(),hojeA=hoje.getFullYear();
+  var mesesNome=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var diasSem=['D','S','T','Q','Q','S','S'];
+  var primeiroDia=new Date(_calAno,_calMes,1).getDay();
+  var diasNoMes=new Date(_calAno,_calMes+1,0).getDate();
+  var diasAnterior=new Date(_calAno,_calMes,0).getDate();
+  var diasComReuniao={};
+  reunioesDB.forEach(function(r){
+    var p=r.data.split('-');
+    if(parseInt(p[0])===_calAno&&(parseInt(p[1])-1)===_calMes){
+      var dd=parseInt(p[2]);
+      if(!diasComReuniao[dd])diasComReuniao[dd]=r;
+    }
+  });
+  var selD=reuniaoAtiva?parseInt(reuniaoAtiva.data.split('-')[2]):null;
+  var selM=reuniaoAtiva?parseInt(reuniaoAtiva.data.split('-')[1])-1:null;
+  var selA=reuniaoAtiva?parseInt(reuniaoAtiva.data.split('-')[0]):null;
+  var html='<div class="mini-cal">'
+    +'<div class="mini-cal-hdr">'
+    +'<button class="mini-cal-nav" onclick="_navCalMes(-1)">&#8249;</button>'
+    +'<div class="mini-cal-mes">'+mesesNome[_calMes]+' '+_calAno+'</div>'
+    +'<button class="mini-cal-nav" onclick="_navCalMes(1)">&#8250;</button>'
+    +'</div>'
+    +'<div class="mini-cal-grid">';
+  diasSem.forEach(function(d){html+='<div class="mini-cal-dow">'+d+'</div>';});
+  for(var i=primeiroDia-1;i>=0;i--){html+='<div class="mini-cal-day outro-mes">'+(diasAnterior-i)+'</div>';}
+  for(var d=1;d<=diasNoMes;d++){
+    var cls='mini-cal-day';
+    var isHoje=(d===hojeD&&_calMes===hojeM&&_calAno===hojeA);
+    var isSel=(selD===d&&selM===_calMes&&selA===_calAno);
+    var r=diasComReuniao[d];
+    if(isSel)cls+=' sel';else if(isHoje)cls+=' hoje';
+    if(r){cls+=' tem-reun';html+='<div class="'+cls+'" onclick="selecionarReuniao(\''+r.id+'\')">'+d+'</div>';}
+    else{html+='<div class="'+cls+'">'+d+'</div>';}
+  }
+  var total=primeiroDia+diasNoMes;
+  var resto=total%7?7-(total%7):0;
+  for(var d2=1;d2<=resto;d2++){html+='<div class="mini-cal-day outro-mes">'+d2+'</div>';}
+  html+='</div></div><hr class="mini-cal-sep"/>';
+  el.innerHTML=html;
+}
+
+function _navCalMes(delta){
+  _calMes+=delta;
+  if(_calMes<0){_calMes=11;_calAno--;}
+  if(_calMes>11){_calMes=0;_calAno++;}
+  _renderMiniCal();
 }
 
 function _buildReuniaoDetalhe(r){
   var ce=perfil==="mestre"||perfil==="advogado";
   var dataFmt=_fmtData(r.data);
-  var statusBadge={'agendada':'#3b82f6','realizada':'#22c55e','cancelada':'#ef4444'}[r.status]||'#94a3b8';
-  var html='<div style="padding:28px;max-width:820px;">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">'
-    +'<div>'
-    +'<div style="font-size:20px;font-weight:700;color:var(--bt-navy);">'+(r.titulo||("Reuniao de "+dataFmt))+'</div>'
-    +'<div style="display:flex;gap:10px;align-items:center;margin-top:6px;">'
-    +'<span style="font-size:12px;color:var(--text3);">'+ic("cal")+' '+dataFmt+' as '+r.hora.slice(0,5)+'</span>'
-    +'<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:'+statusBadge+'22;color:'+statusBadge+';">'+r.status+'</span>'
+  var statusCor={'agendada':'#3b82f6','realizada':'#22c55e','cancelada':'#ef4444'}[r.status]||'#94a3b8';
+  var statusLabel={'agendada':'Agendada','realizada':'Realizada','cancelada':'Cancelada'}[r.status]||r.status;
+  var diasSemLong=['Domingo','Segunda-feira','Terca-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sabado'];
+  var mesesLong=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var p=r.data.split('-');
+  var dObj=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  var dataLong=diasSemLong[dObj.getDay()]+', '+parseInt(p[2])+' de '+mesesLong[parseInt(p[1])-1]+' de '+p[0];
+  var html='<div class="reun-detalhe">'
+    +'<div class="reun-detalhe-hdr">'
+    +'<div style="min-width:0;">'
+    +'<div class="reun-detalhe-titulo">'+(r.titulo||('Reuniao de '+dataFmt))+'</div>'
+    +'<div class="reun-detalhe-sub">'
+    +'<span style="font-size:12px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;">'+ic("cal")+' '+dataLong+'</span>'
+    +'<span style="font-size:12px;color:var(--text3);">'+r.hora.slice(0,5)+'</span>'
+    +'<span class="reun-status-chip" style="background:'+statusCor+'22;color:'+statusCor+';">'+statusLabel+'</span>'
     +'</div>'
     +'</div>'
-    +(ce?'<div style="display:flex;gap:6px;">'
-      +'<button onclick="openEditReuniao(\''+r.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("edit")+' Editar</button>'
-      +'<button onclick="gerarAta(\''+r.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Gerar ata</button>'
+    +(ce?'<div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px;">'
+      +'<button onclick="openEditReuniao(\''+r.id+'\')" class="btn" style="font-size:11px;padding:4px 10px;display:inline-flex;align-items:center;gap:3px;">'+ic("edit")+' Editar</button>'
+      +'<button onclick="gerarAta(\''+r.id+'\')" class="btn" style="font-size:11px;padding:4px 10px;">Gerar ata</button>'
       +'</div>':"")
     +'</div>';
-  if(r.observacoes){html+='<div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--text2);">'+r.observacoes+'</div>';}
-  html+='<div style="margin-bottom:20px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-size:13px;font-weight:700;color:var(--bt-navy);">Participantes</div>'
-    +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("users")+' Gerenciar</button>':"")
-    +'</div><div id="reuniao-part-area" style="min-height:24px;">Carregando...</div></div>';
-  html+='<div style="margin-top:20px;">'
-    +'<div style="font-size:13px;font-weight:700;color:var(--bt-navy);margin-bottom:10px;">Pautas</div>'
+  if(r.observacoes){html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--bt-navy);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:12px;font-size:13px;color:var(--text2);line-height:1.6;">'+r.observacoes+'</div>';}
+  html+='<hr class="reun-detalhe-sep"/>';
+  html+='<div class="reun-section">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    +'<div class="reun-section-label">Participantes</div>'
+    +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("users")+' Gerenciar</button>':"")
+    +'</div>'
+    +'<div id="reuniao-part-area" style="min-height:24px;">Carregando...</div>'
+    +'</div>';
+  html+='<div class="reun-section">'
+    +'<div class="reun-section-label" style="margin-bottom:10px;">Pautas</div>'
     +'<div id="reuniao-pautas-area">Carregando pautas...</div>'
     +'</div>';
   html+='</div>';
@@ -96,60 +174,72 @@ async function _loadReuniaoPautas(reuniaoId){
   var ce=perfil==="mestre"||perfil==="advogado";
   try{
     var rps=await dbFetchReuniaoPautas(reuniaoId);
+    var addBtn=ce?'<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" class="btn-outlined" style="margin-bottom:14px;">'+ic("plus")+' Adicionar pauta</button>':"";
     if(!rps.length){
-      el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px 0;">Nenhuma pauta adicionada.'+(ce?' <button onclick="openAdicionarPauta(\''+reuniaoId+'\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px;">Adicionar pauta</button>':'')+'</div>';
+      el.innerHTML=addBtn
+        +'<div class="reun-empty" style="padding:28px 20px;">'
+        +'<div class="reun-empty-icon">'+ic("meeting")+'</div>'
+        +'<div class="reun-empty-msg">Nenhuma pauta adicionada a esta reuniao</div>'
+        +'</div>';
       return;
     }
     var corStatusProj={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'};
+    var lblStatusProj={'em_andamento':'Em andamento','concluido':'Concluido','pausado':'Pausado'};
     var eqIdProj=equipeAtiva?equipeAtiva.id:null;
-    var html='<div style="display:flex;flex-direction:column;gap:8px;">';
+    var html='<div style="display:flex;flex-direction:column;gap:10px;">';
     rps.forEach(function(rp,i){
       var pauta=pautasDB.find(function(p){return p.id===rp.pauta_id;})||{titulo:"Pauta "+i,tipo:"livre"};
       var snap=rp.snapshot_json||{};
-      var tipoBadgeColor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8'}[pauta.tipo]||'#94a3b8';
-      html+='<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
-        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-        +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+pauta.titulo+'</div>'
-        +'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:'+tipoBadgeColor+'22;color:'+tipoBadgeColor+';">'+_labelTipoPauta(pauta.tipo)+'</span>'
+      var tipoCor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8'}[pauta.tipo]||'#94a3b8';
+      html+='<div class="pauta-card">'
+        +'<div class="pauta-card-hdr">'
+        +'<div class="pauta-card-titulo">'+pauta.titulo+'</div>'
+        +'<span class="reun-status-chip" style="background:'+tipoCor+'22;color:'+tipoCor+';flex-shrink:0;">'+_labelTipoPauta(pauta.tipo)+'</span>'
         +'</div>'
-        +'<div style="display:flex;gap:4px;">'
-        +(ce?'<button onclick="openEditReuniaoPauta(\''+rp.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Notas</button>':'')
-        +(ce?'<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Remover</button>':'')
-        +'</div></div>';
+        +'<div class="pauta-card-body">';
       if(pauta.tipo==='projeto'){
         var proj=projetosDB.filter(function(p){return !eqIdProj||p.equipe_id===eqIdProj;});
-        if(!proj.length){html+='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Nenhum projeto de equipe.</div>';}
+        if(!proj.length){html+='<div style="font-size:12px;color:var(--text3);">Nenhum projeto de equipe.</div>';}
         else{
-          html+='<div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">';
+          html+='<div style="display:flex;flex-direction:column;gap:6px;">';
           proj.forEach(function(p){
             var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
+            var respNome=(p.usuarios&&p.usuarios.nome)||resp;
             var cor=corStatusProj[p.status]||'#94a3b8';
-            html+='<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;">'
-              +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">'
-              +'<div style="font-size:12px;font-weight:600;color:var(--bt-navy);">'+p.titulo+'</div>'
-              +'<div style="display:flex;gap:4px;align-items:center;">'
-              +'<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:'+cor+'22;color:'+cor+';">'+p.status.replace('_',' ')+'</span>'
-              +(ce?'<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>':'')
-              +(ce?'<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("comment")+'</button>':'')
-              +(ce?'<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>':'')
+            var lbl=lblStatusProj[p.status]||p.status.replace('_',' ');
+            html+='<div class="proj-card">'
+              +'<div class="proj-card-bar" style="background:'+cor+';"></div>'
+              +'<div class="proj-card-content">'
+              +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">'
+              +'<div class="proj-card-titulo">'+p.titulo+'</div>'
+              +'<div class="proj-card-meta">'
+              +'<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>'
+              +(resp?'<div class="av av-sm" style="background:'+_avCor(respNome)+'" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>':"")
               +'</div></div>'
-              +(resp?'<div style="font-size:11px;color:var(--text3);margin-top:2px;">Resp: '+resp+'</div>':"")
-              +(p.descricao?'<div style="font-size:11px;color:var(--text2);margin-top:2px;">'+p.descricao+'</div>':"")
-              +'</div>';
+              +(p.descricao?'<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;">'+p.descricao+'</div>':"")
+              +(ce?'<div style="display:flex;gap:4px;margin-top:7px;flex-wrap:wrap;">'
+                +'<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>'
+                +'<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("comment")+' Historico</button>'
+                +'<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>'
+                +'</div>':"")
+              +'</div></div>';
           });
           html+='</div>';
         }
-        if(ce){html+='<button onclick="openNovoProjeto()" style="margin-top:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';}
-        if(snap.notas){html+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Notas da reuniao</div><div style="font-size:12px;color:var(--text2);white-space:pre-wrap;">'+snap.notas+'</div></div>';}
+        if(ce){html+='<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';}
+        if(snap.notas){html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);"><div class="reun-section-label" style="margin-bottom:4px;">Notas da reuniao</div><div class="pauta-notas">'+snap.notas+'</div></div>';}
       }else{
-        html+=(snap.notas?'<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;">'+snap.notas+'</div>':'<div style="font-size:12px;color:var(--text3);">Sem notas.</div>');
+        html+=snap.notas?'<div class="pauta-notas">'+snap.notas+'</div>':'<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem notas para esta pauta nesta reuniao.</div>';
       }
+      html+='</div>';
+      if(ce){html+='<div class="pauta-card-footer">'
+        +'<button onclick="openEditReuniaoPauta(\''+rp.id+'\',\''+reuniaoId+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Editar notas</button>'
+        +'<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;margin-left:auto;">Remover</button>'
+        +'</div>';}
       html+='</div>';
     });
     html+='</div>';
-    if(ce){html+='<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" style="margin-top:8px;font-size:12px;padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">'+ic("plus")+' Adicionar pauta</button>';}
-    el.innerHTML=html;
+    el.innerHTML=addBtn+html;
   }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar pautas.</div>';}
 }
 
@@ -180,6 +270,7 @@ function _loadReuniaoProjectos(){
 
 async function selecionarReuniao(id){
   reuniaoAtiva=reunioesDB.find(function(r){return r.id===id;})||null;
+  if(reuniaoAtiva){var _p=reuniaoAtiva.data.split('-');_calMes=parseInt(_p[1])-1;_calAno=parseInt(_p[0]);}
   _renderReunioesPagina();
 }
 
@@ -257,13 +348,32 @@ async function delReuniao(id){
   });
 }
 
+function _avCor(str){
+  var pal=['#185FA5','#e67e22','#27ae60','#8e44ad','#c0392b','#16a085','#2980b9','#d35400','#7f8c8d'];
+  var h=0;for(var i=0;i<(str||'').length;i++)h=(h*31+str.charCodeAt(i))&0xffff;
+  return pal[h%pal.length];
+}
+
 // ── PARTICIPANTES ──
 async function _loadParticipantesArea(reuniaoId){
   var el=document.getElementById("reuniao-part-area");if(!el)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
   try{
     var parts=await dbFetchReuniaoParticipantes(reuniaoId);
-    if(!parts.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum participante adicionado.</span>';return;}
-    el.innerHTML=parts.map(function(p){var u=p.usuarios||{};return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;background:#f1f5f9;border-radius:6px;padding:3px 9px;color:#475569;margin-right:4px;margin-bottom:4px;">'+(u.sigla||u.nome||"?")+'</span>';}).join("");
+    if(!parts.length){
+      el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum participante.'
+        +(ce?' <button onclick="openGerenciarParticipantes(\''+reuniaoId+'\')" style="background:none;border:none;color:var(--bt-navy);cursor:pointer;font-size:12px;font-weight:600;text-decoration:underline;">Adicionar</button>':'')
+        +'</span>';
+      return;
+    }
+    var avs=parts.map(function(p){
+      var u=p.usuarios||{};
+      var nome=u.nome||u.email||'?';
+      var ini=u.sigla||(nome.replace(/\s+/g,' ').trim().split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase());
+      var cor=_avCor(nome);
+      return '<div class="av" style="background:'+cor+';" title="'+nome+'">'+ini+'</div>';
+    }).join("");
+    el.innerHTML='<div class="av-group" style="flex-direction:row;">'+avs+'</div>';
   }catch(_){if(el)el.innerHTML='';}
 }
 async function openGerenciarParticipantes(reuniaoId){
