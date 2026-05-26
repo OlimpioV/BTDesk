@@ -193,11 +193,11 @@ function _buildReuniaoDetalhe(r){
     +'<div id="reun-pautas-area">Carregando...</div>'
     +'</div>';
   html+='<div class="reun-section">'
-    +'<div class="reun-section-label" style="margin-bottom:10px;">Comentarios</div>'
+    +'<div class="reun-section-label" style="margin-bottom:10px;">Comentários</div>'
     +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadPautasSection(r.id);_loadReuniaoComentarios(r.id);},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
   return html;
 }
 
@@ -391,7 +391,7 @@ async function _toggleProjeto(projetoId,ehPassado){
   _projExpanded[projetoId]=!_projExpanded[projetoId];
   if(_projExpanded[projetoId]){
     try{_checklistCache[projetoId]=await dbFetchChecklist(projetoId);}catch(_){_checklistCache[projetoId]=[];}
-    try{_commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);}catch(_){_commentsCache[projetoId]=[];}
+    try{_commentsCache[projetoId]=await dbFetchProjetoComentários(projetoId);}catch(_){_commentsCache[projetoId]=[];}
   }
   _reloadProjetoCard(projetoId,ehPassado);
 }
@@ -492,7 +492,7 @@ function _buildInlineComments(projetoId,comments,ce,ehPassado,expanded){
   var toShow=expanded?[].concat(comments).reverse():([].concat(comments).reverse()).slice(0,3);
   var hasMore=comments.length>3;
   var html='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
-  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Comentarios</div>';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Comentários</div>';
   if(!toShow.length){html+='<div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:6px;">Nenhum comentario.</div>';}
   else{
     html+='<div style="max-height:240px;overflow-y:auto;padding-right:2px;">';
@@ -546,7 +546,7 @@ async function _addProjetoComentarioInline(projetoId){
   if(!txt){toast("Escreva um comentario",true);return;}
   try{
     await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:txt,tipo:"comentario"});
-    _commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);
+    _commentsCache[projetoId]=await dbFetchProjetoComentários(projetoId);
     _reloadProjetoCard(projetoId,false);toast("Comentario adicionado!");
   }catch(e){toast("Erro",true);}
 }
@@ -838,7 +838,7 @@ async function openGerenciarPautas(reuniaoId){
     +'<span id="ap-sel-count" style="font-size:12px;color:var(--text3);"></span>'
     +'<div style="display:flex;gap:8px;">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn btn-primary" onclick="_apAplicar()">Confirmar selecao</button>'
+    +'<button class="btn btn-primary" onclick="_apAplicar()">Confirmar seleção</button>'
     +'</div>'
     +'</div>'
     +'</div></div>';
@@ -1356,7 +1356,7 @@ async function delProjeto(id){
     }catch(e){toast("Erro",true);}
   });
 }
-async function openProjetoComentarios(projetoId){
+async function openProjetoComentários(projetoId){
   var p=projetosDB.find(function(x){return x.id===projetoId;})||{titulo:"Projeto"};
   var mc=document.getElementById("modal-container");
   mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,580px);max-height:85vh;display:flex;flex-direction:column;">'
@@ -1370,13 +1370,13 @@ async function openProjetoComentarios(projetoId){
     +'<div style="display:flex;justify-content:flex-end;margin-top:6px;gap:6px;">'
     +'<button class="btn btn-primary" onclick="addProjetoComentario(\''+projetoId+'\')">Comentar</button>'
     +'</div></div></div></div>';
-  _loadProjetoComentarios(projetoId);
+  _loadProjetoComentários(projetoId);
 }
-async function _loadProjetoComentarios(projetoId){
+async function _loadProjetoComentários(projetoId){
   var el=document.getElementById("proj-cmts");if(!el)return;
   var ce=perfil==="mestre"||perfil==="advogado";
   try{
-    var cmts=await dbFetchProjetoComentarios(projetoId);
+    var cmts=await dbFetchProjetoComentários(projetoId);
     if(!cmts.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum comentario ainda.</div>';return;}
     el.innerHTML=cmts.map(function(c){
       var u=c.usuarios||{};
@@ -1408,14 +1408,14 @@ async function addProjetoComentario(projetoId){
   try{
     await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:txt,tipo:"comentario"});
     document.getElementById("proj-cmt-txt").value="";
-    _loadProjetoComentarios(projetoId);
+    _loadProjetoComentários(projetoId);
     toast("Comentario adicionado!");
   }catch(e){toast("Erro",true);}
 }
 async function editarComentarioProjeto(cId,projetoId){
   var el=document.getElementById("proj-cmt-"+cId);if(!el)return;
   var cmts;
-  try{cmts=await dbFetchProjetoComentarios(projetoId);}catch(e){toast("Erro",true);return;}
+  try{cmts=await dbFetchProjetoComentários(projetoId);}catch(e){toast("Erro",true);return;}
   var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
   var isSinal=c.tipo==='sinalizado';
   var bgStyle=isSinal?'background:#fff5f5;border-left:3px solid #ef4444;padding:8px 12px;margin:0 -4px;border-radius:0 6px 6px 0;':'';
@@ -1424,7 +1424,7 @@ async function editarComentarioProjeto(cId,projetoId){
     +'<div style="font-size:12px;font-weight:600;color:var(--bt-navy);margin-bottom:6px;">'+(u.sigla||u.nome||"?")+'</div>'
     +'<textarea id="cmt-edit-'+cId+'" rows="3" style="width:100%;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:13px;">'+c.texto+'</textarea>'
     +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;">'
-    +'<button onclick="_loadProjetoComentarios(\''+projetoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+    +'<button onclick="_loadProjetoComentários(\''+projetoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
     +'<button onclick="salvarComentarioProjeto(\''+cId+'\',\''+projetoId+'\')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
     +'</div></div></div>';
 }
@@ -1433,14 +1433,14 @@ async function salvarComentarioProjeto(cId,projetoId){
   if(!txt){toast("Texto nao pode ser vazio",true);return;}
   try{
     await dbUpsertProjetoComentario({id:cId,texto:txt});
-    _loadProjetoComentarios(projetoId);toast("Comentario editado!");
+    _loadProjetoComentários(projetoId);toast("Comentario editado!");
   }catch(e){toast("Erro",true);}
 }
 async function delComentarioProjeto(cId,projetoId){
   modalConfirm("Excluir este comentario?",async function(){
     try{
       await dbDelProjetoComentario(cId);
-      _loadProjetoComentarios(projetoId);toast("Comentario excluido!");
+      _loadProjetoComentários(projetoId);toast("Comentario excluido!");
     }catch(e){toast("Erro",true);}
   });
 }
@@ -1598,7 +1598,7 @@ function _buildTarefaCard(t,ce,ehPassado){
     }
   }
   var nCmts=cmts?cmts.length:0;
-  html+='<span onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);cursor:pointer;margin-top:3px;">Comentarios ('+nCmts+')</span>';
+  html+='<span onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);cursor:pointer;margin-top:3px;">Comentários ('+nCmts+')</span>';
   html+='</div>';
   html+='</div>';
   html+='</div>';
@@ -1613,15 +1613,13 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div class="rt-cell">'
     +'<span id="sc-'+t.id+'" class="reun-status-chip" style="background:'+bg+';color:'+txt+';border:1px solid '+txt+'44;font-size:11px;'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
     +(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+t.id+'\',false,null,'+!!ehPassado+')"':'')
-    +'>'+lbl+'</span></div>';
+    +'>'+lbl+(ce&&!ehPassado?' <span style="font-size:8px;opacity:.6;">&#9660;</span>':'')+'</span></div>';
   html+='<div class="rt-cell" style="font-size:11px;color:var(--text3);">'+(t.data_inicio?_fmtDateBrShort(t.data_inicio):'-')+'</div>';
   var atrasado=_isAtrasado(t.data_fim,t.status);
   html+='<div class="rt-cell" style="font-size:11px;color:'+(atrasado?'#dc2626':'var(--text3)')+';font-weight:'+(atrasado?'700':'400')+';">'+(t.data_fim?_fmtDateBrShort(t.data_fim):'-')+'</div>';
-  html+='<div class="rt-cell rt-actions">';
+  html+='<div class="rt-cell" style="justify-content:center;">';
   if(ce&&!ehPassado){
-    html+='<button onclick="_editarTarefaPauta(\''+t.id+'\')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;" title="Editar">'+ic("edit")+'</button>';
-    html+='<button onclick="_showAddSubtarefaPauta(\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;" title="Subtarefa">&#8627;</button>';
-    html+='<button onclick="_excluirTarefaPauta(\''+t.id+'\')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;" title="Excluir">'+ic("trash")+'</button>';
+    html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>';
   }
   html+='</div>';
   html+='</div>';
@@ -1702,14 +1700,13 @@ function _buildTarefaCard(t,ce,ehPassado){
         html+='<div class="rt-cell">'
           +'<span style="font-size:10px;padding:1px 7px;border-radius:9px;background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
           +(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')
-          +'>'+sLbl+'</span></div>';
+          +'>'+sLbl+(ce&&!ehPassado?' <span style="font-size:8px;opacity:.6;">&#9660;</span>':'')+'</span></div>';
         html+='<div class="rt-cell" style="font-size:11px;color:var(--text3);">'+(s.data_inicio?_fmtDateBrShort(s.data_inicio):'-')+'</div>';
         var sAtrasado=_isAtrasado(s.data_fim,s.status);
         html+='<div class="rt-cell" style="font-size:11px;color:'+(sAtrasado?'#dc2626':'var(--text3)')+';font-weight:'+(sAtrasado?'700':'400')+';">'+(s.data_fim?_fmtDateBrShort(s.data_fim):'-')+'</div>';
-        html+='<div class="rt-cell rt-actions">';
+        html+='<div class="rt-cell" style="justify-content:center;">';
         if(ce&&!ehPassado){
-          html+='<button onclick="_editarSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;">'+ic("edit")+'</button>';
-          html+='<button onclick="_excluirSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
+          html+='<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>';
         }
         html+='</div>';
         html+='</div>';
@@ -1978,15 +1975,14 @@ function _cancelarDescricaoMain(tarefaId,ehPassado){
 
 // ── STATUS DROPDOWN DE TAREFA ──
 function _abrirStatusDropdown(tarefaId,isSub,parentId,ehPassado){
+  var old=document.getElementById("status-dd-wrap");if(old)old.remove();
   var anchorId=isSub?null:"sc-"+tarefaId;
   var anchor=anchorId?document.getElementById(anchorId):null;
-  var mc2=document.getElementById("modal-container2");if(!mc2)return;
   var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluido'};
-  var corBg={'pendente':'#fee2e2','em_andamento':'#dbeafe','pausado':'#FAEEDA','concluido':'#dcfce7'};
   var corTxt={'pendente':'#dc2626','em_andamento':'#1d4ed8','pausado':'#854F0B','concluido':'#15803d'};
   var top=40,left=0;
   if(anchor){var rect=anchor.getBoundingClientRect();top=rect.bottom+4;left=rect.left;}
-  var html='<div id="status-dd-ov" style="position:fixed;inset:0;z-index:2000;" onclick="document.getElementById(\'modal-container2\').innerHTML=\'\';">';
+  var html='<div id="status-dd-wrap" style="position:fixed;inset:0;z-index:2000;" onclick="document.getElementById(\'status-dd-wrap\').remove();">';
   html+='<div style="position:fixed;top:'+top+'px;left:'+left+'px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:4px;min-width:150px;z-index:2001;" onclick="event.stopPropagation();">';
   ['pendente','em_andamento','pausado','concluido'].forEach(function(s){
     html+='<div onclick="_alterarStatusTarefa(\''+tarefaId+'\',\''+s+'\','+!!isSub+',\''+parentId+'\','+!!ehPassado+')" style="padding:7px 12px;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">'
@@ -1995,10 +1991,10 @@ function _abrirStatusDropdown(tarefaId,isSub,parentId,ehPassado){
       +'</div>';
   });
   html+='</div></div>';
-  mc2.innerHTML=html;
+  var d=document.createElement("div");d.innerHTML=html;document.body.appendChild(d.firstChild);
 }
 async function _alterarStatusTarefa(tarefaId,novoStatus,isSub,parentId,ehPassado){
-  document.getElementById("modal-container2").innerHTML="";
+  var sd=document.getElementById("status-dd-wrap");if(sd)sd.remove();
   try{
     await dbUpsertTarefa({id:tarefaId,status:novoStatus});
     if(isSub&&parentId){
@@ -2012,6 +2008,28 @@ async function _alterarStatusTarefa(tarefaId,novoStatus,isSub,parentId,ehPassado
   }catch(_){toast("Erro ao alterar status",true);}
 }
 
+// ── MENU DE ACOES DE TAREFA ──
+function _abrirMenuTarefa(evt,tarefaId,isSub,parentId,ehPassado){
+  evt.stopPropagation();
+  var old=document.getElementById("rt-menu-dd");if(old)old.remove();
+  var rect=evt.currentTarget.getBoundingClientRect();
+  var top=Math.round(rect.bottom+4);
+  var left=Math.round(rect.right-160);
+  if(left<4)left=4;
+  var html='<div id="rt-menu-dd" style="position:fixed;inset:0;z-index:2000;" onclick="document.getElementById(\'rt-menu-dd\').remove();">';
+  html+='<div style="position:fixed;top:'+top+'px;left:'+left+'px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:4px;min-width:160px;z-index:2001;" onclick="event.stopPropagation();">';
+  if(isSub){
+    html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_editarSubtarefaPauta(\''+tarefaId+'\',\''+parentId+'\','+!!ehPassado+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Editar</div>';
+    html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_excluirSubtarefaPauta(\''+tarefaId+'\',\''+parentId+'\','+!!ehPassado+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:#dc2626;" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'">Excluir</div>';
+  } else {
+    html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_editarTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Editar</div>';
+    html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_showAddSubtarefaPauta(\''+tarefaId+'\','+!!ehPassado+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Adicionar subtarefa</div>';
+    html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_excluirTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:#dc2626;" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'">Excluir</div>';
+  }
+  html+='</div></div>';
+  var d=document.createElement("div");d.innerHTML=html;document.body.appendChild(d.firstChild);
+}
+
 // ── COMENTARIOS DE TAREFA ──
 async function _toggleTarefaCmts(tarefaId,ehPassado){
   _tarefaCmtsExpanded[tarefaId]=!_tarefaCmtsExpanded[tarefaId];
@@ -2023,7 +2041,7 @@ async function _toggleTarefaCmts(tarefaId,ehPassado){
   el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
   if(_tarefaCmtsExpanded[tarefaId]&&_tarefaCmtsCache[tarefaId]===undefined){
     try{
-      _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
+      _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentários(tarefaId);
       el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
     }catch(_){}
   }
@@ -2068,7 +2086,7 @@ async function _addTarefaComentario(tarefaId,ehPassado){
   var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentario",true);return;}
   try{
     await dbUpsertTarefaComentario({tarefa_id:tarefaId,usuario_id:userDbId,texto:txt});
-    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
+    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentários(tarefaId);
     var rId=reuniaoAtiva?reuniaoAtiva.id:'';
     var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
     var ce=perfil==="mestre"||perfil==="advogado";
@@ -2080,7 +2098,7 @@ async function _addTarefaComentario(tarefaId,ehPassado){
 async function _editTarefaComentarioInline(cId,tarefaId,ehPassado){
   var el=document.getElementById("tcmt-"+cId);if(!el)return;
   try{
-    var cmts=await dbFetchTarefaComentarios(tarefaId);
+    var cmts=await dbFetchTarefaComentários(tarefaId);
     var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
     el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
       +'<textarea id="tcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+c.texto+'</textarea>'
@@ -2110,7 +2128,7 @@ function _delTarefaComentario(cId,tarefaId,ehPassado){
 }
 async function _reloadTarefaCmts(tarefaId,ehPassado){
   try{
-    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
+    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentários(tarefaId);
     var rId=reuniaoAtiva?reuniaoAtiva.id:'';
     var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
     var ce=perfil==="mestre"||perfil==="advogado";
@@ -2120,14 +2138,14 @@ async function _reloadTarefaCmts(tarefaId,ehPassado){
 }
 
 // ── COMENTARIOS DA REUNIAO ──
-async function _loadReuniaoComentarios(reuniaoId){
+async function _loadReuniaoComentários(reuniaoId){
   var el=document.getElementById("reun-cmts-area");if(!el)return;
   var ce=perfil==="mestre"||perfil==="advogado";
   var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
   var hoje=new Date().toISOString().slice(0,10);
   var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
   try{
-    var cmts=await dbFetchReuniaoComentarios(reuniaoId);
+    var cmts=await dbFetchReuniaoComentários(reuniaoId);
     el.innerHTML=_buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado);
   }catch(_){if(el)el.innerHTML='';}
 }
@@ -2171,18 +2189,18 @@ async function _addReuniaoComentario(reuniaoId){
   var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentario",true);return;}
   try{
     await dbUpsertReuniaoComentario({reuniao_id:reuniaoId,usuario_id:userDbId,texto:txt});
-    _loadReuniaoComentarios(reuniaoId);toast("Comentario adicionado!");
+    _loadReuniaoComentários(reuniaoId);toast("Comentario adicionado!");
   }catch(_){toast("Erro",true);}
 }
 async function _editReuniaoComentarioInline(cId,reuniaoId){
   var el=document.getElementById("rcmt-"+cId);if(!el)return;
   try{
-    var cmts=await dbFetchReuniaoComentarios(reuniaoId);
+    var cmts=await dbFetchReuniaoComentários(reuniaoId);
     var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
     el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
       +'<textarea id="rcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+c.texto+'</textarea>'
       +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
-      +'<button onclick="_loadReuniaoComentarios(\''+reuniaoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+      +'<button onclick="_loadReuniaoComentários(\''+reuniaoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
       +'<button onclick="_saveReuniaoComentario(\''+cId+'\',\''+reuniaoId+'\')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
       +'</div></div>';
   }catch(_){toast("Erro",true);}
@@ -2192,12 +2210,12 @@ async function _saveReuniaoComentario(cId,reuniaoId){
   if(!txt){toast("Texto nao pode ser vazio",true);return;}
   try{
     await dbUpsertReuniaoComentario({id:cId,texto:txt});
-    _loadReuniaoComentarios(reuniaoId);toast("Comentario editado!");
+    _loadReuniaoComentários(reuniaoId);toast("Comentario editado!");
   }catch(_){toast("Erro",true);}
 }
 function _delReuniaoComentario(cId,reuniaoId){
   modalConfirm("Excluir este comentario?",async function(){
-    try{await dbDelReuniaoComentario(cId);_loadReuniaoComentarios(reuniaoId);toast("Comentario excluido!");}
+    try{await dbDelReuniaoComentario(cId);_loadReuniaoComentários(reuniaoId);toast("Comentario excluido!");}
     catch(_){toast("Erro",true);}
   });
 }
