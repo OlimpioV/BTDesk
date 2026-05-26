@@ -1,6 +1,8 @@
 // ── REUNIOES ──
 var _calMes=(new Date()).getMonth();
 var _calAno=(new Date()).getFullYear();
+var _projExpanded={};
+var _checklistCache={};
 
 async function renderReunioes(){
   var app=document.getElementById("app");app.className="page-mode";
@@ -221,38 +223,7 @@ function _renderPautaView(pauta,snap,ce,ehPassado){
   var tipo=pauta.tipo;
   var html='';
   if(tipo==='projeto'){
-    var eqIdProj=equipeAtiva?equipeAtiva.id:null;
-    var projs=projetosDB.filter(function(p){return !eqIdProj||p.equipe_id===eqIdProj;});
-    var corSt={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'};
-    var lblSt={'em_andamento':'Em andamento','concluido':'Concluido','pausado':'Pausado'};
-    if(!projs.length){html+='<div style="font-size:12px;color:var(--text3);">Nenhum projeto de equipe.</div>';}
-    else{
-      html+='<div style="display:flex;flex-direction:column;gap:6px;">';
-      projs.forEach(function(p){
-        var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
-        var respNome=(p.usuarios&&p.usuarios.nome)||resp;
-        var cor=corSt[p.status]||'#94a3b8';
-        var lbl=lblSt[p.status]||p.status.replace('_',' ');
-        html+='<div class="proj-card"><div class="proj-card-bar" style="background:'+cor+';"></div><div class="proj-card-content">';
-        html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">';
-        html+='<div class="proj-card-titulo">'+p.titulo+'</div>';
-        html+='<div class="proj-card-meta"><span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>';
-        if(resp)html+='<div class="av av-sm" style="background:'+_avCor(respNome)+'" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
-        html+='</div></div>';
-        if(p.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;">'+p.descricao+'</div>';
-        if(ce&&!ehPassado){
-          html+='<div style="display:flex;gap:4px;margin-top:7px;flex-wrap:wrap;">';
-          html+='<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>';
-          html+='<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("comment")+' Historico</button>';
-          html+='<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>';
-          html+='</div>';
-        }
-        html+='</div></div>';
-      });
-      html+='</div>';
-    }
-    if(ce&&!ehPassado)html+='<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';
-    if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);"><div class="reun-section-label" style="margin-bottom:4px;">Notas da reuniao</div><div class="pauta-notas">'+snap.notas+'</div></div>';
+    html+=_buildProjetosSection(snap,ce,ehPassado);
   } else if(tipo==='seminario'){
     var tSem=snap.titulo_seminario||'';
     var rSem=snap.responsavel_nome||'';
@@ -291,29 +262,204 @@ function _renderPautaView(pauta,snap,ce,ehPassado){
   return html;
 }
 
-function _loadReuniaoProjectos(){
-  var el=document.getElementById("reuniao-projetos-area");if(!el)return;
-  var ce=perfil==="mestre"||perfil==="advogado";
+function _buildProjetosSection(snap,ce,ehPassado){
   var eqId=equipeAtiva?equipeAtiva.id:null;
-  var proj=projetosDB.filter(function(p){return !eqId||p.equipe_id===eqId;});
-  if(!proj.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhum projeto interno.</div>';return;}
-  var corStatus={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'}
-  el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'+proj.map(function(p){
-    var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
-    var cor=corStatus[p.status]||'#94a3b8';
-    return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-      +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+p.titulo+'</div>'
-      +'<div style="display:flex;gap:4px;align-items:center;">'
-      +'<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;background:'+cor+'22;color:'+cor+';">'+p.status.replace('_',' ')+'</span>'
-      +(ce?'<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>':'')
-      +(ce?'<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("comment")+'</button>':'')
-      +(ce?'<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>':'')
-      +'</div></div>'
-      +(resp?'<div style="font-size:11px;color:var(--text3);margin-top:4px;">Resp: '+resp+'</div>':"")
-      +(p.descricao?'<div style="font-size:12px;color:var(--text2);margin-top:4px;">'+p.descricao+'</div>':"")
-      +'</div>';
+  var projs=projetosDB.filter(function(p){return(!eqId||p.equipe_id===eqId)&&!p.arquivado;});
+  var html='';
+  if(!projs.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhum projeto de equipe.</div>';}
+  else{
+    html+='<div style="display:flex;flex-direction:column;gap:8px;">';
+    projs.forEach(function(p){
+      html+='<div id="proj-item-'+p.id+'">'+_buildProjetoCardHTML(p,!!_projExpanded[p.id],_checklistCache[p.id]||null,ce,ehPassado)+'</div>';
+    });
+    html+='</div>';
+  }
+  if(ce&&!ehPassado)html+='<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';
+  if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);"><div class="reun-section-label" style="margin-bottom:4px;">Notas da reuniao</div><div class="pauta-notas">'+snap.notas+'</div></div>';
+  return html;
+}
+function _buildProjetoCardHTML(p,expanded,checklist,ce,ehPassado){
+  var corSt={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'};
+  var lblSt={'em_andamento':'Em andamento','concluido':'Concluido','pausado':'Pausado'};
+  var cor=corSt[p.status]||'#94a3b8';
+  var lbl=lblSt[p.status]||p.status.replace('_',' ');
+  var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
+  var respNome=(p.usuarios&&p.usuarios.nome)||resp;
+  var isPontual=p.tipo==='pontual';
+  var ehP=!!ehPassado;
+  var html='<div class="proj-card"><div class="proj-card-bar" style="background:'+cor+';"></div><div class="proj-card-content">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">';
+  html+='<div class="proj-card-titulo">'+p.titulo+'</div>';
+  html+='<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">';
+  html+='<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>';
+  if(isPontual)html+='<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f0fdf4;color:#15803d;">PONTUAL</span>';
+  if(isPontual&&ce&&!ehP)html+='<button onclick="_toggleProjeto(\''+p.id+'\','+ehP+')" title="'+(expanded?'Fechar checklist':'Ver checklist')+'" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
+  html+='</div></div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:6px;">';
+  if(resp)html+='<div class="av av-sm" style="background:'+_avCor(respNome)+';flex-shrink:0;" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
+  if(resp)html+='<span>'+resp+'</span>';
+  if(!isPontual)html+='<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:#f1f5f9;color:var(--text3);">continuo</span>';
+  html+='</div>';
+  if(p.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;">'+p.descricao+'</div>';
+  if(isPontual&&checklist&&checklist.length){
+    html+=_buildChecklistBar(checklist);
+    var done=checklist.filter(function(i){return i.status==='concluido';}).length;
+    html+='<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">'+done+'/'+checklist.length+' concluidos</div>';
+  }
+  if(isPontual&&expanded){
+    if(checklist)html+=_buildChecklistUI(p.id,checklist,ce,ehP);
+    else html+='<div style="font-size:12px;color:var(--text3);margin-top:6px;font-style:italic;">Carregando...</div>';
+  }
+  html+='<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">';
+  if(ce&&!ehP){
+    html+='<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>';
+    html+='<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>';
+    html+='<button onclick="arquivarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;">Arquivar</button>';
+  }
+  if(ce)html+='<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("comment")+' Comentarios</button>';
+  html+='</div>';
+  html+='</div></div>';
+  return html;
+}
+function _buildChecklistBar(checklist){
+  if(!checklist||!checklist.length)return '';
+  var corItem={'pendente':'#e2e8f0','em_andamento':'#3b82f6','concluido':'#22c55e'};
+  return '<div style="display:flex;gap:2px;margin-top:8px;margin-bottom:2px;">'+checklist.map(function(it){
+    return '<div style="flex:1;height:6px;background:'+(corItem[it.status]||'#e2e8f0')+';border-radius:2px;"></div>';
   }).join("")+'</div>';
+}
+function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
+  var corStatus={'pendente':'#94a3b8','em_andamento':'#3b82f6','concluido':'#22c55e'};
+  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','concluido':'Concluido'};
+  var html='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Checklist</div>';
+  if(!checklist.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhum item cadastrado.</div>';}
+  else{
+    checklist.forEach(function(it){
+      var cor=corStatus[it.status]||'#94a3b8';
+      var lbl=lblStatus[it.status]||it.status;
+      var respIt=(it.usuarios&&(it.usuarios.sigla||it.usuarios.nome))||"";
+      html+='<div id="cl-item-'+it.id+'" style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);">';
+      html+='<div style="width:8px;height:8px;border-radius:50%;background:'+cor+';flex-shrink:0;"></div>';
+      html+='<span style="flex:1;font-size:12px;color:var(--bt-navy);">'+it.titulo+'</span>';
+      if(respIt)html+='<span style="font-size:10px;padding:1px 5px;border-radius:4px;background:#f1f5f9;color:var(--text3);flex-shrink:0;">'+respIt+'</span>';
+      html+='<span style="font-size:10px;padding:1px 5px;border-radius:4px;background:'+cor+'22;color:'+cor+';flex-shrink:0;">'+lbl+'</span>';
+      if(ce&&!ehPassado){
+        html+='<button onclick="_editChecklistItemInline(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;flex-shrink:0;">'+ic("edit")+'</button>';
+        html+='<button onclick="delChecklistItem(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;flex-shrink:0;">'+ic("trash")+'</button>';
+      }
+      html+='</div>';
+    });
+  }
+  if(ce&&!ehPassado){
+    html+='<div id="cl-add-'+projetoId+'" style="margin-top:6px;">';
+    html+='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar item</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+async function _toggleProjeto(projetoId,ehPassado){
+  _projExpanded[projetoId]=!_projExpanded[projetoId];
+  if(_projExpanded[projetoId]){
+    var p=projetosDB.find(function(x){return x.id===projetoId;});
+    if(p&&p.tipo==='pontual'){
+      try{_checklistCache[projetoId]=await dbFetchChecklist(projetoId);}catch(_){_checklistCache[projetoId]=[];}
+    }
+  }
+  _reloadProjetoCard(projetoId,ehPassado);
+}
+async function arquivarProjeto(projetoId){
+  modalConfirm("Arquivar este projeto? Ele nao aparecera mais na lista.",async function(){
+    try{
+      await dbUpsertProjeto({id:projetoId,arquivado:true});
+      projetosDB=projetosDB.map(function(p){return p.id===projetoId?Object.assign({},p,{arquivado:true}):p;});
+      var el=document.getElementById("proj-item-"+projetoId);
+      if(el)el.remove();
+      toast("Projeto arquivado!");
+    }catch(e){toast("Erro ao arquivar",true);}
+  });
+}
+function _reloadProjetoCard(projetoId,ehPassado){
+  var el=document.getElementById("proj-item-"+projetoId);if(!el)return;
+  var p=projetosDB.find(function(x){return x.id===projetoId;});if(!p)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  el.innerHTML=_buildProjetoCardHTML(p,!!_projExpanded[projetoId],_checklistCache[projetoId]||null,ce,!!ehPassado);
+}
+// ── CHECKLIST ──
+async function _showAddChecklistItem(projetoId,ehPassado){
+  var el=document.getElementById("cl-add-"+projetoId);if(!el)return;
+  var advs=[];
+  try{var us=await dbFetchUsers();advs=us.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});}catch(_){}
+  var respOpts=advs.map(function(u){return '<option value="'+u.id+'">'+(u.sigla||u.nome||"")+'</option>';}).join("");
+  el.innerHTML='<div style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:flex;flex-direction:column;gap:6px;">'
+    +'<input id="cli-titulo-'+projetoId+'" placeholder="Titulo do item *" style="font-size:12px;"/>'
+    +'<div style="display:flex;gap:6px;">'
+    +'<select id="cli-resp-'+projetoId+'" style="flex:1;font-size:11px;"><option value="">Responsavel...</option>'+respOpts+'</select>'
+    +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;"><option value="pendente">Pendente</option><option value="em_andamento">Em andamento</option><option value="concluido">Concluido</option></select>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
+    +'<button onclick="_cancelAddChecklistItem(\''+projetoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+    +'<button onclick="_salvarAddChecklistItem(\''+projetoId+'\','+!!ehPassado+')" class="btn btn-primary" style="font-size:11px;">Adicionar</button>'
+    +'</div></div>';
+  var inp=document.getElementById("cli-titulo-"+projetoId);if(inp)inp.focus();
+}
+function _cancelAddChecklistItem(projetoId){
+  var el=document.getElementById("cl-add-"+projetoId);if(!el)return;
+  el.innerHTML='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar item</button>';
+}
+async function _salvarAddChecklistItem(projetoId,ehPassado){
+  var inp=document.getElementById("cli-titulo-"+projetoId);
+  var titulo=(inp?inp.value||"":"").trim();
+  if(!titulo){toast("Informe o titulo do item",true);return;}
+  var respId=document.getElementById("cli-resp-"+projetoId).value||null;
+  var status=document.getElementById("cli-status-"+projetoId).value||"pendente";
+  var cl=_checklistCache[projetoId]||[];
+  try{
+    var criado=await dbUpsertChecklistItem({projeto_id:projetoId,titulo:titulo,status:status,responsavel_id:respId,ordem:cl.length});
+    if(!_checklistCache[projetoId])_checklistCache[projetoId]=[];
+    if(criado)_checklistCache[projetoId].push(criado);
+    _reloadProjetoCard(projetoId,ehPassado);toast("Item adicionado!");
+  }catch(e){toast("Erro ao adicionar item",true);}
+}
+async function _editChecklistItemInline(itemId,projetoId,ehPassado){
+  var el=document.getElementById("cl-item-"+itemId);if(!el)return;
+  var cl=_checklistCache[projetoId]||[];
+  var it=cl.find(function(x){return x.id===itemId;});if(!it)return;
+  var advs=[];
+  try{var us=await dbFetchUsers();advs=us.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});}catch(_){}
+  var respOpts=advs.map(function(u){return '<option value="'+u.id+'"'+(it.responsavel_id===u.id?' selected':'')+'>'+((u.sigla||"")||(u.nome||""))+'</option>';}).join("");
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:4px;width:100%;padding:4px 0;">'
+    +'<input id="cli-edit-t-'+itemId+'" value="'+it.titulo+'" style="font-size:12px;width:100%;"/>'
+    +'<div style="display:flex;gap:6px;">'
+    +'<select id="cli-edit-r-'+itemId+'" style="flex:1;font-size:11px;"><option value="">Responsavel...</option>'+respOpts+'</select>'
+    +'<select id="cli-edit-s-'+itemId+'" style="flex:1;font-size:11px;"><option value="pendente"'+(it.status==="pendente"?" selected":"")+'>Pendente</option><option value="em_andamento"'+(it.status==="em_andamento"?" selected":"")+'>Em andamento</option><option value="concluido"'+(it.status==="concluido"?" selected":"")+'>Concluido</option></select>'
+    +'</div>'
+    +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
+    +'<button onclick="_reloadProjetoCard(\''+projetoId+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+    +'<button onclick="_saveChecklistItemInline(\''+itemId+'\',\''+projetoId+'\','+!!ehPassado+')" class="btn btn-primary" style="font-size:10px;padding:2px 8px;">Salvar</button>'
+    +'</div></div>';
+}
+async function _saveChecklistItemInline(itemId,projetoId,ehPassado){
+  var titulo=(document.getElementById("cli-edit-t-"+itemId).value||"").trim();
+  if(!titulo){toast("Informe o titulo",true);return;}
+  var respId=document.getElementById("cli-edit-r-"+itemId).value||null;
+  var status=document.getElementById("cli-edit-s-"+itemId).value||"pendente";
+  try{
+    var atualizado=await dbUpsertChecklistItem({id:itemId,titulo:titulo,responsavel_id:respId,status:status});
+    var cl=_checklistCache[projetoId]||[];
+    _checklistCache[projetoId]=cl.map(function(x){return x.id===itemId?Object.assign({},x,atualizado||{titulo:titulo,status:status,responsavel_id:respId}):x;});
+    _reloadProjetoCard(projetoId,ehPassado);toast("Item atualizado!");
+  }catch(e){toast("Erro",true);}
+}
+async function delChecklistItem(itemId,projetoId,ehPassado){
+  modalConfirm("Excluir este item do checklist?",async function(){
+    try{
+      await dbDelChecklistItem(itemId);
+      if(_checklistCache[projetoId])_checklistCache[projetoId]=_checklistCache[projetoId].filter(function(x){return x.id!==itemId;});
+      _reloadProjetoCard(projetoId,ehPassado);toast("Item excluido!");
+    }catch(e){toast("Erro",true);}
+  });
 }
 
 async function selecionarReuniao(id){
@@ -816,8 +962,11 @@ async function openEditProjeto(id){
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,500px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">'+(p?"Editar projeto":"Novo projeto interno")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo *</label><input id="proj-titulo" value="'+(p?p.titulo:'')+'"/></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="field">'
+    +'<div><label>Tipo</label><select id="proj-tipo"><option value="continuo"'+((!p||p.tipo==="continuo"||!p.tipo)?" selected":"")+'>Continuo</option><option value="pontual"'+((p&&p.tipo==="pontual")?" selected":"")+'>Pontual (checklist)</option></select></div>'
+    +'<div><label>Status</label><select id="proj-status"><option value="em_andamento"'+((!p||p.status==="em_andamento")?" selected":"")+'>Em andamento</option><option value="concluido"'+((p&&p.status==="concluido")?" selected":"")+'>Concluido</option><option value="pausado"'+((p&&p.status==="pausado")?" selected":"")+'>Pausado</option></select></div>'
+    +'</div>'
     +'<div class="field"><label>Responsavel</label><select id="proj-resp"><option value="">Selecione...</option>'+respOpts+'</select></div>'
-    +'<div class="field"><label>Status</label><select id="proj-status"><option value="em_andamento"'+((!p||p.status==="em_andamento")?" selected":"")+'>Em andamento</option><option value="concluido"'+((p&&p.status==="concluido")?" selected":"")+'>Concluido</option><option value="pausado"'+((p&&p.status==="pausado")?" selected":"")+'>Pausado</option></select></div>'
     +'<div class="field"><label>Descricao</label><textarea id="proj-desc" rows="3">'+(p?p.descricao||'':"")+'</textarea></div>'
     +(equipesDB.length?'<div class="field"><label>Equipe</label><select id="proj-equipe"><option value="">Selecione...</option>'+eqOptions+'</select></div>':"")
     +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
@@ -830,52 +979,77 @@ async function salvarProjeto(id){
   var titulo=(document.getElementById("proj-titulo").value||"").trim();
   if(!titulo){toast("Informe o titulo",true);return;}
   var resp=document.getElementById("proj-resp").value||null;
+  var tipo=document.getElementById("proj-tipo").value||"continuo";
   var status=document.getElementById("proj-status").value;
   var desc=(document.getElementById("proj-desc").value||"").trim();
   var eqEl=document.getElementById("proj-equipe");var equipe_id=eqEl?eqEl.value||null:(equipeAtiva?equipeAtiva.id:null);
-  var obj={titulo,responsavel_id:resp,status,descricao:desc||null,equipe_id};
+  var obj={titulo:titulo,tipo:tipo,responsavel_id:resp,status:status,descricao:desc||null,equipe_id:equipe_id};
   if(id)obj.id=id;
   try{
-    await dbUpsertProjeto(obj);
+    var salvo=await dbUpsertProjeto(obj);
     var eqId=equipeAtiva?equipeAtiva.id:null;
     projetosDB=await dbFetchProjetos(eqId);
-    closeModal();_loadReuniaoProjectos();toast("Projeto salvo!");
+    if(id&&_checklistCache[id])delete _checklistCache[id];
+    closeModal();
+    if(reuniaoAtiva)_loadReuniaoPautas(reuniaoAtiva.id);
+    toast("Projeto salvo!");
   }catch(e){toast("Erro ao salvar",true);}
 }
 async function delProjeto(id){
   closeModal();
-  modalConfirm("Excluir este projeto?",async function(){
+  modalConfirm("Excluir este projeto? O checklist e comentarios tambem serao removidos.",async function(){
     try{
       await dbDelProjeto(id);
       projetosDB=projetosDB.filter(function(p){return p.id!==id;});
-      _loadReuniaoProjectos();toast("Projeto excluido!");
+      delete _projExpanded[id];delete _checklistCache[id];
+      if(reuniaoAtiva)_loadReuniaoPautas(reuniaoAtiva.id);
+      toast("Projeto excluido!");
     }catch(e){toast("Erro",true);}
   });
 }
 async function openProjetoComentarios(projetoId){
   var p=projetosDB.find(function(x){return x.id===projetoId;})||{titulo:"Projeto"};
   var mc=document.getElementById("modal-container");
-  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,560px);max-height:80vh;display:flex;flex-direction:column;">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-shrink:0;"><div style="font-size:15px;font-weight:700;color:var(--bt-navy);">'+p.titulo+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
-    +'<div id="proj-cmts" style="flex:1;overflow-y:auto;min-height:80px;">Carregando...</div>'
-    +'<div style="margin-top:12px;flex-shrink:0;"><textarea id="proj-cmt-txt" rows="2" placeholder="Adicionar comentario..." style="width:100%;resize:none;"></textarea><div style="display:flex;justify-content:flex-end;margin-top:6px;"><button class="btn btn-primary" onclick="addProjetoComentario(\''+projetoId+'\')">Comentar</button></div></div>'
-    +'</div></div>';
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,580px);max-height:85vh;display:flex;flex-direction:column;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-shrink:0;">'
+    +'<div style="font-size:15px;font-weight:700;color:var(--bt-navy);">'+p.titulo+'</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'</div>'
+    +'<div id="proj-cmts" style="flex:1;overflow-y:auto;min-height:80px;padding-right:2px;">Carregando...</div>'
+    +'<div style="margin-top:12px;flex-shrink:0;border-top:1px solid var(--border);padding-top:12px;">'
+    +'<textarea id="proj-cmt-txt" rows="2" placeholder="Adicionar comentario..." style="width:100%;resize:none;"></textarea>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:6px;gap:6px;">'
+    +'<button class="btn btn-primary" onclick="addProjetoComentario(\''+projetoId+'\')">Comentar</button>'
+    +'</div></div></div></div>';
   _loadProjetoComentarios(projetoId);
 }
 async function _loadProjetoComentarios(projetoId){
   var el=document.getElementById("proj-cmts");if(!el)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
   try{
     var cmts=await dbFetchProjetoComentarios(projetoId);
     if(!cmts.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum comentario ainda.</div>';return;}
     el.innerHTML=cmts.map(function(c){
       var u=c.usuarios||{};
-      return '<div style="padding:10px 0;border-bottom:1px solid var(--border);">'
+      var isSinal=c.tipo==='sinalizado';
+      var canEdit=(c.usuario_id===userDbId||perfil==='mestre')&&ce;
+      var bgStyle=isSinal?'background:#fff5f5;border-left:3px solid #ef4444;padding:8px 12px;margin:0 -4px;border-radius:0 6px 6px 0;':'';
+      return '<div id="proj-cmt-'+c.id+'" style="padding:8px 0;border-bottom:1px solid var(--border);">'
+        +'<div style="'+bgStyle+'">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+        +'<div style="display:flex;align-items:center;gap:5px;">'
+        +(isSinal?'<span style="color:#ef4444;font-size:13px;font-weight:700;">!</span>':'')
         +'<span style="font-size:12px;font-weight:600;color:var(--bt-navy);">'+(u.sigla||u.nome||"?")+'</span>'
-        +'<span style="font-size:11px;color:var(--text3);">'+new Date(c.criado_em).toLocaleDateString("pt-BR")+'</span>'
+        +(isSinal?'<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:#fee2e2;color:#ef4444;font-weight:600;">SINAL</span>':"")
         +'</div>'
-        +'<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;">'+c.texto+'</div>'
-        +'</div>';
+        +'<div style="display:flex;align-items:center;gap:4px;">'
+        +'<span style="font-size:11px;color:var(--text3);">'+new Date(c.criado_em).toLocaleDateString("pt-BR")+'</span>'
+        +(canEdit?'<button onclick="editarComentarioProjeto(\''+c.id+'\',\''+projetoId+'\')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>':'')
+        +(canEdit?'<button onclick="delComentarioProjeto(\''+c.id+'\',\''+projetoId+'\')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>':'')
+        +'</div>'
+        +'</div>'
+        +'<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5;">'+c.texto+'</div>'
+        +'</div></div>';
     }).join("");
   }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar.</div>';}
 }
@@ -888,6 +1062,38 @@ async function addProjetoComentario(projetoId){
     _loadProjetoComentarios(projetoId);
     toast("Comentario adicionado!");
   }catch(e){toast("Erro",true);}
+}
+async function editarComentarioProjeto(cId,projetoId){
+  var el=document.getElementById("proj-cmt-"+cId);if(!el)return;
+  var cmts;
+  try{cmts=await dbFetchProjetoComentarios(projetoId);}catch(e){toast("Erro",true);return;}
+  var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
+  var isSinal=c.tipo==='sinalizado';
+  var bgStyle=isSinal?'background:#fff5f5;border-left:3px solid #ef4444;padding:8px 12px;margin:0 -4px;border-radius:0 6px 6px 0;':'';
+  var u=c.usuarios||{};
+  el.innerHTML='<div style="padding:8px 0;"><div style="'+bgStyle+'">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--bt-navy);margin-bottom:6px;">'+(u.sigla||u.nome||"?")+'</div>'
+    +'<textarea id="cmt-edit-'+cId+'" rows="3" style="width:100%;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:13px;">'+c.texto+'</textarea>'
+    +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;">'
+    +'<button onclick="_loadProjetoComentarios(\''+projetoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+    +'<button onclick="salvarComentarioProjeto(\''+cId+'\',\''+projetoId+'\')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
+    +'</div></div></div>';
+}
+async function salvarComentarioProjeto(cId,projetoId){
+  var txt=(document.getElementById("cmt-edit-"+cId).value||"").trim();
+  if(!txt){toast("Texto nao pode ser vazio",true);return;}
+  try{
+    await dbUpsertProjetoComentario({id:cId,texto:txt});
+    _loadProjetoComentarios(projetoId);toast("Comentario editado!");
+  }catch(e){toast("Erro",true);}
+}
+async function delComentarioProjeto(cId,projetoId){
+  modalConfirm("Excluir este comentario?",async function(){
+    try{
+      await dbDelProjetoComentario(cId);
+      _loadProjetoComentarios(projetoId);toast("Comentario excluido!");
+    }catch(e){toast("Erro",true);}
+  });
 }
 
 // ── NOTIFICACOES ──

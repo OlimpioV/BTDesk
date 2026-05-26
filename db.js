@@ -109,11 +109,14 @@ async function dbFetchProjetos(equipeId){
   var r=await fetch(SB+"/rest/v1/projetos_internos?select=*,usuarios(id,nome,sigla)&order=criado_em.desc"+q,{headers:H});
   if(!r.ok)throw new Error();return r.json();
 }
-async function dbUpsertProjeto(p){var r=await fetch(SB+"/rest/v1/projetos_internos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}
+async function dbUpsertProjeto(p){var r=await fetch(SB+"/rest/v1/projetos_internos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelProjeto(id){await fetch(SB+"/rest/v1/projetos_internos?id=eq."+id,{method:"DELETE",headers:H});}
-async function dbFetchProjetoComentarios(projetoId){var r=await fetch(SB+"/rest/v1/projeto_comentarios?projeto_id=eq."+projetoId+"&select=*,usuarios(nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
-async function dbUpsertProjetoComentario(c){var r=await fetch(SB+"/rest/v1/projeto_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();}
+async function dbFetchProjetoComentarios(projetoId){var r=await fetch(SB+"/rest/v1/projeto_comentarios?projeto_id=eq."+projetoId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertProjetoComentario(c){var r=await fetch(SB+"/rest/v1/projeto_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelProjetoComentario(id){await fetch(SB+"/rest/v1/projeto_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
+async function dbFetchChecklist(projetoId){var r=await fetch(SB+"/rest/v1/checklist_projeto?projeto_id=eq."+projetoId+"&select=*,usuarios(id,nome,sigla)&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertChecklistItem(item){var r=await fetch(SB+"/rest/v1/checklist_projeto",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbDelChecklistItem(id){await fetch(SB+"/rest/v1/checklist_projeto?id=eq."+id,{method:"DELETE",headers:H});}
 
 // ── NOTIFICACOES DB ──
 async function dbFetchNotificacoes(){var r=await fetch(SB+"/rest/v1/notificacoes?usuario_id=eq."+userDbId+"&order=criado_em.desc&limit=50",{headers:H});if(!r.ok)return [];return r.json();}
