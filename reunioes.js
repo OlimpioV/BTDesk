@@ -903,41 +903,129 @@ async function openAdicionarPauta(reuniaoId){
     _apRenderDoisPaineis(reuniaoId,cats,cats[0]?cats[0].id:null);
   }catch(e){var b=document.getElementById("ap-body");if(b)b.innerHTML='<div style="padding:20px;color:var(--text3);">Erro ao carregar.</div>';}
 }
+var _apCats=[];
 function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
   _apCatSel=catSelId;
+  _apCats=cats;
   var body=document.getElementById("ap-body");if(!body)return;
-  if(!cats.length){
-    body.innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;width:100%;">Nenhuma categoria cadastrada para esta equipe.</div>';
-    return;
-  }
-  var leftHTML='<div id="ap-cats" style="width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);">';
-  cats.forEach(function(cat){
-    var sel=cat.id===catSelId;
-    leftHTML+='<div onclick="_apSelectCat(\''+cat.id+'\')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:'+(sel?'#fff':'')+';border-left:3px solid '+(sel?'var(--bt-orange)':'transparent')+';">'
-      +'<span style="font-size:13px;font-weight:'+(sel?'700':'400')+';color:var(--bt-navy);">'+cat.nome+'</span>'
-      +'<span id="ap-cat-badge-'+cat.id+'" style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:#e2e8f0;color:var(--text3);">...</span>'
-      +'</div>';
-  });
-  leftHTML+='</div>';
+  _apRenderCatList(cats,catSelId);
+  body.innerHTML=document.getElementById("ap-cats-wrap")?body.innerHTML:'';
+  var leftHTML='<div id="ap-cats-wrap" style="width:220px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);">'
+    +'<div id="ap-cats" style="flex:1;overflow-y:auto;"></div>'
+    +'<div id="ap-nova-cat-area" style="border-top:1px solid var(--border);padding:8px 10px;">'
+    +'<button onclick="_apMostrarNovaCategoria()" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova categoria</button>'
+    +'</div></div>';
   body.innerHTML=leftHTML+'<div id="ap-items" style="flex:1;overflow-y:auto;padding:4px 0;"></div>';
+  _apRenderCatList(cats,catSelId);
   cats.forEach(function(cat){
     dbFetchPautaItens(cat.id).then(function(itens){
       var badge=document.getElementById("ap-cat-badge-"+cat.id);
       if(badge)badge.textContent=itens.length;
     }).catch(function(){});
   });
-  if(catSelId)_apLoadItens(catSelId);
+  if(!cats.length){
+    document.getElementById("ap-items").innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;width:100%;">Nenhuma categoria. Crie a primeira.</div>';
+  } else if(catSelId){
+    _apLoadItens(catSelId);
+  }
+}
+function _apRenderCatList(cats,catSelId){
+  var el=document.getElementById("ap-cats");if(!el)return;
+  if(!cats.length){el.innerHTML='';return;}
+  el.innerHTML=cats.map(function(cat){
+    var sel=cat.id===(catSelId||_apCatSel);
+    return '<div id="ap-cat-row-'+cat.id+'" style="padding:8px 10px;display:flex;align-items:center;gap:4px;background:'+(sel?'#fff':'')+';border-left:3px solid '+(sel?'var(--bt-orange)':'transparent')+';">'
+      +'<span id="ap-cat-nome-'+cat.id+'" onclick="_apSelectCat(\''+cat.id+'\')" style="font-size:13px;font-weight:'+(sel?'700':'400')+';color:var(--bt-navy);flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cat.nome+'</span>'
+      +'<span id="ap-cat-badge-'+cat.id+'" style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:20px;background:#e2e8f0;color:var(--text3);flex-shrink:0;">...</span>'
+      +'<button onclick="event.stopPropagation();_apIniciarEditCat(\''+cat.id+'\',\''+cat.nome.replace(/'/g,"\\'")+'\')" title="Editar" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#2563eb\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("edit")+'</button>'
+      +'<button onclick="event.stopPropagation();_apDeletarCategoria(\''+cat.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#dc2626\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("trash")+'</button>'
+      +'</div>';
+  }).join("");
 }
 async function _apSelectCat(catId){
   _apCatSel=catId;
-  var allDivs=document.querySelectorAll("#ap-cats > div");
-  allDivs.forEach(function(div){
-    var isSel=div.getAttribute("onclick")&&div.getAttribute("onclick").indexOf(catId)>=0;
-    div.style.background=isSel?'#fff':'';
-    div.style.borderLeftColor=isSel?'var(--bt-orange)':'transparent';
-    var sp=div.querySelector("span:first-child");if(sp)sp.style.fontWeight=isSel?'700':'400';
+  _apRenderCatList(_apCats,catId);
+  _apCats.forEach(function(cat){
+    dbFetchPautaItens(cat.id).then(function(itens){
+      var badge=document.getElementById("ap-cat-badge-"+cat.id);
+      if(badge)badge.textContent=itens.length;
+    }).catch(function(){});
   });
   _apLoadItens(catId);
+}
+function _apIniciarEditCat(catId,nomeAtual){
+  var row=document.getElementById("ap-cat-row-"+catId);if(!row)return;
+  row.innerHTML='<input id="ap-cat-edit-input" value="'+nomeAtual.replace(/"/g,'&quot;')+'" style="flex:1;font-size:13px;padding:2px 5px;border:1.5px solid var(--bt-orange);border-radius:4px;min-width:0;"/>'
+    +'<button onclick="_apSalvarEditCat(\''+catId+'\')" title="Salvar" style="background:none;border:none;cursor:pointer;color:#22c55e;font-size:14px;padding:2px;flex-shrink:0;">&#10003;</button>'
+    +'<button onclick="_apCancelarEditCat(\''+catId+'\',\''+nomeAtual.replace(/'/g,"\\'")+'\');" title="Cancelar" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px;padding:2px;flex-shrink:0;">&#10005;</button>';
+  var inp=document.getElementById("ap-cat-edit-input");if(inp)inp.focus();
+}
+async function _apSalvarEditCat(catId){
+  var inp=document.getElementById("ap-cat-edit-input");
+  var nome=(inp?inp.value||"":"").trim();
+  if(!nome){toast("Informe o nome",true);return;}
+  try{
+    await dbUpsertPautaCategoria({id:catId,nome:nome});
+    _apCats=_apCats.map(function(c){return c.id===catId?Object.assign({},c,{nome:nome}):c;});
+    _apRenderCatList(_apCats,_apCatSel);
+    _apCats.forEach(function(cat){
+      dbFetchPautaItens(cat.id).then(function(itens){var b=document.getElementById("ap-cat-badge-"+cat.id);if(b)b.textContent=itens.length;}).catch(function(){});
+    });
+    toast("Categoria salva!");
+  }catch(e){toast("Erro ao salvar",true);}
+}
+function _apCancelarEditCat(catId,nomeOriginal){
+  _apRenderCatList(_apCats,_apCatSel);
+  _apCats.forEach(function(cat){
+    dbFetchPautaItens(cat.id).then(function(itens){var b=document.getElementById("ap-cat-badge-"+cat.id);if(b)b.textContent=itens.length;}).catch(function(){});
+  });
+}
+async function _apDeletarCategoria(catId){
+  modalConfirm("Excluir esta categoria e todos os seus itens?",async function(){
+    try{
+      await dbDelPautaCategoria(catId);
+      _apCats=_apCats.filter(function(c){return c.id!==catId;});
+      var novasel=_apCatSel===catId?(_apCats[0]?_apCats[0].id:null):_apCatSel;
+      _apCatSel=novasel;
+      _apRenderCatList(_apCats,novasel);
+      _apCats.forEach(function(cat){
+        dbFetchPautaItens(cat.id).then(function(itens){var b=document.getElementById("ap-cat-badge-"+cat.id);if(b)b.textContent=itens.length;}).catch(function(){});
+      });
+      if(novasel){_apLoadItens(novasel);}
+      else{var el=document.getElementById("ap-items");if(el)el.innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;">Nenhuma categoria.</div>';}
+      toast("Categoria excluida!");
+    }catch(e){toast("Erro ao excluir",true);}
+  });
+}
+function _apMostrarNovaCategoria(){
+  var el=document.getElementById("ap-nova-cat-area");if(!el)return;
+  el.innerHTML='<div style="display:flex;gap:4px;align-items:center;">'
+    +'<input id="ap-nova-cat-input" placeholder="Nome da categoria" style="flex:1;font-size:12px;padding:3px 6px;border:1.5px solid var(--bt-orange);border-radius:4px;min-width:0;"/>'
+    +'<button onclick="_apSalvarNovaCategoria()" title="Salvar" style="background:none;border:none;cursor:pointer;color:#22c55e;font-size:14px;padding:2px;flex-shrink:0;">&#10003;</button>'
+    +'<button onclick="_apCancelarNovaCategoria()" title="Cancelar" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px;padding:2px;flex-shrink:0;">&#10005;</button>'
+    +'</div>';
+  var inp=document.getElementById("ap-nova-cat-input");if(inp)inp.focus();
+}
+function _apCancelarNovaCategoria(){
+  var el=document.getElementById("ap-nova-cat-area");if(!el)return;
+  el.innerHTML='<button onclick="_apMostrarNovaCategoria()" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova categoria</button>';
+}
+async function _apSalvarNovaCategoria(){
+  var inp=document.getElementById("ap-nova-cat-input");
+  var nome=(inp?inp.value||"":"").trim();
+  if(!nome){toast("Informe o nome",true);return;}
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  try{
+    var cat=await dbUpsertPautaCategoria({nome:nome,tipo:'livre',equipe_id:eqId,ordem:_apCats.length+1});
+    if(!cat||!cat.id){toast("Erro ao criar",true);return;}
+    _apCats.push(cat);
+    _apRenderCatList(_apCats,_apCatSel);
+    _apCats.forEach(function(c){
+      dbFetchPautaItens(c.id).then(function(itens){var b=document.getElementById("ap-cat-badge-"+c.id);if(b)b.textContent=itens.length;}).catch(function(){});
+    });
+    _apCancelarNovaCategoria();
+    toast("Categoria criada!");
+  }catch(e){toast("Erro ao criar categoria",true);}
 }
 async function _apLoadItens(catId){
   var el=document.getElementById("ap-items");if(!el)return;
