@@ -64,7 +64,7 @@ function _fmtData(d){
 }
 
 function _labelTipoPauta(tipo){
-  return {'seminario':'Seminario','projeto':'Projetos','atualizacao_demandas':'Atualizacao de demandas','livre':'Livre','demanda':'Demanda'}[tipo]||tipo||'Livre';
+  return {'seminario':'Seminario','projeto':'Projetos','atualizacao_demandas':'Atualizacao de demandas','avisos_gerais':'Avisos gerais','livre':'Livre','demanda':'Demanda'}[tipo]||tipo||'Livre';
 }
 
 function _buildReuniaoPlaceholder(){
@@ -78,21 +78,20 @@ function _renderMiniCal(){
   var el=document.getElementById("mini-cal-area");if(!el)return;
   var hoje=new Date();
   var hojeD=hoje.getDate(),hojeM=hoje.getMonth(),hojeA=hoje.getFullYear();
+  var hojeStr=String(hojeA)+'-'+(hojeM+1<10?'0':'')+(hojeM+1)+'-'+(hojeD<10?'0':'')+hojeD;
   var mesesNome=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var diasSem=['D','S','T','Q','Q','S','S'];
   var primeiroDia=new Date(_calAno,_calMes,1).getDay();
   var diasNoMes=new Date(_calAno,_calMes+1,0).getDate();
   var diasAnterior=new Date(_calAno,_calMes,0).getDate();
-  var mesStr=String(_calAno)+'-'+((_calMes+1)<10?'0':'')+String(_calMes+1);
-  var diasComReuniao={};
-  reunioesDB.forEach(function(r){
-    if(!r||!r.data)return;
-    if(r.data.slice(0,7)===mesStr){
-      var dd=parseInt(r.data.slice(8,10),10);
-      if(!diasComReuniao[dd])diasComReuniao[dd]=r;
-    }
+  var mesStr=String(_calAno)+'-'+((_calMes+1)<10?'0':'')+(_calMes+1);
+  var datasComReuniao={};
+  (reunioesDB||[]).forEach(function(r){
+    if(!r||typeof r.data!=='string'||r.data.length<10)return;
+    var key=r.data.slice(0,10);
+    if(!datasComReuniao[key])datasComReuniao[key]=r;
   });
-  var selStr=reuniaoAtiva&&reuniaoAtiva.data?reuniaoAtiva.data.slice(0,10):'';
+  var selStr=reuniaoAtiva&&reuniaoAtiva.data?String(reuniaoAtiva.data).slice(0,10):'';
   var html='<div class="mini-cal">'
     +'<div class="mini-cal-hdr">'
     +'<button class="mini-cal-nav" onclick="_navCalMes(-1)">&#8249;</button>'
@@ -103,11 +102,11 @@ function _renderMiniCal(){
   diasSem.forEach(function(d){html+='<div class="mini-cal-dow">'+d+'</div>';});
   for(var i=primeiroDia-1;i>=0;i--){html+='<div class="mini-cal-day outro-mes">'+(diasAnterior-i)+'</div>';}
   for(var d=1;d<=diasNoMes;d++){
+    var ddStr=mesStr+'-'+(d<10?'0':'')+d;
     var cls='mini-cal-day';
-    var isHoje=(d===hojeD&&_calMes===hojeM&&_calAno===hojeA);
-    var ddStr=mesStr+'-'+(d<10?'0':'')+String(d);
-    var isSel=selStr===ddStr;
-    var r=diasComReuniao[d];
+    var isHoje=ddStr===hojeStr;
+    var isSel=!!selStr&&ddStr===selStr;
+    var r=datasComReuniao[ddStr]||null;
     if(isSel)cls+=' sel';else if(isHoje)cls+=' hoje';
     if(r){cls+=' tem-reun';html+='<div class="'+cls+'" onclick="selecionarReuniao(\''+r.id+'\')">'+d+'</div>';}
     else{html+='<div class="'+cls+'">'+d+'</div>';}
@@ -450,9 +449,12 @@ function openEditPauta(id){
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,480px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">'+(p?"Editar pauta":"Nova pauta")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo *</label><input id="pf-titulo" value="'+(p?p.titulo:'')+'"/></div>'
-    +'<div class="field"><label>Tipo</label><select id="pf-tipo"><option value="livre"'+((!p||p.tipo==="livre")?" selected":"")+'>Livre</option><option value="seminario"'+((p&&p.tipo==="seminario")?" selected":"")+'>Seminario</option><option value="projeto"'+((p&&p.tipo==="projeto")?" selected":"")+'>Projetos de equipe</option><option value="atualizacao_demandas"'+((p&&p.tipo==="atualizacao_demandas")?" selected":"")+'>Atualizacao de demandas</option></select></div>'
+    +'<div class="field"><label>Tipo</label><select id="pf-tipo">'+_tiposOpts(p?p.tipo:'livre')+'</select></div>'
     +'<div class="field"><label>Descricao</label><textarea id="pf-desc" rows="3">'+(p?p.descricao||'':"")+'</textarea></div>'
-    +'<div class="field" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="pf-recorrente"'+(p&&p.recorrente?' checked':'')+'/><label for="pf-recorrente" style="margin-bottom:0;cursor:pointer;">Recorrente (aparece em todas as reunioes)</label></div>'
+    +'<div style="display:flex;gap:16px;margin-bottom:12px;">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="pf-recorrente"'+(p&&p.recorrente?' checked':'')+'/> Recorrente</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="pf-padrao"'+(p&&p.padrao?' checked':'')+'/> Padrao</label>'
+    +'</div>'
     +(equipesDB.length?'<div class="field"><label>Equipe</label><select id="pf-equipe"><option value="">Selecione...</option>'+eqOptions+'</select></div>':"")
     +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarPauta('+(p?"'"+p.id+"'":"null")+')">Salvar</button></div>'
     +'</div></div>';
@@ -463,8 +465,9 @@ async function salvarPauta(id){
   var tipo=document.getElementById("pf-tipo").value;
   var descricao=(document.getElementById("pf-desc").value||"").trim();
   var recorrente=document.getElementById("pf-recorrente").checked;
+  var padrao=document.getElementById("pf-padrao").checked;
   var eqEl=document.getElementById("pf-equipe");var equipe_id=eqEl?eqEl.value||null:null;
-  var obj={titulo,tipo,descricao:descricao||null,recorrente,equipe_id,criado_por:userDbId};
+  var obj={titulo,tipo,descricao:descricao||null,recorrente,padrao,equipe_id,criado_por:userDbId};
   if(id)obj.id=id;
   try{
     await dbUpsertPauta(obj);
@@ -480,15 +483,53 @@ async function delPauta(id){
 }
 
 // ── ADICIONAR PAUTA A REUNIAO ──
+function _tiposOpts(sel){
+  return '<option value="livre"'+(sel==='livre'?' selected':'')+'>Livre</option>'
+    +'<option value="seminario"'+(sel==='seminario'?' selected':'')+'>Seminario</option>'
+    +'<option value="projeto"'+(sel==='projeto'?' selected':'')+'>Projetos de equipe</option>'
+    +'<option value="atualizacao_demandas"'+(sel==='atualizacao_demandas'?' selected':'')+'>Atualizacao de demandas</option>'
+    +'<option value="avisos_gerais"'+(sel==='avisos_gerais'?' selected':'')+'>Avisos gerais</option>';
+}
 function openAdicionarPauta(reuniaoId){
-  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,480px);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Nova pauta</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var pautasFiltradas=pautasDB.filter(function(p){return !p.equipe_id||p.equipe_id===eqId||perfil==='mestre';});
+  var padroes=pautasFiltradas.filter(function(p){return p.padrao;});
+  var outras=pautasFiltradas.filter(function(p){return !p.padrao;});
+  var lista=padroes.concat(outras);
+  function rowPauta(p){
+    var tipoCor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8','avisos_gerais':'#22c55e'}[p.tipo]||'#94a3b8';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--border);">'
+      +(p.padrao?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#eff6ff;color:var(--bt-navy);flex-shrink:0;">PADRAO</span>':'')
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.titulo+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:1px;"><span style="color:'+tipoCor+';">'+_labelTipoPauta(p.tipo)+'</span>'+(p.recorrente?' - recorrente':'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:4px;flex-shrink:0;">'
+      +'<button onclick="adicionarPautaExistenteReuniao(\''+reuniaoId+'\',\''+p.id+'\')" class="btn btn-primary" style="font-size:11px;padding:3px 10px;">Adicionar</button>'
+      +'<button onclick="openEditPauta(\''+p.id+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>'
+      +'<button onclick="delPautaDoModal(\''+p.id+'\',\''+reuniaoId+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">'+ic("trash")+'</button>'
+      +'</div></div>';
+  }
+  var listaHtml=lista.length
+    ?'<div style="max-height:260px;overflow-y:auto;">'+lista.map(rowPauta).join('')+'</div>'
+    :'<div class="reun-empty" style="padding:28px 0;"><div class="reun-empty-icon">'+ic("edit")+'</div><div class="reun-empty-msg">Nenhuma pauta cadastrada. Crie uma na aba "Nova pauta".</div></div>';
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,520px);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Adicionar pauta</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+    +'<div style="display:flex;border-bottom:2px solid var(--border);margin:12px 0 0;">'
+    +'<button id="ap-tab-1" onclick="_apTab(1,\''+reuniaoId+'\')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--bt-navy);border-bottom:2px solid var(--bt-navy);margin-bottom:-2px;cursor:pointer;">Pautas cadastradas</button>'
+    +'<button id="ap-tab-2" onclick="_apTab(2,\''+reuniaoId+'\')" style="padding:8px 16px;border:none;background:none;font-size:13px;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;">Nova pauta</button>'
+    +'</div>'
+    +'<div id="ap-panel-1" style="padding-top:12px;">'+listaHtml+'</div>'
+    +'<div id="ap-panel-2" style="display:none;padding-top:12px;">'
     +'<div class="field"><label>Titulo *</label><input id="np-titulo" placeholder="Nome da pauta"/></div>'
-    +'<div class="field"><label>Tipo</label><select id="np-tipo"><option value="livre">Livre</option><option value="seminario">Seminario</option><option value="projeto">Projetos de equipe</option><option value="atualizacao_demandas">Atualizacao de demandas</option></select></div>'
+    +'<div class="field"><label>Tipo</label><select id="np-tipo">'+_tiposOpts('livre')+'</select></div>'
     +'<div class="field"><label>Responsavel</label><select id="np-resp"><option value="">Nenhum</option></select></div>'
-    +'<div class="field" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="np-recorrente"/><label for="np-recorrente" style="margin-bottom:0;cursor:pointer;">Recorrente (aparece em todas as reunioes)</label></div>'
-    +'<div class="field"><label>Notas iniciais</label><textarea id="np-notas" rows="3" placeholder="Notas para esta pauta nesta reuniao..."></textarea></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarNovaPautaReuniao(\''+reuniaoId+'\')">Adicionar</button></div>'
+    +'<div style="display:flex;gap:16px;margin-bottom:12px;">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="np-recorrente"/> Recorrente</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="np-padrao"/> Padrao</label>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarNovaPautaReuniao(\''+reuniaoId+'\')">Criar e adicionar</button></div>'
+    +'</div>'
     +'</div></div>';
   dbFetchUsers().then(function(users){
     var advs=(users||[]).filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});
@@ -496,24 +537,51 @@ function openAdicionarPauta(reuniaoId){
     advs.forEach(function(u){var o=document.createElement("option");o.value=u.id;o.textContent=(u.sigla?u.sigla+' - ':'')+u.nome;sel.appendChild(o);});
   }).catch(function(){});
 }
+function _apTab(n,reuniaoId){
+  var p1=document.getElementById("ap-panel-1");
+  var p2=document.getElementById("ap-panel-2");
+  var t1=document.getElementById("ap-tab-1");
+  var t2=document.getElementById("ap-tab-2");
+  if(!p1||!p2)return;
+  p1.style.display=n===1?'':'none';p2.style.display=n===2?'':'none';
+  if(t1){t1.style.color=n===1?'var(--bt-navy)':'var(--text3)';t1.style.borderBottomColor=n===1?'var(--bt-navy)':'transparent';}
+  if(t2){t2.style.color=n===2?'var(--bt-navy)':'var(--text3)';t2.style.borderBottomColor=n===2?'var(--bt-navy)':'transparent';}
+}
+async function adicionarPautaExistenteReuniao(reuniaoId,pautaId){
+  try{
+    var rps=await dbFetchReuniaoPautas(reuniaoId);
+    if(rps.find(function(rp){return rp.pauta_id===pautaId;})){toast("Pauta ja adicionada a esta reuniao",true);return;}
+    await dbUpsertReuniaoPauta({reuniao_id:reuniaoId,pauta_id:pautaId,ordem:rps.length,snapshot_json:{notas:null}});
+    closeModal();_loadReuniaoPautas(reuniaoId);toast("Pauta adicionada!");
+  }catch(e){toast("Erro ao adicionar pauta",true);}
+}
+async function delPautaDoModal(pautaId,reuniaoId){
+  modalConfirm("Excluir esta pauta? Os vinculos com reunioes tambem serao removidos.",async function(){
+    try{
+      await dbDelPauta(pautaId);
+      pautasDB=pautasDB.filter(function(p){return p.id!==pautaId;});
+      closeModal();openAdicionarPauta(reuniaoId);toast("Pauta excluida!");
+    }catch(e){toast("Erro ao excluir",true);}
+  });
+}
 async function salvarNovaPautaReuniao(reuniaoId){
   var titulo=(document.getElementById("np-titulo").value||"").trim();
   if(!titulo){toast("Informe o titulo",true);return;}
   var tipo=document.getElementById("np-tipo").value;
   var respId=document.getElementById("np-resp").value||null;
   var recorrente=document.getElementById("np-recorrente").checked;
-  var notas=(document.getElementById("np-notas").value||"").trim();
+  var padrao=document.getElementById("np-padrao").checked;
   var eqId=equipeAtiva?equipeAtiva.id:null;
-  var obj={titulo,tipo,recorrente,equipe_id:eqId,criado_por:userDbId};
+  var obj={titulo,tipo,recorrente,padrao,equipe_id:eqId,criado_por:userDbId};
   if(respId)obj.responsavel_id=respId;
   try{
     var pauta=await dbUpsertPauta(obj);
     if(!pauta||!pauta.id){toast("Erro ao criar pauta",true);return;}
     pautasDB.push(pauta);
     var rps=await dbFetchReuniaoPautas(reuniaoId);
-    await dbUpsertReuniaoPauta({reuniao_id:reuniaoId,pauta_id:pauta.id,ordem:rps.length,snapshot_json:{notas:notas||null}});
-    closeModal();_loadReuniaoPautas(reuniaoId);toast("Pauta adicionada!");
-  }catch(e){toast("Erro ao adicionar",true);}
+    await dbUpsertReuniaoPauta({reuniao_id:reuniaoId,pauta_id:pauta.id,ordem:rps.length,snapshot_json:{notas:null}});
+    closeModal();_loadReuniaoPautas(reuniaoId);toast("Pauta criada e adicionada!");
+  }catch(e){toast("Erro ao criar pauta",true);}
 }
 function openEditReuniaoPauta(rpId,reuniaoId){
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,460px);">'
