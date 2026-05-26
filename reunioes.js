@@ -828,14 +828,18 @@ async function openGerenciarPautas(reuniaoId){
   var mc=document.getElementById("modal-container");
   mc.innerHTML='<div class="modal-overlay" onclick="_apAplicar()"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,860px);min-width:min(95vw,800px);min-height:600px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">'
     +'<div style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;">'
-    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Gerenciar pautas</div>'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Gerenciar Pautas</div>'
     +'<button onclick="_apAplicar()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
     +'</div>'
     +'<div id="ap-body" style="display:flex;flex:1;overflow:hidden;min-height:320px;">'
     +'<div style="padding:20px;text-align:center;color:var(--text3);width:100%;">Carregando...</div>'
     +'</div>'
-    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;align-items:center;flex-shrink:0;">'
-    +'<button class="btn" onclick="_apAplicar()">Aplicar</button>'
+    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">'
+    +'<span id="ap-sel-count" style="font-size:12px;color:var(--text3);"></span>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="_apAplicar()">Confirmar selecao</button>'
+    +'</div>'
     +'</div>'
     +'</div></div>';
   var eqId=equipeAtiva?equipeAtiva.id:null;
@@ -876,10 +880,10 @@ function _apRenderCatList(cats,catSelId){
   el.innerHTML=cats.map(function(cat){
     var sel=cat.id===(catSelId||_apCatSel);
     return '<div id="ap-cat-row-'+cat.id+'" style="padding:8px 10px;display:flex;align-items:center;gap:4px;background:'+(sel?'#fff':'')+';border-left:3px solid '+(sel?'var(--bt-orange)':'transparent')+';">'
-      +'<span id="ap-cat-nome-'+cat.id+'" onclick="_apSelectCat(\''+cat.id+'\')" style="font-size:13px;font-weight:'+(sel?'700':'400')+';color:var(--bt-navy);flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cat.nome+'</span>'
-      +'<span id="ap-cat-badge-'+cat.id+'" style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:20px;background:#e2e8f0;color:var(--text3);flex-shrink:0;">...</span>'
-      +'<button onclick="event.stopPropagation();_apIniciarEditCat(\''+cat.id+'\',\''+cat.nome.replace(/'/g,"\\'")+'\')" title="Editar" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#2563eb\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("edit")+'</button>'
-      +'<button onclick="event.stopPropagation();_apDeletarCategoria(\''+cat.id+'\')" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#dc2626\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("trash")+'</button>'
+      +'<span id="ap-cat-nome-'+cat.id+'" title="'+cat.nome.replace(/"/g,'&quot;')+'" onclick="_apSelectCat(\''+cat.id+'\')" style="font-size:13px;font-weight:'+(sel?'700':'400')+';color:var(--bt-navy);flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cat.nome+'</span>'
+      +'<span id="ap-cat-badge-'+cat.id+'" class="badge-count">...</span>'
+      +'<button onclick="event.stopPropagation();_apIniciarEditCat(\''+cat.id+'\',\''+cat.nome.replace(/'/g,"\\'")+'\')" title="Editar categoria" aria-label="Editar categoria" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#2563eb\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("edit")+'</button>'
+      +'<button onclick="event.stopPropagation();_apDeletarCategoria(\''+cat.id+'\')" title="Excluir categoria" aria-label="Excluir categoria" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#dc2626\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("trash")+'</button>'
       +'</div>';
   }).join("");
 }
@@ -962,12 +966,14 @@ function _gpRefreshBadges(){
     .then(function(rows){
       var counts={};
       rows.forEach(function(row){var t=row.tarefas;var cid=t&&t.pauta_categoria_id;if(cid){if(!counts[cid])counts[cid]=0;counts[cid]++;}});
-      _apCats.forEach(function(cat){var b=document.getElementById("ap-cat-badge-"+cat.id);if(b)b.textContent=counts[cat.id]||0;});
+      var total=0;
+      _apCats.forEach(function(cat){var c=counts[cat.id]||0;total+=c;var b=document.getElementById("ap-cat-badge-"+cat.id);if(b){b.textContent=c;b.className=c===0?'badge-count zero':'badge-count';}});
+      var sc=document.getElementById("ap-sel-count");if(sc)sc.textContent=total>0?total+' tarefa'+(total===1?'':'s')+' selecionada'+(total===1?'':'s'):'';
     }).catch(function(){});
 }
 async function _gpLoadItens(catId){
   var el=document.getElementById("ap-items");if(!el)return;
-  el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;">Carregando...</div>';
+  el.innerHTML='<div style="padding:16px;"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>';
   var reuniaoId=_apReuniao;
   try{
     var r1=await fetch(SB+"/rest/v1/tarefas?pauta_categoria_id=eq."+catId+"&parent_id=is.null&order=criado_em",{headers:H});
@@ -975,6 +981,11 @@ async function _gpLoadItens(catId){
     var r2=await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefa_id",{headers:H});
     var linked=r2.ok?await r2.json():[];
     var linkedIds={};linked.forEach(function(x){linkedIds[x.tarefa_id]=true;});
+    var catObj=_apCats.find(function(c){return c.id===catId;})||null;
+    var catNome=catObj?catObj.nome:'';
+    var headerHTML='<div style="padding:12px 16px 8px;border-bottom:1px solid #f1f5f9;">'
+      +'<div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;">'+catNome+'</div>'
+      +'</div>';
     var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
     var formHTML='<div id="gp-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
       +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo *</label>'
@@ -994,7 +1005,7 @@ async function _gpLoadItens(catId){
       +'<button onclick="_gpSalvarNovaTarefa(\''+catId+'\')" class="btn" style="font-size:11px;">Salvar</button>'
       +'</div></div>';
     var btnHTML='<div style="padding:10px 14px;border-bottom:1px solid var(--border);">'
-      +'<button onclick="_gpMostrarNovaTarefa()" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova tarefa</button>'
+      +'<button onclick="_gpMostrarNovaTarefa()" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed #cbd5e1;background:transparent;color:#64748b;font-weight:400;cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova tarefa</button>'
       +'</div>';
     var listaHTML=itens.length?itens.map(function(t){
       var isLinked=!!linkedIds[t.id];
@@ -1010,7 +1021,7 @@ async function _gpLoadItens(catId){
         +rAvatar
         +'</div>';
     }).join(""):'<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma tarefa nesta categoria. Crie a primeira.</div>';
-    el.innerHTML=formHTML+btnHTML+listaHTML;
+    el.innerHTML=headerHTML+formHTML+btnHTML+listaHTML;
   }catch(e){if(el)el.innerHTML='<div style="padding:16px;color:var(--text3);">Erro ao carregar.</div>';}
 }
 function _gpMostrarNovaTarefa(){
