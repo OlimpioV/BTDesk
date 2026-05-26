@@ -43,10 +43,14 @@ function _renderReunioesPagina(){
   var mainContent=reuniaoAtiva?_buildReuniaoDetalhe(reuniaoAtiva):_buildReuniaoPlaceholder();
   app.innerHTML=headerHTML("reunioes")
     +'<div class="reun-wrap">'
-    +'<div class="reun-sidebar">'
+    +'<div id="reun-backdrop" class="reun-backdrop" onclick="toggleReunSidebar()"></div>'
+    +'<div class="reun-sidebar" id="reun-sidebar">'
     +'<div class="reun-sidebar-hdr">'
     +'<span class="reun-sidebar-title">Reunioes</span>'
+    +'<div style="display:flex;align-items:center;gap:5px;">'
     +(ce?'<button onclick="openNovaReuniao()" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("plus")+' Nova</button>':"")
+    +'<button class="reun-mob-btn" onclick="toggleReunSidebar()" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text3);cursor:pointer;font-size:16px;line-height:1;">&times;</button>'
+    +'</div>'
     +'</div>'
     +'<div id="mini-cal-area"></div>'
     +'<div class="reun-sidebar-list">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
@@ -55,7 +59,13 @@ function _renderReunioesPagina(){
     +(ce?'<button onclick="renderPautas()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:4px;">'+ic("edit")+' Gerenciar pautas</button>':"")
     +'</div>'
     +'</div>'
-    +'<div class="reun-main">'+mainContent+'</div>'
+    +'<div class="reun-main">'
+    +'<div class="reun-mob-topbar">'
+    +'<button onclick="toggleReunSidebar()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--bt-navy);cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;">&#9776; Reunioes</button>'
+    +(reuniaoAtiva?'<span style="font-size:12px;color:var(--text3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">'+trunc(reuniaoAtiva.titulo||_fmtData(reuniaoAtiva.data),28)+'</span>':"")
+    +'</div>'
+    +mainContent
+    +'</div>'
     +'</div>';
   _renderMiniCal();
 }
@@ -125,6 +135,14 @@ function _navCalMes(delta){
   if(_calMes<0){_calMes=11;_calAno--;}
   if(_calMes>11){_calMes=0;_calAno++;}
   _renderMiniCal();
+}
+function toggleReunSidebar(){
+  var sb=document.getElementById("reun-sidebar");
+  var bd=document.getElementById("reun-backdrop");
+  if(!sb)return;
+  var isOpen=sb.classList.contains("aberta");
+  sb.classList.toggle("aberta",!isOpen);
+  if(bd)bd.classList.toggle("visivel",!isOpen);
 }
 
 function _buildReuniaoDetalhe(r){
@@ -296,7 +314,7 @@ function _buildProjetoCardHTML(p,expanded,checklist,ce,ehPassado){
   if(isPontual&&ce&&!ehP)html+='<button onclick="_toggleProjeto(\''+p.id+'\','+ehP+')" title="'+(expanded?'Fechar checklist':'Ver checklist')+'" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
   html+='</div></div>';
   html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:6px;">';
-  if(resp)html+='<div class="av av-sm" style="background:'+_avCor(respNome)+';flex-shrink:0;" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
+  if(resp)html+='<div class="av av-sm" style="background:'+_avCor((p.usuarios&&p.usuarios.id)||respNome)+';flex-shrink:0;" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
   if(resp)html+='<span>'+resp+'</span>';
   if(!isPontual)html+='<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:#f1f5f9;color:var(--text3);">continuo</span>';
   html+='</div>';
@@ -564,7 +582,7 @@ async function _loadParticipantesArea(reuniaoId){
       var u=p.usuarios||{};
       var nome=u.nome||u.email||'?';
       var ini=u.sigla||(nome.replace(/\s+/g,' ').trim().split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase());
-      var cor=_avCor(nome);
+      var cor=_avCor(u.id||nome);
       return '<div class="av" style="background:'+cor+';" title="'+nome+'">'+ini+'</div>';
     }).join("");
     el.innerHTML='<div class="av-group" style="flex-direction:row;">'+avs+'</div>';

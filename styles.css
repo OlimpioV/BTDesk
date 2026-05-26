@@ -173,7 +173,7 @@ button{font-family:inherit;cursor:pointer;}
 .pauta-card-hdr{padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
 .pauta-card-titulo{font-size:13px;font-weight:700;color:var(--bt-navy);}
 .pauta-card-body{padding:0 16px 14px;}
-.pauta-card-footer{padding:8px 16px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.pauta-card-footer{padding:8px 16px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .pauta-notas{background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.6;}
 
 /* Cards de projeto (dentro da pauta) */
@@ -218,3 +218,28 @@ button{font-family:inherit;cursor:pointer;}
 /* Botao outlined primario */
 .btn-outlined{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid var(--bt-navy);background:transparent;color:var(--bt-navy);transition:all .15s;display:inline-flex;align-items:center;gap:5px;cursor:pointer;}
 .btn-outlined:hover{background:var(--bt-navy);color:#fff;}
+
+/* Reunioes: sidebar responsiva */
+.reun-mob-btn{display:none;}
+.reun-mob-topbar{display:none;padding:10px 16px;border-bottom:1px solid var(--border);background:#fff;flex-shrink:0;}
+.reun-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:149;}
+.reun-backdrop.visivel{display:block;}
+@media(max-width:700px){
+  .reun-wrap{height:auto;flex-direction:column;}
+  .reun-sidebar{
+    position:fixed;
+    left:-290px;
+    top:0;
+    bottom:0;
+    width:280px;
+    z-index:150;
+    transition:left .25s cubic-bezier(.4,0,.2,1);
+    box-shadow:none;
+    overflow-y:auto;
+  }
+  .reun-sidebar.aberta{left:0;box-shadow:6px 0 32px rgba(0,0,0,.22);}
+  .reun-main{width:100%;display:flex;flex-direction:column;}
+  .reun-mob-btn{display:inline-flex;align-items:center;}
+  .reun-mob-topbar{display:flex;align-items:center;gap:8px;}
+  .reun-detalhe{padding:16px;}
+}
