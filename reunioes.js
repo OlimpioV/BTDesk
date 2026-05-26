@@ -883,16 +883,17 @@ var _apCatSel=null;var _apAtivosIds=[];var _apReuniao=null;
 async function openAdicionarPauta(reuniaoId){
   _apReuniao=reuniaoId;
   var mc=document.getElementById("modal-container");
-  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,860px);min-height:600px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">'
+  mc.innerHTML='<div class="modal-overlay" onclick="_apAplicar()"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,860px);min-height:600px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">'
     +'<div style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;">'
     +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Adicionar itens de pauta</div>'
-    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'<button onclick="_apAplicar()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
     +'</div>'
     +'<div id="ap-body" style="display:flex;flex:1;overflow:hidden;min-height:320px;">'
     +'<div style="padding:20px;text-align:center;color:var(--text3);width:100%;">Carregando...</div>'
     +'</div>'
-    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;align-items:center;flex-shrink:0;">'
-    +'<button class="btn" onclick="closeModal()">Fechar</button>'
+    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">'
+    +'<button class="btn" onclick="_apAplicar()">Aplicar</button>'
+    +'<button onclick="closeModal()" style="font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Fechar</button>'
     +'</div>'
     +'</div></div>';
   var eqId=equipeAtiva?equipeAtiva.id:null;
@@ -902,6 +903,11 @@ async function openAdicionarPauta(reuniaoId){
     _apAtivosIds=itensAtivos.map(function(ri){return ri.item_id;});
     _apRenderDoisPaineis(reuniaoId,cats,cats[0]?cats[0].id:null);
   }catch(e){var b=document.getElementById("ap-body");if(b)b.innerHTML='<div style="padding:20px;color:var(--text3);">Erro ao carregar.</div>';}
+}
+async function _apAplicar(){
+  var reuniaoId=_apReuniao;
+  closeModal();
+  if(reuniaoId)await _loadNovaPautasSection(reuniaoId);
 }
 var _apCats=[];
 function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
