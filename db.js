@@ -129,6 +129,11 @@ async function dbFetchReuniaoComentarios(reuniaoId){var r=await fetch(SB+"/rest/
 async function dbUpsertReuniaoComentario(c){var r=await fetch(SB+"/rest/v1/reuniao_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelReuniaoComentario(id){await fetch(SB+"/rest/v1/reuniao_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
 
+// ── TAREFA COMENTARIOS DB ──
+async function dbFetchTarefaComentarios(tarefaId){var r=await fetch(SB+"/rest/v1/tarefa_comentarios?tarefa_id=eq."+tarefaId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertTarefaComentario(c){var r=await fetch(SB+"/rest/v1/tarefa_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbDelTarefaComentario(id){await fetch(SB+"/rest/v1/tarefa_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
+
 // ── NOTIFICACOES DB ──
 async function dbFetchNotificacoes(){var r=await fetch(SB+"/rest/v1/notificacoes?usuario_id=eq."+userDbId+"&order=criado_em.desc&limit=50",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbMarcarNotificacaoLida(id){await fetch(SB+"/rest/v1/notificacoes?id=eq."+id,{method:"PATCH",headers:H,body:JSON.stringify({lida:true})});}
