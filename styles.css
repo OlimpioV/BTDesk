@@ -261,3 +261,11 @@ button{font-family:inherit;cursor:pointer;}
 .rt-cat-add-btn:hover{background:var(--surface);color:var(--bt-navy);}
 .rt-add-sub-row{background:#EEF4FD;padding:6px 8px 6px 44px;border-bottom:1px solid #c7d9f0;display:flex;align-items:center;gap:8px;}
 .rt-edit-form{padding:12px 16px 12px 44px;border-bottom:1px solid var(--border);background:#fffbf5;border-left:3px solid var(--bt-orange);}
+/* ── SUBTAREFAS: HIERARQUIA VISUAL ── */
+.rt-sub-group{position:relative;}
+.rt-sub-group::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:2px;background:var(--border);pointer-events:none;z-index:0;}
+.rt-sub-row{display:grid;grid-template-columns:1fr 90px 130px 70px 100px 80px;border-bottom:1px solid var(--border);background:var(--surface);position:relative;transition:background .1s;}
+.rt-sub-row:hover{background:#f0f5fb;}
+.rt-sub-row:hover .rt-actions{opacity:1;pointer-events:auto;}
+.rt-cell-sub-task{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;overflow:visible;min-height:0;padding:5px 6px 5px 32px;position:relative;}
+.rt-cell-sub-task::before{content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);width:12px;height:2px;background:var(--border);}

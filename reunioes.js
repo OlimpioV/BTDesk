@@ -1644,6 +1644,7 @@ function _buildTarefaCard(t,ce,ehPassado){
 
   // ── subtarefas ──
   if(subExp){
+    html+='<div class="rt-sub-group">';
     subtarefas.forEach(function(s){
       var sBg=corBg[s.status]||'#FCEBEB';
       var sTxt=corTxt[s.status]||'#A32D2D';
@@ -1668,13 +1669,10 @@ function _buildTarefaCard(t,ce,ehPassado){
           +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
           +'</div></div>';
       } else {
-        html+='<div class="rt-row" style="background:#fafbfc;">';
-        html+='<div class="rt-cell rt-cell-task" style="padding-left:40px;">';
-        html+='<div style="display:flex;align-items:baseline;gap:3px;">'
-          +'<span style="color:var(--text3);font-size:12px;flex-shrink:0;">&#8627;</span>'
-          +'<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:500;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
-          +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>'
-          +'</div>';
+        html+='<div class="rt-sub-row">';
+        html+='<div class="rt-cell rt-cell-sub-task">';
+        html+='<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:500;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
+          +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
         if(s.descricao){
           html+='<div id="tp-sdesc-'+s.id+'" style="font-size:11px;color:var(--text3);white-space:pre-wrap;line-height:1.35;'+((ce&&!ehPassado)?'cursor:text;':'')+'"'
             +((ce&&!ehPassado)?' onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</div>';
@@ -1691,7 +1689,7 @@ function _buildTarefaCard(t,ce,ehPassado){
             +'</div>';
         } else {html+='<div class="rt-cell"></div>';}
         html+='<div class="rt-cell">'
-          +'<span style="font-size:10px;padding:2px 8px;border-radius:9px;background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
+          +'<span style="font-size:10px;padding:1px 7px;border-radius:9px;background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
           +(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')
           +'>'+sLbl+'</span></div>';
         html+='<div class="rt-cell" style="font-size:11px;color:var(--text3);">'+(s.data_inicio?_fmtDateBrShort(s.data_inicio):'-')+'</div>';
@@ -1706,6 +1704,7 @@ function _buildTarefaCard(t,ce,ehPassado){
         html+='</div>';
       }
     });
+    html+='</div>';
     if(ce&&!ehPassado){
       html+='<div id="tp-add-sub-'+t.id+'" class="rt-add-sub-row" style="display:none;"></div>';
     }
