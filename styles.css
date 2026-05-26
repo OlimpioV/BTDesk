@@ -246,15 +246,12 @@ button{font-family:inherit;cursor:pointer;}
 
 /* ── TAREFAS DE PAUTA: TABELA ESTILO MONDAY ── */
 .rt-table{width:100%;}
-.rt-thead{display:grid;grid-template-columns:6px 28px 1fr 110px 130px 70px 84px 70px;border-bottom:2px solid var(--border);background:var(--surface);}
+.rt-thead{display:grid;grid-template-columns:1fr 90px 130px 70px 100px 80px;border-bottom:2px solid var(--border);background:var(--surface);}
 .rt-th{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:4px 6px;display:flex;align-items:center;}
-.rt-row{display:grid;grid-template-columns:6px 28px 1fr 110px 130px 70px 84px 70px;border-bottom:1px solid var(--border);background:#fff;position:relative;transition:background .1s;}
+.rt-row{display:grid;grid-template-columns:1fr 90px 130px 70px 100px 80px;border-bottom:1px solid var(--border);background:#fff;position:relative;transition:background .1s;border-left:3px solid transparent;}
 .rt-row:hover{background:#f8fafc;}
 .rt-row:hover .rt-actions{opacity:1;pointer-events:auto;}
 .rt-cell{display:flex;align-items:center;padding:4px 6px;font-size:13px;color:var(--text2);overflow:hidden;min-height:36px;}
-.rt-cell-bar{padding:0;width:6px;align-self:stretch;min-height:0;}
-.rt-cell-expand{justify-content:center;align-items:center;cursor:pointer;color:var(--text3);padding:0 4px;}
-.rt-cell-expand:hover{color:var(--bt-navy);}
 .rt-cell-task{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:5px 6px;overflow:visible;min-height:0;}
 .rt-actions{display:flex;opacity:0;pointer-events:none;gap:2px;align-items:center;}
 .rt-progress{display:flex;height:4px;border-radius:0;overflow:hidden;width:100%;max-width:180px;margin-top:2px;}

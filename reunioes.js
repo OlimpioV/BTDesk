@@ -1515,11 +1515,10 @@ async function _loadPautasSection(reuniaoId){
     var html='<div style="display:flex;flex-direction:column;gap:16px;">';
     catOrder.forEach(function(catId){
       var cat=cats[catId];
-      html+='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+      html+='<div style="border:1px solid var(--border);border-radius:12px;overflow:visible;">';
       html+='<div style="padding:9px 16px;background:var(--surface);font-size:11px;font-weight:700;color:var(--bt-navy);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);">'+cat.nome+'</div>';
+      html+='<div style="overflow-x:auto;">';
       html+='<div class="rt-thead">'
-        +'<div class="rt-th"></div>'
-        +'<div class="rt-th"></div>'
         +'<div class="rt-th">Tarefa</div>'
         +'<div class="rt-th">Responsavel</div>'
         +'<div class="rt-th">Status</div>'
@@ -1531,6 +1530,7 @@ async function _loadPautasSection(reuniaoId){
       cat.itens.forEach(function(t){
         html+='<div id="tp-card-'+t.id+'">'+_buildTarefaCard(t,ce,ehPassado)+'</div>';
       });
+      html+='</div>';
       html+='</div>';
       if(ce&&!ehPassado){
         html+='<button class="rt-cat-add-btn" onclick="openAdicionarPauta(\''+reuniaoId+'\')">'
@@ -1565,12 +1565,11 @@ function _buildTarefaCard(t,ce,ehPassado){
   var html='';
 
   // ── linha principal ──
-  html+='<div class="rt-row">';
-  html+='<div class="rt-cell rt-cell-bar" style="background:'+bar+';"></div>';
-  html+='<div class="rt-cell rt-cell-expand" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')">'
-    +'<span style="font-size:11px;display:inline-block;transition:transform .15s;'+(subExp?'transform:rotate(90deg);color:var(--bt-navy);':'color:var(--text3);')+'">&#9658;</span>'
-    +'</div>';
-  html+='<div class="rt-cell rt-cell-task">';
+  html+='<div class="rt-row" style="border-left:3px solid '+bar+';">';
+  html+='<div class="rt-cell rt-cell-task" style="align-items:flex-start;">';
+  html+='<div style="display:flex;align-items:flex-start;gap:5px;width:100%;">';
+  html+='<span onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;display:inline-block;transition:transform .15s;cursor:pointer;flex-shrink:0;margin-top:3px;'+(subExp?'transform:rotate(90deg);color:var(--bt-navy);':'color:var(--text3);')+'">&#9658;</span>';
+  html+='<div style="min-width:0;flex:1;">';
   html+='<div id="tp-txt-'+t.id+'" style="font-size:13px;font-weight:600;line-height:1.35;'+(t.status==='concluido'?'text-decoration:line-through;color:var(--text3);':'color:var(--bt-navy);')+(canEdit?'cursor:pointer;':'')+'"'
     +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</div>';
   if(t.descricao){
@@ -1587,6 +1586,8 @@ function _buildTarefaCard(t,ce,ehPassado){
   }
   var nCmts=cmts?cmts.length:0;
   html+='<button onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid '+(cmtsExp?'var(--bt-navy)':'var(--border)')+';background:'+(cmtsExp?'var(--bt-navy)':'transparent')+';color:'+(cmtsExp?'#fff':'var(--text3)')+';cursor:pointer;margin-top:2px;">&#128172;'+(nCmts?' '+nCmts:'')+'</button>';
+  html+='</div>';
+  html+='</div>';
   html+='</div>';
   if(t.responsavel){
     var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
@@ -1661,11 +1662,12 @@ function _buildTarefaCard(t,ce,ehPassado){
           +'</div></div>';
       } else {
         html+='<div class="rt-row" style="background:#fafbfc;">';
-        html+='<div class="rt-cell rt-cell-bar" style="background:'+sBar+';"></div>';
-        html+='<div class="rt-cell" style="padding-left:16px;font-size:12px;color:var(--text3);justify-content:center;">&#8627;</div>';
-        html+='<div class="rt-cell rt-cell-task">';
-        html+='<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:500;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
-          +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
+        html+='<div class="rt-cell rt-cell-task" style="padding-left:40px;">';
+        html+='<div style="display:flex;align-items:baseline;gap:3px;">'
+          +'<span style="color:var(--text3);font-size:12px;flex-shrink:0;">&#8627;</span>'
+          +'<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:500;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
+          +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>'
+          +'</div>';
         if(s.descricao){
           html+='<div id="tp-sdesc-'+s.id+'" style="font-size:11px;color:var(--text3);white-space:pre-wrap;line-height:1.35;'+((ce&&!ehPassado)?'cursor:text;':'')+'"'
             +((ce&&!ehPassado)?' onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</div>';
