@@ -976,6 +976,8 @@ async function _gpLoadItens(catId){
     var formHTML='<div id="gp-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
       +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo *</label>'
       +'<input id="gp-ni-titulo" placeholder="Titulo da tarefa..." style="font-size:13px;"/></div>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+      +'<textarea id="gp-ni-descricao" rows="2" placeholder="Descricao opcional..." style="font-size:13px;resize:vertical;"></textarea></div>'
       +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
       +'<select id="gp-ni-resp" style="font-size:13px;">'+respOpts+'</select></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
@@ -997,6 +999,8 @@ async function _gpLoadItens(catId){
         return '<div id="gp-row-'+t.id+'" style="padding:10px 14px;border-bottom:1px solid var(--border);background:#fffbf5;">'
           +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
           +'<input id="gp-edit-titulo-'+t.id+'" value="'+t.texto.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'
+          +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+          +'<textarea id="gp-edit-descricao-'+t.id+'" rows="2" style="font-size:13px;resize:vertical;">'+(t.descricao||'')+'</textarea></div>'
           +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
           +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
           +'<select id="gp-edit-resp-'+t.id+'" style="font-size:13px;">'+rOpts+'</select></div>'
@@ -1019,8 +1023,9 @@ async function _gpLoadItens(catId){
         +(t.responsavel?'<div style="font-size:11px;color:var(--text3);">'+t.responsavel+'</div>':"")
         +((t.data_inicio||t.data_fim)?'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;">'
           +(t.data_inicio?'<span style="font-size:10px;color:var(--text3);">Inicio: '+_fmtDateBr(t.data_inicio)+'</span>':'')
-          +(t.data_fim?'<span style="font-size:10px;color:'+(_isAtrasado(t.data_fim,'')&&t.status!=='concluido'?'#dc2626':'var(--text3)')+';">Encerramento: '+_fmtDateBr(t.data_fim)+'</span>':'')
+          +(t.data_fim?'<span style="font-size:10px;color:'+(_isAtrasado(t.data_fim,t.status)?'#dc2626':'var(--text3)')+';">Encerramento: '+_fmtDateBr(t.data_fim)+'</span>':'')
           +'</div>':"")
+        +(t.descricao?'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+t.descricao+'</div>':"")
         +'</div>'
         +'<div style="display:flex;gap:4px;flex-shrink:0;align-items:center;">'
         +'<button onclick="_gpIniciarEditTarefa(\''+t.id+'\',\''+catId+'\')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;">'+ic("edit")+'</button>'
@@ -1040,16 +1045,18 @@ function _gpCancelarNovaTarefa(){
   var f=document.getElementById("gp-novo-item-form");if(!f)return;
   f.style.display='none';
   var t=document.getElementById("gp-ni-titulo");if(t)t.value='';
+  var d=document.getElementById("gp-ni-descricao");if(d)d.value='';
 }
 async function _gpSalvarNovaTarefa(catId){
   var texto=(document.getElementById("gp-ni-titulo").value||"").trim();
   if(!texto){toast("Informe o titulo",true);return;}
+  var descricao=(document.getElementById("gp-ni-descricao").value||"").trim()||null;
   var resp=document.getElementById("gp-ni-resp").value||null;
   var inicio=document.getElementById("gp-ni-inicio").value||null;
   var fim=document.getElementById("gp-ni-fim").value||null;
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
-    await dbUpsertTarefa({id:uid(),texto:texto,responsavel:resp||null,status:'pendente',data_inicio:inicio||null,data_fim:fim||null,reuniao_id:_apReuniao,pauta_categoria_id:catId,equipe_id:eqId,criado_em:new Date().toISOString()});
+    await dbUpsertTarefa({id:uid(),texto:texto,descricao:descricao||null,responsavel:resp||null,status:'pendente',data_inicio:inicio||null,data_fim:fim||null,reuniao_id:_apReuniao,pauta_categoria_id:catId,equipe_id:eqId,criado_em:new Date().toISOString()});
     _gpLoadItens(catId);
     _gpRefreshBadges();
     toast("Tarefa criada!");
@@ -1076,11 +1083,12 @@ function _gpCancelarEditTarefa(catId){
 async function _gpSalvarEditTarefa(tarefaId,catId){
   var texto=(document.getElementById("gp-edit-titulo-"+tarefaId).value||"").trim();
   if(!texto){toast("Informe o titulo",true);return;}
+  var descricao=(document.getElementById("gp-edit-descricao-"+tarefaId).value||"").trim()||null;
   var resp=document.getElementById("gp-edit-resp-"+tarefaId).value||null;
   var inicio=document.getElementById("gp-edit-inicio-"+tarefaId).value||null;
   var fim=document.getElementById("gp-edit-fim-"+tarefaId).value||null;
   try{
-    await dbUpsertTarefa({id:tarefaId,texto:texto,responsavel:resp||null,data_inicio:inicio||null,data_fim:fim||null});
+    await dbUpsertTarefa({id:tarefaId,texto:texto,descricao:descricao||null,responsavel:resp||null,data_inicio:inicio||null,data_fim:fim||null});
     _gpEditando=null;
     _gpLoadItens(catId);
     toast("Tarefa salva!");
@@ -1534,6 +1542,7 @@ async function _loadPautasSection(reuniaoId){
   }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar pautas.</div>';}
 }
 var _itemEditando=null;
+var _subEditando=null;
 function _fmtDateBr(d){if(!d)return '';var p=d.split('-');if(p.length<3)return d;return p[2]+'/'+p[1]+'/'+p[0];}
 function _isAtrasado(dataFim,status){if(!dataFim||status==='concluido')return false;var hoje=new Date().toISOString().slice(0,10);return dataFim<hoje;}
 function _buildTarefaCard(t,ce,ehPassado){
@@ -1568,12 +1577,17 @@ function _buildTarefaCard(t,ce,ehPassado){
     if(t.data_fim){var atrasado=_isAtrasado(t.data_fim,t.status);html+='<span style="font-size:10px;color:'+(atrasado?'#dc2626':'var(--text3)')+';">'+(atrasado?'<b>':'')+'Encerramento: '+_fmtDateBr(t.data_fim)+(atrasado?'</b>':'')+'</span>';}
     html+='</div>';
   }
+  if(t.descricao){
+    html+='<div style="font-size:12px;color:var(--text3);margin-top:5px;white-space:pre-wrap;line-height:1.45;">'+t.descricao+'</div>';
+  }
   if(_itemEditando===t.id){
     var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
     var statusOpts=['pendente','em_andamento','concluido'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+lblStatus[s]+'</option>';}).join("");
     html+='<div style="margin-top:8px;padding:8px;background:var(--surface);border-radius:8px;border:1.5px solid var(--bt-orange);">'
       +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
       +'<input id="tp-edit-titulo-'+t.id+'" value="'+t.texto.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'
+      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+      +'<textarea id="tp-edit-descricao-'+t.id+'" rows="2" style="font-size:13px;resize:vertical;">'+(t.descricao||'')+'</textarea></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
       +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
       +'<select id="tp-edit-resp-'+t.id+'" style="font-size:13px;">'+respOpts+'</select></div>'
@@ -1604,13 +1618,29 @@ function _buildTarefaCard(t,ce,ehPassado){
       html+='</div><span style="font-size:10px;color:var(--text3);flex-shrink:0;">'+conc+'/'+total+'</span></div>';
       subtarefas.forEach(function(s){
         var sBg=corBg[s.status]||'#fee2e2';var sTxt=corTxt[s.status]||'#dc2626';var sLbl=lblStatus[s.status]||s.status;
-        html+='<div style="display:flex;align-items:center;gap:7px;padding:3px 0;">';
-        html+='<span style="font-size:12px;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+'flex:1;min-width:0;">'+s.texto+'</span>';
-        html+='<span style="font-size:9px;padding:1px 6px;border-radius:9px;background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;flex-shrink:0;'+(ce&&!ehPassado?'cursor:pointer;':'')
-          +'"'+(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')
-          +'>'+sLbl+'</span>';
-        if(ce&&!ehPassado)html+='<button onclick="_excluirSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
-        html+='</div>';
+        if(_subEditando===s.id){
+          var sStatOpts=['pendente','em_andamento','concluido'].map(function(ss){return '<option value="'+ss+'"'+(s.status===ss?' selected':'')+'>'+lblStatus[ss]+'</option>';}).join("");
+          html+='<div style="padding:6px;margin:2px 0;background:var(--surface);border-radius:6px;border:1.5px solid var(--bt-orange);">'
+            +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Nome</label>'
+            +'<input id="tp-sub-edit-titulo-'+s.id+'" value="'+s.texto.replace(/"/g,"&quot;")+'" style="font-size:12px;"/></div>'
+            +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
+            +'<select id="tp-sub-edit-status-'+s.id+'" style="font-size:12px;">'+sStatOpts+'</select></div>'
+            +'<div style="display:flex;gap:5px;justify-content:flex-end;">'
+            +'<button onclick="_cancelarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+            +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
+            +'</div></div>';
+        } else {
+          html+='<div style="display:flex;align-items:center;gap:7px;padding:3px 0;">';
+          html+='<span style="font-size:12px;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+'flex:1;min-width:0;">'+s.texto+'</span>';
+          html+='<span style="font-size:9px;padding:1px 6px;border-radius:9px;background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;flex-shrink:0;'+(ce&&!ehPassado?'cursor:pointer;':'')
+            +'"'+(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')
+            +'>'+sLbl+'</span>';
+          if(ce&&!ehPassado){
+            html+='<button onclick="_editarSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;">'+ic("edit")+'</button>';
+            html+='<button onclick="_excluirSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
+          }
+          html+='</div>';
+        }
       });
     }
     if(ce&&!ehPassado){
@@ -1648,14 +1678,15 @@ function _cancelarEditTarefaPauta(tarefaId){
 async function _salvarEditTarefaPauta(tarefaId){
   var texto=(document.getElementById("tp-edit-titulo-"+tarefaId).value||"").trim();
   if(!texto){toast("Informe o titulo",true);return;}
+  var descricao=(document.getElementById("tp-edit-descricao-"+tarefaId).value||"").trim()||null;
   var resp=document.getElementById("tp-edit-resp-"+tarefaId).value||null;
   var status=document.getElementById("tp-edit-status-"+tarefaId).value||"pendente";
   var inicio=document.getElementById("tp-edit-inicio-"+tarefaId).value||null;
   var fim=document.getElementById("tp-edit-fim-"+tarefaId).value||null;
   try{
-    await dbUpsertTarefa({id:tarefaId,texto:texto,responsavel:resp,status:status,data_inicio:inicio||null,data_fim:fim||null});
+    await dbUpsertTarefa({id:tarefaId,texto:texto,descricao:descricao,responsavel:resp,status:status,data_inicio:inicio||null,data_fim:fim||null});
     var rId=reuniaoAtiva?reuniaoAtiva.id:'';
-    (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId){t.texto=texto;t.responsavel=resp;t.status=status;t.data_inicio=inicio;t.data_fim=fim;}});
+    (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId){t.texto=texto;t.descricao=descricao;t.responsavel=resp;t.status=status;t.data_inicio=inicio;t.data_fim=fim;}});
     _itemEditando=null;
     _reloadTarefaCard(tarefaId,false);
     toast("Tarefa salva!");
@@ -1684,6 +1715,26 @@ async function _toggleSubExpand(tarefaId,ehPassado){
     _subtarefasCache[tarefaId]=await dbFetchSubtarefas(tarefaId);
     _reloadTarefaCard(tarefaId,ehPassado);
   }catch(_){toast("Erro ao carregar subtarefas",true);}
+}
+function _editarSubtarefaPauta(subId,parentId,ehPassado){
+  _subEditando=subId;
+  _reloadTarefaCard(parentId,ehPassado);
+}
+function _cancelarEditSubtarefaPauta(subId,parentId,ehPassado){
+  _subEditando=null;
+  _reloadTarefaCard(parentId,ehPassado);
+}
+async function _salvarEditSubtarefaPauta(subId,parentId,ehPassado){
+  var texto=(document.getElementById("tp-sub-edit-titulo-"+subId).value||"").trim();
+  if(!texto){toast("Informe o nome",true);return;}
+  var status=document.getElementById("tp-sub-edit-status-"+subId).value||"pendente";
+  try{
+    await dbUpsertTarefa({id:subId,texto:texto,status:status});
+    (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===subId){s.texto=texto;s.status=status;}});
+    _subEditando=null;
+    _reloadTarefaCard(parentId,ehPassado);
+    toast("Subtarefa salva!");
+  }catch(_){toast("Erro ao salvar",true);}
 }
 function _showAddSubtarefaPauta(parentId,ehPassado){
   var el=document.getElementById("tp-add-sub-"+parentId);if(!el)return;
