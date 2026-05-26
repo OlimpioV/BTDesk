@@ -947,7 +947,7 @@ async function _apLoadItens(catId){
   el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;">Carregando...</div>';
   try{
     var itens=await dbFetchPautaItens(catId);
-    var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(u){return '<option value="'+u.id+'">'+u.nome+'</option>';}).join("");
+    var respOpts='<option value="">Sem responsavel</option>'+(usuariosFullDB||[]).map(function(u){return '<option value="'+u.id+'">'+u.nome+'</option>';}).join("");
     var formHTML='<div id="ap-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
       +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo *</label>'
       +'<input id="ap-ni-titulo" placeholder="Titulo do item..." style="font-size:13px;"/></div>'
@@ -1531,7 +1531,7 @@ function _buildItemCard(ri,pi,ce,ehPassado){
   if(pi.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;">'+pi.descricao+'</div>';
   // Edicao inline
   if(_itemEditando===ri.id){
-    var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(usr){return '<option value="'+usr.id+'"'+(pi.responsavel_id===usr.id?' selected':'')+'>'+usr.nome+'</option>';}).join("");
+    var respOpts='<option value="">Sem responsavel</option>'+(usuariosFullDB||[]).map(function(usr){return '<option value="'+usr.id+'"'+(pi.responsavel_id===usr.id?' selected':'')+'>'+usr.nome+'</option>';}).join("");
     html+='<div style="margin-top:8px;padding:8px;background:var(--surface);border-radius:8px;border:1.5px solid var(--bt-orange);">'
       +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
       +'<input id="ri-edit-titulo-'+ri.id+'" value="'+pi.titulo.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'

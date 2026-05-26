@@ -48,6 +48,7 @@ let TC=Object.assign({},TC_DEF),TIPOS=Object.keys(TC);
 let corSel=0,editingEtq=null;
 let modalCardId=null,editingCmtId=null;
 let responsaveis=[],clientesDB=[],casosDB=[];
+let usuariosFullDB=[];
 let labelsGlobalExp=false,labelsExp={};
 let cpOpen=null;
 let _ef=null,_ecid=null;
