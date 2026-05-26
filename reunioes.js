@@ -1512,16 +1512,32 @@ async function _loadPautasSection(reuniaoId){
     });
     var eqId=equipeAtiva?equipeAtiva.id:null;
     try{var catsDB=await dbFetchPautaCategorias(eqId);catsDB.forEach(function(c){if(cats[c.id])cats[c.id].nome=c.nome;});}catch(_){}
-    var html='<div style="display:flex;flex-direction:column;gap:12px;">';
+    var html='<div style="display:flex;flex-direction:column;gap:16px;">';
     catOrder.forEach(function(catId){
       var cat=cats[catId];
       html+='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
       html+='<div style="padding:9px 16px;background:var(--surface);font-size:11px;font-weight:700;color:var(--bt-navy);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);">'+cat.nome+'</div>';
-      html+='<div style="padding:8px;display:flex;flex-direction:column;gap:8px;">';
+      html+='<div class="rt-thead">'
+        +'<div class="rt-th"></div>'
+        +'<div class="rt-th"></div>'
+        +'<div class="rt-th">Tarefa</div>'
+        +'<div class="rt-th">Responsavel</div>'
+        +'<div class="rt-th">Status</div>'
+        +'<div class="rt-th">Inicio</div>'
+        +'<div class="rt-th">Encerramento</div>'
+        +'<div class="rt-th"></div>'
+        +'</div>';
+      html+='<div class="rt-table">';
       cat.itens.forEach(function(t){
         html+='<div id="tp-card-'+t.id+'">'+_buildTarefaCard(t,ce,ehPassado)+'</div>';
       });
-      html+='</div></div>';
+      html+='</div>';
+      if(ce&&!ehPassado){
+        html+='<button class="rt-cat-add-btn" onclick="openAdicionarPauta(\''+reuniaoId+'\')">'
+          +'<span style="font-size:16px;line-height:1;font-weight:300;">+</span> Nova tarefa'
+          +'</button>';
+      }
+      html+='</div>';
     });
     html+='</div>';
     el.innerHTML=html;
@@ -1530,64 +1546,91 @@ async function _loadPautasSection(reuniaoId){
 var _itemEditando=null;
 var _subEditando=null;
 function _fmtDateBr(d){if(!d)return '';var p=d.split('-');if(p.length<3)return d;return p[2]+'/'+p[1]+'/'+p[0];}
+function _fmtDateBrShort(d){if(!d)return '';var p=d.split('-');if(p.length<3)return d;return p[2]+'/'+p[1];}
 function _isAtrasado(dataFim,status){if(!dataFim||status==='concluido')return false;var hoje=new Date().toISOString().slice(0,10);return dataFim<hoje;}
 function _buildTarefaCard(t,ce,ehPassado){
-  var corBg={'pendente':'#fee2e2','em_andamento':'#dbeafe','pausado':'#FAEEDA','concluido':'#dcfce7'};
-  var corTxt={'pendente':'#dc2626','em_andamento':'#1d4ed8','pausado':'#854F0B','concluido':'#15803d'};
-  var corBar={'pendente':'#fca5a5','em_andamento':'#93c5fd','pausado':'#EF9F27','concluido':'#86efac'};
-  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluido'};
-  var bg=corBg[t.status]||'#fee2e2';
-  var txt=corTxt[t.status]||'#dc2626';
-  var bar=corBar[t.status]||'#fca5a5';
+  var corBar={'pendente':'#E24B4A','em_andamento':'#185FA5','pausado':'#EF9F27','concluido':'#639922'};
+  var corBg={'pendente':'#FCEBEB','em_andamento':'#E6F1FB','pausado':'#FAEEDA','concluido':'#EAF3DE'};
+  var corTxt={'pendente':'#A32D2D','em_andamento':'#0C447C','pausado':'#854F0B','concluido':'#27500A'};
+  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
+  var bar=corBar[t.status]||'#E24B4A';
+  var bg=corBg[t.status]||'#FCEBEB';
+  var txt=corTxt[t.status]||'#A32D2D';
   var lbl=lblStatus[t.status]||t.status||'Pendente';
   var subtarefas=_subtarefasCache[t.id]||null;
   var cmts=_tarefaCmtsCache[t.id]||null;
   var cmtsExp=!!_tarefaCmtsExpanded[t.id];
-  var html='<div class="proj-card"><div class="proj-card-bar" style="background:'+bar+';"></div><div class="proj-card-content">';
-  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">';
-  html+='<div id="tp-txt-'+t.id+'" class="proj-card-titulo" style="'+(t.status==='concluido'?'text-decoration:line-through;color:var(--text3);':'')+((ce&&!ehPassado&&_itemEditando!==t.id)?'cursor:pointer;':'')+'"'
-    +((ce&&!ehPassado&&_itemEditando!==t.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</div>';
-  html+='<span id="sc-'+t.id+'" class="reun-status-chip" style="background:'+bg+';color:'+txt+';border:1px solid '+txt+'44;flex-shrink:0;'+(ce&&!ehPassado?'cursor:pointer;':'')
-    +'"'+(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+t.id+'\',false,null,'+!!ehPassado+')"':'')
-    +'>'+lbl+'</span>';
+  var subExp=subtarefas!==null;
+  var canEdit=ce&&!ehPassado&&_itemEditando!==t.id;
+  var html='';
+
+  // ── linha principal ──
+  html+='<div class="rt-row">';
+  html+='<div class="rt-cell rt-cell-bar" style="background:'+bar+';"></div>';
+  html+='<div class="rt-cell rt-cell-expand" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')">'
+    +'<span style="font-size:11px;display:inline-block;transition:transform .15s;'+(subExp?'transform:rotate(90deg);color:var(--bt-navy);':'color:var(--text3);')+'">&#9658;</span>'
+    +'</div>';
+  html+='<div class="rt-cell rt-cell-task">';
+  html+='<div id="tp-txt-'+t.id+'" style="font-size:13px;font-weight:600;line-height:1.35;'+(t.status==='concluido'?'text-decoration:line-through;color:var(--text3);':'color:var(--bt-navy);')+(canEdit?'cursor:pointer;':'')+'"'
+    +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</div>';
+  if(t.descricao){
+    html+='<div id="tp-desc-'+t.id+'" style="font-size:11px;color:var(--text3);line-height:1.35;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
+      +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
+  } else if(canEdit){
+    html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
+  }
+  if(subtarefas&&subtarefas.length>0){
+    var conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
+    html+='<div class="rt-progress">';
+    subtarefas.forEach(function(s){var sc={'concluido':'#639922','em_andamento':'#185FA5','pausado':'#EF9F27','pendente':'#E24B4A'}[s.status]||'#E24B4A';html+='<div class="rt-progress-seg" style="background:'+sc+';"></div>';});
+    html+='</div><span style="font-size:10px;color:var(--text3);">'+conc+'/'+subtarefas.length+'</span>';
+  }
+  var nCmts=cmts?cmts.length:0;
+  html+='<button onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid '+(cmtsExp?'var(--bt-navy)':'var(--border)')+';background:'+(cmtsExp?'var(--bt-navy)':'transparent')+';color:'+(cmtsExp?'#fff':'var(--text3)')+';cursor:pointer;margin-top:2px;">&#128172;'+(nCmts?' '+nCmts:'')+'</button>';
   html+='</div>';
   if(t.responsavel){
     var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
     var ini=t.responsavel.slice(0,2).toUpperCase();
-    html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:5px;">'
-      +'<div class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';flex-shrink:0;">'+ini+'</div>'
-      +'<span>'+t.responsavel+'</span></div>';
+    html+='<div class="rt-cell" style="gap:5px;">'
+      +'<div class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';flex-shrink:0;font-size:9px;width:22px;height:22px;min-width:22px;">'+ini+'</div>'
+      +'<span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+t.responsavel+'</span>'
+      +'</div>';
+  } else {html+='<div class="rt-cell"></div>';}
+  html+='<div class="rt-cell">'
+    +'<span id="sc-'+t.id+'" class="reun-status-chip" style="background:'+bg+';color:'+txt+';border:1px solid '+txt+'44;font-size:11px;'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
+    +(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+t.id+'\',false,null,'+!!ehPassado+')"':'')
+    +'>'+lbl+'</span></div>';
+  html+='<div class="rt-cell" style="font-size:11px;color:var(--text3);">'+(t.data_inicio?_fmtDateBrShort(t.data_inicio):'-')+'</div>';
+  var atrasado=_isAtrasado(t.data_fim,t.status);
+  html+='<div class="rt-cell" style="font-size:11px;color:'+(atrasado?'#dc2626':'var(--text3)')+';font-weight:'+(atrasado?'700':'400')+';">'+(t.data_fim?_fmtDateBrShort(t.data_fim):'-')+'</div>';
+  html+='<div class="rt-cell rt-actions">';
+  if(ce&&!ehPassado){
+    html+='<button onclick="_editarTarefaPauta(\''+t.id+'\')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;" title="Editar">'+ic("edit")+'</button>';
+    html+='<button onclick="_showAddSubtarefaPauta(\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;" title="Subtarefa">&#8627;</button>';
+    html+='<button onclick="_excluirTarefaPauta(\''+t.id+'\')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;" title="Excluir">'+ic("trash")+'</button>';
   }
-  if(t.data_inicio||t.data_fim){
-    html+='<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">';
-    if(t.data_inicio)html+='<span style="font-size:10px;color:var(--text3);">Inicio: '+_fmtDateBr(t.data_inicio)+'</span>';
-    if(t.data_fim){var atrasado=_isAtrasado(t.data_fim,t.status);html+='<span style="font-size:10px;color:'+(atrasado?'#dc2626':'var(--text3)')+';">'+(atrasado?'<b>':'')+'Encerramento: '+_fmtDateBr(t.data_fim)+(atrasado?'</b>':'')+'</span>';}
-    html+='</div>';
-  }
-  if(t.descricao){
-    html+='<div id="tp-desc-'+t.id+'" style="font-size:12px;color:var(--text3);margin-top:5px;white-space:pre-wrap;line-height:1.45;'+((ce&&!ehPassado&&_itemEditando!==t.id)?'cursor:text;':'')+'"'
-      +((ce&&!ehPassado&&_itemEditando!==t.id)?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
-  } else if(ce&&!ehPassado&&_itemEditando!==t.id){
-    html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" style="font-size:12px;color:var(--text3);font-style:italic;margin-top:5px;cursor:text;">Adicionar descricao...</div>';
-  }
+  html+='</div>';
+  html+='</div>';
+
+  // ── form de edicao ──
   if(_itemEditando===t.id){
     var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
     var statusOpts=['pendente','em_andamento','pausado','concluido'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+lblStatus[s]+'</option>';}).join("");
-    html+='<div style="margin-top:8px;padding:8px;background:var(--surface);border-radius:8px;border:1.5px solid var(--bt-orange);">'
-      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
-      +'<input id="tp-edit-titulo-'+t.id+'" value="'+t.texto.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'
-      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
-      +'<textarea id="tp-edit-descricao-'+t.id+'" rows="2" style="font-size:13px;resize:vertical;">'+(t.descricao||'')+'</textarea></div>'
+    html+='<div class="rt-edit-form">'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
-      +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
-      +'<select id="tp-edit-resp-'+t.id+'" style="font-size:13px;">'+respOpts+'</select></div>'
-      +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
+      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
+      +'<input id="tp-edit-titulo-'+t.id+'" value="'+t.texto.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'
+      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
       +'<select id="tp-edit-status-'+t.id+'" style="font-size:13px;">'+statusOpts+'</select></div>'
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
-      +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Inicio</label>'
+      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+      +'<textarea id="tp-edit-descricao-'+t.id+'" rows="2" style="font-size:13px;resize:vertical;">'+(t.descricao||'')+'</textarea></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;">'
+      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
+      +'<select id="tp-edit-resp-'+t.id+'" style="font-size:13px;">'+respOpts+'</select></div>'
+      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Inicio</label>'
       +'<input id="tp-edit-inicio-'+t.id+'" type="date" value="'+(t.data_inicio||'')+'" style="font-size:13px;"/></div>'
-      +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Encerramento</label>'
+      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Encerramento</label>'
       +'<input id="tp-edit-fim-'+t.id+'" type="date" value="'+(t.data_fim||'')+'" style="font-size:13px;"/></div>'
       +'</div>'
       +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
@@ -1595,77 +1638,77 @@ function _buildTarefaCard(t,ce,ehPassado){
       +'<button onclick="_salvarEditTarefaPauta(\''+t.id+'\')" class="btn" style="font-size:11px;">Salvar</button>'
       +'</div></div>';
   }
-  html+='<div style="margin-top:8px;">';
-  if(subtarefas===null){
-    html+='<button onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Subtarefas</button>';
-  } else {
-    if(subtarefas.length>0){
-      var total=subtarefas.length;
-      var conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
-      html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
-      html+='<div style="flex:1;height:5px;border-radius:3px;overflow:hidden;display:flex;">';
-      subtarefas.forEach(function(s){html+='<div style="flex:1;background:'+(s.status==='concluido'?'#86efac':(s.status==='em_andamento'?'#93c5fd':(s.status==='pausado'?'#EF9F27':'#fca5a5')))+';">'+'</div>';});
-      html+='</div><span style="font-size:10px;color:var(--text3);flex-shrink:0;">'+conc+'/'+total+'</span></div>';
-      subtarefas.forEach(function(s){
-        var sBg=corBg[s.status]||'#fee2e2';var sTxt=corTxt[s.status]||'#dc2626';var sLbl=lblStatus[s.status]||s.status;
-        if(_subEditando===s.id){
-          var sStatOpts=['pendente','em_andamento','pausado','concluido'].map(function(ss){return '<option value="'+ss+'"'+(s.status===ss?' selected':'')+'>'+lblStatus[ss]+'</option>';}).join("");
-          html+='<div style="padding:6px;margin:2px 0;background:var(--surface);border-radius:6px;border:1.5px solid var(--bt-orange);">'
-            +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Nome</label>'
-            +'<input id="tp-sub-edit-titulo-'+s.id+'" value="'+s.texto.replace(/"/g,"&quot;")+'" style="font-size:12px;"/></div>'
-            +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
-            +'<textarea id="tp-sub-edit-desc-'+s.id+'" rows="2" style="font-size:12px;resize:vertical;">'+(s.descricao||'')+'</textarea></div>'
-            +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
-            +'<select id="tp-sub-edit-status-'+s.id+'" style="font-size:12px;">'+sStatOpts+'</select></div>'
-            +'<div style="display:flex;gap:5px;justify-content:flex-end;">'
-            +'<button onclick="_cancelarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
-            +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
-            +'</div></div>';
-        } else {
-          html+='<div style="padding:3px 0;">';
-          html+='<div style="display:flex;align-items:center;gap:7px;">';
-          html+='<span id="tp-stxt-'+s.id+'" style="font-size:12px;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+'flex:1;min-width:0;'+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
-            +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
-          html+='<span style="font-size:9px;padding:1px 6px;border-radius:9px;background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;flex-shrink:0;'+(ce&&!ehPassado?'cursor:pointer;':'')
-            +'"'+(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')
-            +'>'+sLbl+'</span>';
-          if(ce&&!ehPassado){
-            html+='<button onclick="_editarSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;">'+ic("edit")+'</button>';
-            html+='<button onclick="_excluirSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
-          }
-          html+='</div>';
-          if(s.descricao){
-            html+='<div id="tp-sdesc-'+s.id+'" style="font-size:11px;color:var(--text3);margin-top:2px;white-space:pre-wrap;line-height:1.4;'+((ce&&!ehPassado)?'cursor:text;':'')+'"'
-              +((ce&&!ehPassado)?' onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</div>';
-          } else if(ce&&!ehPassado){
-            html+='<div id="tp-sdesc-'+s.id+'" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;margin-top:2px;cursor:text;">Adicionar descricao...</div>';
-          }
-          html+='</div>';
+
+  // ── subtarefas ──
+  if(subtarefas!==null){
+    subtarefas.forEach(function(s){
+      var sBg=corBg[s.status]||'#FCEBEB';
+      var sTxt=corTxt[s.status]||'#A32D2D';
+      var sBar=corBar[s.status]||'#E24B4A';
+      var sLbl=lblStatus[s.status]||s.status;
+      if(_subEditando===s.id){
+        var sStatOpts=['pendente','em_andamento','pausado','concluido'].map(function(ss){return '<option value="'+ss+'"'+(s.status===ss?' selected':'')+'>'+lblStatus[ss]+'</option>';}).join("");
+        html+='<div class="rt-edit-form" style="padding-left:44px;">'
+          +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Nome</label>'
+          +'<input id="tp-sub-edit-titulo-'+s.id+'" value="'+s.texto.replace(/"/g,"&quot;")+'" style="font-size:12px;"/></div>'
+          +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+          +'<textarea id="tp-sub-edit-desc-'+s.id+'" rows="2" style="font-size:12px;resize:vertical;">'+(s.descricao||'')+'</textarea></div>'
+          +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
+          +'<select id="tp-sub-edit-status-'+s.id+'" style="font-size:12px;">'+sStatOpts+'</select></div>'
+          +'<div style="display:flex;gap:5px;justify-content:flex-end;">'
+          +'<button onclick="_cancelarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+          +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
+          +'</div></div>';
+      } else {
+        html+='<div class="rt-row" style="background:#fafbfc;">';
+        html+='<div class="rt-cell rt-cell-bar" style="background:'+sBar+';"></div>';
+        html+='<div class="rt-cell" style="padding-left:16px;font-size:12px;color:var(--text3);justify-content:center;">&#8627;</div>';
+        html+='<div class="rt-cell rt-cell-task">';
+        html+='<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:500;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
+          +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
+        if(s.descricao){
+          html+='<div id="tp-sdesc-'+s.id+'" style="font-size:11px;color:var(--text3);white-space:pre-wrap;line-height:1.35;'+((ce&&!ehPassado)?'cursor:text;':'')+'"'
+            +((ce&&!ehPassado)?' onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</div>';
+        } else if(ce&&!ehPassado){
+          html+='<div id="tp-sdesc-'+s.id+'" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
         }
-      });
-    }
+        html+='</div>';
+        if(s.responsavel){
+          var su=(usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{};
+          var sini=s.responsavel.slice(0,2).toUpperCase();
+          html+='<div class="rt-cell" style="gap:5px;">'
+            +'<div class="av av-sm" style="background:'+_avCor(su.id||s.responsavel)+';flex-shrink:0;font-size:9px;width:22px;height:22px;min-width:22px;">'+sini+'</div>'
+            +'<span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+s.responsavel+'</span>'
+            +'</div>';
+        } else {html+='<div class="rt-cell"></div>';}
+        html+='<div class="rt-cell">'
+          +'<span style="font-size:10px;padding:2px 8px;border-radius:9px;background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
+          +(ce&&!ehPassado?' onclick="_abrirStatusDropdown(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')
+          +'>'+sLbl+'</span></div>';
+        html+='<div class="rt-cell" style="font-size:11px;color:var(--text3);">'+(s.data_inicio?_fmtDateBrShort(s.data_inicio):'-')+'</div>';
+        var sAtrasado=_isAtrasado(s.data_fim,s.status);
+        html+='<div class="rt-cell" style="font-size:11px;color:'+(sAtrasado?'#dc2626':'var(--text3)')+';font-weight:'+(sAtrasado?'700':'400')+';">'+(s.data_fim?_fmtDateBrShort(s.data_fim):'-')+'</div>';
+        html+='<div class="rt-cell rt-actions">';
+        if(ce&&!ehPassado){
+          html+='<button onclick="_editarSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;">'+ic("edit")+'</button>';
+          html+='<button onclick="_excluirSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
+        }
+        html+='</div>';
+        html+='</div>';
+      }
+    });
     if(ce&&!ehPassado){
-      html+='<div id="tp-add-sub-'+t.id+'">'
-        +'<button onclick="_showAddSubtarefaPauta(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;margin-top:4px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar subtarefa</button>'
-        +'</div>';
+      html+='<div id="tp-add-sub-'+t.id+'" class="rt-add-sub-row" style="display:none;"></div>';
     }
   }
-  html+='</div>';
-  html+='<div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;">';
-  var nCmts=cmts?cmts.length:0;
-  html+='<button onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:'+(cmtsExp?'var(--bt-navy)':'var(--surface)')+';color:'+(cmtsExp?'#fff':'var(--text2)')+';cursor:pointer;">Comentarios'+(nCmts?' ('+nCmts+')':'')+'</button>';
-  if(ce&&!ehPassado){
-    html+='<button onclick="_editarTarefaPauta(\''+t.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Editar</button>';
-    html+='<button onclick="_excluirTarefaPauta(\''+t.id+'\',\''+t.reuniao_id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>';
-  }
-  html+='</div>';
+
+  // ── painel de comentarios ──
   if(cmtsExp){
-    html+='<div id="tp-cmts-'+t.id+'" style="margin-top:6px;">';
+    html+='<div id="tp-cmts-'+t.id+'" class="rt-cmts-panel">';
     if(cmts===null){html+='<div style="font-size:12px;color:var(--text3);">Carregando...</div>';}
     else{html+=_buildTarefaCmtsHTML(cmts,t.id,ce,ehPassado);}
     html+='</div>';
   }
-  html+='</div></div>';
   return html;
 }
 function _editarTarefaPauta(tarefaId){
@@ -1693,7 +1736,8 @@ async function _salvarEditTarefaPauta(tarefaId){
     toast("Tarefa salva!");
   }catch(e){toast("Erro ao salvar",true);}
 }
-async function _excluirTarefaPauta(tarefaId,reuniaoId){
+async function _excluirTarefaPauta(tarefaId){
+  var reuniaoId=reuniaoAtiva?reuniaoAtiva.id:'';
   modalConfirm("Excluir esta tarefa?",async function(){
     try{
       await dbDelTarefa(tarefaId);
@@ -1739,18 +1783,22 @@ async function _salvarEditSubtarefaPauta(subId,parentId,ehPassado){
     toast("Subtarefa salva!");
   }catch(_){toast("Erro ao salvar",true);}
 }
-function _showAddSubtarefaPauta(parentId,ehPassado){
+async function _showAddSubtarefaPauta(parentId,ehPassado){
+  if(!(parentId in _subtarefasCache)){
+    try{_subtarefasCache[parentId]=await dbFetchSubtarefas(parentId);}catch(_){_subtarefasCache[parentId]=[];}
+    _reloadTarefaCard(parentId,ehPassado);
+  }
   var el=document.getElementById("tp-add-sub-"+parentId);if(!el)return;
-  el.innerHTML='<div style="display:flex;gap:5px;align-items:center;margin-top:4px;">'
-    +'<input id="tp-sub-titulo-'+parentId+'" placeholder="Titulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;"/>'
+  el.style.display='flex';
+  el.innerHTML='<input id="tp-sub-titulo-'+parentId+'" placeholder="Titulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;min-width:100px;"/>'
     +'<button onclick="_salvarSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" class="btn" style="font-size:11px;padding:3px 9px;">Ok</button>'
-    +'<button onclick="_cancelarAddSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">x</button>'
-    +'</div>';
+    +'<button onclick="_cancelarAddSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">x</button>';
   var inp=document.getElementById("tp-sub-titulo-"+parentId);if(inp)inp.focus();
 }
 function _cancelarAddSubtarefaPauta(parentId,ehPassado){
   var el=document.getElementById("tp-add-sub-"+parentId);if(!el)return;
-  el.innerHTML='<button onclick="_showAddSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;margin-top:4px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar subtarefa</button>';
+  el.style.display='none';
+  el.innerHTML='';
 }
 async function _salvarSubtarefaPauta(parentId,ehPassado){
   var inp=document.getElementById("tp-sub-titulo-"+parentId);
