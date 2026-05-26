@@ -10,6 +10,7 @@ var _subtarefasCache={};
 var _tarefaExpandida={};
 var _tarefaCmtsCache={};
 var _tarefaCmtsExpanded={};
+var _subCollapsed={};
 
 async function renderReunioes(){
   var app=document.getElementById("app");app.className="page-mode";
@@ -1559,7 +1560,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   var subtarefas=_subtarefasCache[t.id]||null;
   var cmts=_tarefaCmtsCache[t.id]||null;
   var cmtsExp=!!_tarefaCmtsExpanded[t.id];
-  var subExp=subtarefas!==null;
+  var subExp=subtarefas!==null&&!_subCollapsed[t.id];
   var canEdit=ce&&!ehPassado&&_itemEditando!==t.id;
   var html='';
 
@@ -1571,20 +1572,22 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div style="min-width:0;flex:1;">';
   html+='<div id="tp-txt-'+t.id+'" style="font-size:13px;font-weight:600;line-height:1.35;'+(t.status==='concluido'?'text-decoration:line-through;color:var(--text3);':'color:var(--bt-navy);')+(canEdit?'cursor:pointer;':'')+'"'
     +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</div>';
-  if(t.descricao){
-    html+='<div id="tp-desc-'+t.id+'" style="font-size:11px;color:var(--text3);line-height:1.35;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
-      +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
-  } else if(canEdit){
-    html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
-  }
-  if(subtarefas&&subtarefas.length>0){
-    var conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
-    html+='<div class="rt-progress">';
-    subtarefas.forEach(function(s){var sc={'concluido':'#639922','em_andamento':'#185FA5','pausado':'#EF9F27','pendente':'#E24B4A'}[s.status]||'#E24B4A';html+='<div class="rt-progress-seg" style="background:'+sc+';"></div>';});
-    html+='</div><span style="font-size:10px;color:var(--text3);">'+conc+'/'+subtarefas.length+'</span>';
+  if(subExp){
+    if(t.descricao){
+      html+='<div id="tp-desc-'+t.id+'" style="font-size:11px;color:var(--text3);line-height:1.35;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
+        +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
+    } else if(canEdit){
+      html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
+    }
+    if(subtarefas&&subtarefas.length>0){
+      var conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
+      html+='<div class="rt-progress">';
+      subtarefas.forEach(function(s){var sc={'concluido':'#639922','em_andamento':'#185FA5','pausado':'#EF9F27','pendente':'#E24B4A'}[s.status]||'#E24B4A';html+='<div class="rt-progress-seg" style="background:'+sc+';"></div>';});
+      html+='</div><span style="font-size:10px;color:var(--text3);">'+conc+'/'+subtarefas.length+'</span>';
+    }
   }
   var nCmts=cmts?cmts.length:0;
-  html+='<button onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid '+(cmtsExp?'var(--bt-navy)':'var(--border)')+';background:'+(cmtsExp?'var(--bt-navy)':'transparent')+';color:'+(cmtsExp?'#fff':'var(--text3)')+';cursor:pointer;margin-top:2px;">&#128172;'+(nCmts?' '+nCmts:'')+'</button>';
+  html+='<span onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);cursor:pointer;margin-top:3px;">Comentarios ('+nCmts+')</span>';
   html+='</div>';
   html+='</div>';
   html+='</div>';
@@ -1640,7 +1643,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   }
 
   // ── subtarefas ──
-  if(subtarefas!==null){
+  if(subExp){
     subtarefas.forEach(function(s){
       var sBg=corBg[s.status]||'#FCEBEB';
       var sTxt=corTxt[s.status]||'#A32D2D';
@@ -1648,13 +1651,18 @@ function _buildTarefaCard(t,ce,ehPassado){
       var sLbl=lblStatus[s.status]||s.status;
       if(_subEditando===s.id){
         var sStatOpts=['pendente','em_andamento','pausado','concluido'].map(function(ss){return '<option value="'+ss+'"'+(s.status===ss?' selected':'')+'>'+lblStatus[ss]+'</option>';}).join("");
+        var sRespOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(sr){return '<option value="'+sr+'"'+(s.responsavel===sr?' selected':'')+'>'+sr+'</option>';}).join("");
         html+='<div class="rt-edit-form" style="padding-left:44px;">'
           +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Nome</label>'
           +'<input id="tp-sub-edit-titulo-'+s.id+'" value="'+s.texto.replace(/"/g,"&quot;")+'" style="font-size:12px;"/></div>'
           +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
           +'<textarea id="tp-sub-edit-desc-'+s.id+'" rows="2" style="font-size:12px;resize:vertical;">'+(s.descricao||'')+'</textarea></div>'
-          +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
+          +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
           +'<select id="tp-sub-edit-status-'+s.id+'" style="font-size:12px;">'+sStatOpts+'</select></div>'
+          +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
+          +'<select id="tp-sub-edit-resp-'+s.id+'" style="font-size:12px;">'+sRespOpts+'</select></div>'
+          +'</div>'
           +'<div style="display:flex;gap:5px;justify-content:flex-end;">'
           +'<button onclick="_cancelarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
           +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
@@ -1704,7 +1712,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   }
 
   // ── painel de comentarios ──
-  if(cmtsExp){
+  if(cmtsExp&&subExp){
     html+='<div id="tp-cmts-'+t.id+'" class="rt-cmts-panel">';
     if(cmts===null){html+='<div style="font-size:12px;color:var(--text3);">Carregando...</div>';}
     else{html+=_buildTarefaCmtsHTML(cmts,t.id,ce,ehPassado);}
@@ -1757,10 +1765,16 @@ function _reloadTarefaCard(tarefaId,ehPassado){
   el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
 }
 async function _toggleSubExpand(tarefaId,ehPassado){
-  try{
-    _subtarefasCache[tarefaId]=await dbFetchSubtarefas(tarefaId);
+  if(tarefaId in _subtarefasCache){
+    _subCollapsed[tarefaId]=!_subCollapsed[tarefaId];
     _reloadTarefaCard(tarefaId,ehPassado);
-  }catch(_){toast("Erro ao carregar subtarefas",true);}
+  } else {
+    try{
+      _subtarefasCache[tarefaId]=await dbFetchSubtarefas(tarefaId);
+      _subCollapsed[tarefaId]=false;
+      _reloadTarefaCard(tarefaId,ehPassado);
+    }catch(_){toast("Erro ao carregar subtarefas",true);}
+  }
 }
 function _editarSubtarefaPauta(subId,parentId,ehPassado){
   _subEditando=subId;
@@ -1776,9 +1790,11 @@ async function _salvarEditSubtarefaPauta(subId,parentId,ehPassado){
   var descEl=document.getElementById("tp-sub-edit-desc-"+subId);
   var descricao=(descEl?descEl.value||"":"").trim()||null;
   var status=document.getElementById("tp-sub-edit-status-"+subId).value||"pendente";
+  var respSubEdit=document.getElementById("tp-sub-edit-resp-"+subId);
+  var respSE=respSubEdit?respSubEdit.value||null:null;
   try{
-    await dbUpsertTarefa({id:subId,texto:texto,descricao:descricao,status:status});
-    (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===subId){s.texto=texto;s.descricao=descricao;s.status=status;}});
+    await dbUpsertTarefa({id:subId,texto:texto,descricao:descricao,status:status,responsavel:respSE||null});
+    (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===subId){s.texto=texto;s.descricao=descricao;s.status=status;s.responsavel=respSE||null;}});
     _subEditando=null;
     _reloadTarefaCard(parentId,ehPassado);
     toast("Subtarefa salva!");
@@ -1791,7 +1807,9 @@ async function _showAddSubtarefaPauta(parentId,ehPassado){
   }
   var el=document.getElementById("tp-add-sub-"+parentId);if(!el)return;
   el.style.display='flex';
+  var respOptsSub='<option value="">Responsavel...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
   el.innerHTML='<input id="tp-sub-titulo-'+parentId+'" placeholder="Titulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;min-width:100px;"/>'
+    +'<select id="tp-sub-resp-'+parentId+'" style="font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;color:var(--text2);">'+respOptsSub+'</select>'
     +'<button onclick="_salvarSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" class="btn" style="font-size:11px;padding:3px 9px;">Ok</button>'
     +'<button onclick="_cancelarAddSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">x</button>';
   var inp=document.getElementById("tp-sub-titulo-"+parentId);if(inp)inp.focus();
@@ -1805,10 +1823,12 @@ async function _salvarSubtarefaPauta(parentId,ehPassado){
   var inp=document.getElementById("tp-sub-titulo-"+parentId);
   var texto=(inp?inp.value||"":"").trim();
   if(!texto){toast("Informe o titulo",true);return;}
+  var respElSub=document.getElementById("tp-sub-resp-"+parentId);
+  var respSub=respElSub?respElSub.value||null:null;
   var rId=reuniaoAtiva?reuniaoAtiva.id:null;
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
-    await dbUpsertTarefa({id:uid(),texto:texto,status:'pendente',parent_id:parentId,reuniao_id:rId,equipe_id:eqId,criado_em:new Date().toISOString()});
+    await dbUpsertTarefa({id:uid(),texto:texto,status:'pendente',responsavel:respSub||null,parent_id:parentId,reuniao_id:rId,equipe_id:eqId,criado_em:new Date().toISOString()});
     _subtarefasCache[parentId]=await dbFetchSubtarefas(parentId);
     _reloadTarefaCard(parentId,ehPassado);
     toast("Subtarefa adicionada!");
