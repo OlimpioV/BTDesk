@@ -171,9 +171,12 @@ function _buildReuniaoDetalhe(r){
 async function _loadReuniaoPautas(reuniaoId){
   var el=document.getElementById("reuniao-pautas-area");if(!el)return;
   var ce=perfil==="mestre"||perfil==="advogado";
+  var hoje=new Date().toISOString().slice(0,10);
+  var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
+  var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
   try{
     var rps=await dbFetchReuniaoPautas(reuniaoId);
-    var addBtn=ce?'<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" class="btn-outlined" style="margin-bottom:14px;">'+ic("plus")+' Adicionar pauta</button>':"";
+    var addBtn=(ce&&!ehPassado)?'<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" class="btn-outlined" style="margin-bottom:14px;">'+ic("plus")+' Adicionar pauta</button>':"";
     if(!rps.length){
       el.innerHTML=addBtn
         +'<div class="reun-empty" style="padding:28px 20px;">'
@@ -182,64 +185,110 @@ async function _loadReuniaoPautas(reuniaoId){
         +'</div>';
       return;
     }
-    var corStatusProj={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'};
-    var lblStatusProj={'em_andamento':'Em andamento','concluido':'Concluido','pausado':'Pausado'};
-    var eqIdProj=equipeAtiva?equipeAtiva.id:null;
     var html='<div style="display:flex;flex-direction:column;gap:10px;">';
-    rps.forEach(function(rp,i){
-      var pauta=pautasDB.find(function(p){return p.id===rp.pauta_id;})||{titulo:"Pauta "+i,tipo:"livre"};
+    rps.forEach(function(rp){
+      var pauta=pautasDB.find(function(p){return p.id===rp.pauta_id;})||{titulo:"Pauta",tipo:"livre"};
       var snap=rp.snapshot_json||{};
-      var tipoCor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8'}[pauta.tipo]||'#94a3b8';
-      html+='<div class="pauta-card">'
-        +'<div class="pauta-card-hdr">'
-        +'<div class="pauta-card-titulo">'+pauta.titulo+'</div>'
-        +'<span class="reun-status-chip" style="background:'+tipoCor+'22;color:'+tipoCor+';flex-shrink:0;">'+_labelTipoPauta(pauta.tipo)+'</span>'
-        +'</div>'
-        +'<div class="pauta-card-body">';
-      if(pauta.tipo==='projeto'){
-        var proj=projetosDB.filter(function(p){return !eqIdProj||p.equipe_id===eqIdProj;});
-        if(!proj.length){html+='<div style="font-size:12px;color:var(--text3);">Nenhum projeto de equipe.</div>';}
-        else{
-          html+='<div style="display:flex;flex-direction:column;gap:6px;">';
-          proj.forEach(function(p){
-            var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
-            var respNome=(p.usuarios&&p.usuarios.nome)||resp;
-            var cor=corStatusProj[p.status]||'#94a3b8';
-            var lbl=lblStatusProj[p.status]||p.status.replace('_',' ');
-            html+='<div class="proj-card">'
-              +'<div class="proj-card-bar" style="background:'+cor+';"></div>'
-              +'<div class="proj-card-content">'
-              +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">'
-              +'<div class="proj-card-titulo">'+p.titulo+'</div>'
-              +'<div class="proj-card-meta">'
-              +'<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>'
-              +(resp?'<div class="av av-sm" style="background:'+_avCor(respNome)+'" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>':"")
-              +'</div></div>'
-              +(p.descricao?'<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;">'+p.descricao+'</div>':"")
-              +(ce?'<div style="display:flex;gap:4px;margin-top:7px;flex-wrap:wrap;">'
-                +'<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>'
-                +'<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("comment")+' Historico</button>'
-                +'<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>'
-                +'</div>':"")
-              +'</div></div>';
-          });
-          html+='</div>';
-        }
-        if(ce){html+='<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';}
-        if(snap.notas){html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);"><div class="reun-section-label" style="margin-bottom:4px;">Notas da reuniao</div><div class="pauta-notas">'+snap.notas+'</div></div>';}
-      }else{
-        html+=snap.notas?'<div class="pauta-notas">'+snap.notas+'</div>':'<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem notas para esta pauta nesta reuniao.</div>';
+      var tipoCor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8','avisos_gerais':'#22c55e'}[pauta.tipo]||'#94a3b8';
+      html+='<div class="pauta-card" id="pauta-card-'+rp.id+'">';
+      html+='<div class="pauta-card-hdr">';
+      html+='<div class="pauta-card-titulo">'+pauta.titulo+'</div>';
+      html+='<div style="display:flex;align-items:center;gap:6px;">';
+      html+='<span class="reun-status-chip" style="background:'+tipoCor+'22;color:'+tipoCor+';">'+_labelTipoPauta(pauta.tipo)+'</span>';
+      if(ehPassado)html+='<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#f1f5f9;color:var(--text3);">snapshot</span>';
+      html+='</div></div>';
+      html+='<div id="pb-'+rp.id+'" class="pauta-card-body">';
+      html+=_renderPautaView(pauta,snap,ce,ehPassado);
+      html+='</div>';
+      html+='<div class="pauta-card-footer">';
+      if(ce&&!ehPassado){
+        html+='<button onclick="_editPautaInline(\''+rp.id+'\',\''+reuniaoId+'\',\''+pauta.tipo+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("edit")+' Editar notas</button>';
       }
-      html+='</div>';
-      if(ce){html+='<div class="pauta-card-footer">'
-        +'<button onclick="openEditReuniaoPauta(\''+rp.id+'\',\''+reuniaoId+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Editar notas</button>'
-        +'<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;margin-left:auto;">Remover</button>'
-        +'</div>';}
-      html+='</div>';
+      if(pauta.tipo==='livre'||pauta.tipo==='avisos_gerais'||pauta.tipo==='atualizacao_demandas'){
+        html+='<button onclick="openHistoricoPauta(\''+rp.pauta_id+'\',\''+reuniaoId+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Historico</button>';
+      }
+      if(ce&&!ehPassado){
+        html+='<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;margin-left:auto;">Remover</button>';
+      }
+      html+='</div></div>';
     });
     html+='</div>';
     el.innerHTML=addBtn+html;
   }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar pautas.</div>';}
+}
+
+function _renderPautaView(pauta,snap,ce,ehPassado){
+  var tipo=pauta.tipo;
+  var html='';
+  if(tipo==='projeto'){
+    var eqIdProj=equipeAtiva?equipeAtiva.id:null;
+    var projs=projetosDB.filter(function(p){return !eqIdProj||p.equipe_id===eqIdProj;});
+    var corSt={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'};
+    var lblSt={'em_andamento':'Em andamento','concluido':'Concluido','pausado':'Pausado'};
+    if(!projs.length){html+='<div style="font-size:12px;color:var(--text3);">Nenhum projeto de equipe.</div>';}
+    else{
+      html+='<div style="display:flex;flex-direction:column;gap:6px;">';
+      projs.forEach(function(p){
+        var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
+        var respNome=(p.usuarios&&p.usuarios.nome)||resp;
+        var cor=corSt[p.status]||'#94a3b8';
+        var lbl=lblSt[p.status]||p.status.replace('_',' ');
+        html+='<div class="proj-card"><div class="proj-card-bar" style="background:'+cor+';"></div><div class="proj-card-content">';
+        html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">';
+        html+='<div class="proj-card-titulo">'+p.titulo+'</div>';
+        html+='<div class="proj-card-meta"><span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>';
+        if(resp)html+='<div class="av av-sm" style="background:'+_avCor(respNome)+'" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
+        html+='</div></div>';
+        if(p.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5;">'+p.descricao+'</div>';
+        if(ce&&!ehPassado){
+          html+='<div style="display:flex;gap:4px;margin-top:7px;flex-wrap:wrap;">';
+          html+='<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>';
+          html+='<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("comment")+' Historico</button>';
+          html+='<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>';
+          html+='</div>';
+        }
+        html+='</div></div>';
+      });
+      html+='</div>';
+    }
+    if(ce&&!ehPassado)html+='<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';
+    if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);"><div class="reun-section-label" style="margin-bottom:4px;">Notas da reuniao</div><div class="pauta-notas">'+snap.notas+'</div></div>';
+  } else if(tipo==='seminario'){
+    var tSem=snap.titulo_seminario||'';
+    var rSem=snap.responsavel_nome||'';
+    var oSem=snap.observacoes||'';
+    if(!tSem&&!rSem&&!oSem){
+      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem registros para este seminario.</div>';
+    } else {
+      if(tSem)html+='<div style="margin-bottom:6px;"><span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;">Titulo:</span> <span style="font-size:13px;color:var(--bt-navy);font-weight:600;">'+tSem+'</span></div>';
+      if(rSem)html+='<div style="margin-bottom:6px;"><span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;">Responsavel:</span> <span style="font-size:13px;color:var(--text2);">'+rSem+'</span></div>';
+      if(oSem)html+='<div class="pauta-notas" style="margin-top:6px;">'+oSem+'</div>';
+    }
+  } else if(tipo==='atualizacao_demandas'){
+    var adNotas=snap.notas||'';
+    var adDemandas=snap.demandas||[];
+    if(!adNotas&&!adDemandas.length){
+      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem atualizacoes registradas.</div>';
+    } else {
+      if(adDemandas.length){
+        html+='<div style="margin-bottom:8px;">';
+        adDemandas.forEach(function(d){
+          var card=(cards||[]).find(function(c){return c.id===d.card_id;})||{};
+          var titulo=card.titulo||d.titulo||d.card_id||"Demanda";
+          html+='<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);">';
+          html+='<span style="font-size:12px;font-weight:600;color:var(--bt-navy);flex:1;">'+trunc(titulo,46)+'</span>';
+          if(d.obs)html+='<span style="font-size:11px;color:var(--text3);flex-shrink:0;">'+d.obs+'</span>';
+          html+='</div>';
+        });
+        html+='</div>';
+      }
+      if(adNotas)html+='<div class="pauta-notas">'+adNotas+'</div>';
+    }
+  } else {
+    if(snap.notas)html+='<div class="pauta-notas">'+snap.notas+'</div>';
+    else html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem notas para esta pauta nesta reuniao.</div>';
+  }
+  return html;
 }
 
 function _loadReuniaoProjectos(){
@@ -583,28 +632,167 @@ async function salvarNovaPautaReuniao(reuniaoId){
     closeModal();_loadReuniaoPautas(reuniaoId);toast("Pauta criada e adicionada!");
   }catch(e){toast("Erro ao criar pauta",true);}
 }
-function openEditReuniaoPauta(rpId,reuniaoId){
-  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,460px);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Editar notas da pauta</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
-    +'<div class="field"><label>Notas</label><textarea id="erp-notas" rows="6" placeholder="Notas desta pauta nesta reuniao..."></textarea></div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarEditReuniaoPauta(\''+rpId+'\',\''+reuniaoId+'\')">Salvar</button></div>'
-    +'</div></div>';
-  dbFetchReuniaoPautas(reuniaoId).then(function(rps){
-    var rp=rps.find(function(x){return x.id===rpId;});
-    var el=document.getElementById("erp-notas");
-    if(el&&rp&&rp.snapshot_json)el.value=rp.snapshot_json.notas||"";
-  });
+async function _editPautaInline(rpId,reuniaoId,tipo){
+  var el=document.getElementById("pb-"+rpId);if(!el)return;
+  var rp;
+  try{var rps=await dbFetchReuniaoPautas(reuniaoId);rp=rps.find(function(x){return x.id===rpId;});}catch(e){toast("Erro",true);return;}
+  if(!rp){toast("Pauta nao encontrada",true);return;}
+  var snap=rp.snapshot_json||{};
+  var html='';
+  if(tipo==='projeto'){
+    html+='<div class="field" style="margin-top:8px;"><label>Notas da reuniao</label>'
+      +'<textarea id="pbi-notas" rows="4" style="resize:vertical;" placeholder="Notas sobre projetos nesta reuniao...">'+(snap.notas||"")+'</textarea></div>';
+  } else if(tipo==='seminario'){
+    html+='<div class="field"><label>Titulo do seminario</label><input id="pbi-tit" value="'+(snap.titulo_seminario||"")+'"/></div>'
+      +'<div class="field"><label>Responsavel</label><input id="pbi-resp" value="'+(snap.responsavel_nome||"")+'" placeholder="Nome do responsavel"/></div>'
+      +'<div class="field"><label>Observacoes</label><textarea id="pbi-obs" rows="4" style="resize:vertical;" placeholder="Observacoes...">'+(snap.observacoes||"")+'</textarea></div>';
+  } else if(tipo==='atualizacao_demandas'){
+    window._pbiDemandas=JSON.parse(JSON.stringify(snap.demandas||[]));
+    html+='<div class="field"><label>Notas gerais</label><textarea id="pbi-notas" rows="3" style="resize:vertical;" placeholder="Notas gerais...">'+(snap.notas||"")+'</textarea></div>';
+    html+='<div style="margin-top:6px;"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Demandas vinculadas</div>';
+    html+='<div id="pbi-demandas-list">';
+    if(!window._pbiDemandas.length){html+='<div style="font-size:12px;color:var(--text3);">Nenhuma demanda vinculada.</div>';}
+    else{
+      window._pbiDemandas.forEach(function(d,i){
+        var card=(cards||[]).find(function(c){return c.id===d.card_id;})||{};
+        html+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);">'
+          +'<span style="flex:1;font-size:12px;color:var(--bt-navy);">'+trunc(card.titulo||d.titulo||"Demanda",36)+'</span>'
+          +'<input data-demanda-obs data-idx="'+i+'" value="'+(d.obs||"")+'" placeholder="Obs..." style="width:130px;font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;"/>'
+          +'<button onclick="_removerDemandaInline('+i+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>'
+          +'</div>';
+      });
+    }
+    html+='</div>';
+    html+='<div style="margin-top:8px;"><input id="pbi-busca-card" placeholder="Buscar demanda para vincular..." style="width:100%;font-size:12px;margin-bottom:4px;" oninput="_filtrarCardsInline()"/>'
+      +'<div id="pbi-cards-resultados" style="max-height:110px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;display:none;"></div>'
+      +'</div></div>';
+  } else {
+    html+='<textarea id="pbi-notas" rows="5" style="width:100%;resize:vertical;" placeholder="Notas...">'+(snap.notas||"")+'</textarea>';
+  }
+  html+='<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">'
+    +'<button onclick="_cancelPautaEdit(\''+rpId+'\',\''+reuniaoId+'\')" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Cancelar</button>'
+    +'<button onclick="_savePautaInline(\''+rpId+'\',\''+reuniaoId+'\',\''+tipo+'\')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
+    +'</div>';
+  el.innerHTML=html;
 }
-async function salvarEditReuniaoPauta(rpId,reuniaoId){
-  var notas=(document.getElementById("erp-notas").value||"").trim();
+async function _savePautaInline(rpId,reuniaoId,tipo){
+  var rp;
+  try{var rps=await dbFetchReuniaoPautas(reuniaoId);rp=rps.find(function(x){return x.id===rpId;});}catch(e){toast("Erro",true);return;}
+  if(!rp){toast("Pauta nao encontrada",true);return;}
+  var snap={};
+  if(tipo==='projeto'){
+    var notasP=(document.getElementById("pbi-notas").value||"").trim();
+    snap=Object.assign({},rp.snapshot_json||{},{notas:notasP||null});
+  } else if(tipo==='seminario'){
+    var tit=(document.getElementById("pbi-tit").value||"").trim();
+    var resp=(document.getElementById("pbi-resp").value||"").trim();
+    var obs=(document.getElementById("pbi-obs").value||"").trim();
+    snap={titulo_seminario:tit||null,responsavel_nome:resp||null,observacoes:obs||null};
+  } else if(tipo==='atualizacao_demandas'){
+    var notasA=(document.getElementById("pbi-notas").value||"").trim();
+    var obsInputs=document.querySelectorAll("#pb-"+rpId+" [data-demanda-obs]");
+    var demandas=(window._pbiDemandas||[]).map(function(d,i){var inp=obsInputs[i];return Object.assign({},d,{obs:inp?inp.value.trim():d.obs||""});});
+    snap={notas:notasA||null,demandas:demandas.length?demandas:null};
+    window._pbiDemandas=null;
+  } else {
+    var notasL=(document.getElementById("pbi-notas").value||"").trim();
+    snap=Object.assign({},rp.snapshot_json||{},{notas:notasL||null});
+  }
+  rp=Object.assign({},rp,{snapshot_json:snap});
   try{
-    var rps=await dbFetchReuniaoPautas(reuniaoId);
-    var rp=rps.find(function(x){return x.id===rpId;});
-    if(!rp)return;
-    rp.snapshot_json=Object.assign({},rp.snapshot_json,{notas:notas||null});
     await dbUpsertReuniaoPauta(rp);
-    closeModal();_loadReuniaoPautas(reuniaoId);toast("Notas salvas!");
-  }catch(e){toast("Erro",true);}
+    _loadReuniaoPautas(reuniaoId);toast("Notas salvas!");
+  }catch(e){toast("Erro ao salvar",true);}
+}
+function _cancelPautaEdit(rpId,reuniaoId){
+  window._pbiDemandas=null;
+  _loadReuniaoPautas(reuniaoId);
+}
+function _filtrarCardsInline(){
+  var q=(document.getElementById("pbi-busca-card").value||"").toLowerCase().trim();
+  var el=document.getElementById("pbi-cards-resultados");if(!el)return;
+  if(!q){el.style.display="none";el.innerHTML="";return;}
+  var found=(cards||[]).filter(function(c){return c.titulo&&c.titulo.toLowerCase().indexOf(q)>=0;}).slice(0,8);
+  el.style.display="block";
+  if(!found.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);padding:6px 8px;">Nenhuma demanda encontrada.</div>';return;}
+  el.innerHTML=found.map(function(c){
+    return '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border);">'
+      +'<span style="flex:1;font-size:12px;color:var(--bt-navy);">'+trunc(c.titulo||"",38)+'</span>'
+      +'<button onclick="_adicionarDemandaInline(\''+c.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;flex-shrink:0;">Adicionar</button>'
+      +'</div>';
+  }).join("");
+}
+function _adicionarDemandaInline(cardId){
+  if(!window._pbiDemandas)window._pbiDemandas=[];
+  if(window._pbiDemandas.find(function(d){return d.card_id===cardId;})){toast("Demanda ja vinculada",true);return;}
+  var card=(cards||[]).find(function(c){return c.id===cardId;})||{titulo:cardId};
+  var obsInputs=document.querySelectorAll("[data-demanda-obs]");
+  window._pbiDemandas.forEach(function(d,i){if(obsInputs[i])d.obs=obsInputs[i].value.trim();});
+  window._pbiDemandas.push({card_id:cardId,titulo:card.titulo||cardId,obs:""});
+  _renderDemandasInlineList();
+  var busca=document.getElementById("pbi-busca-card");if(busca)busca.value="";
+  var res=document.getElementById("pbi-cards-resultados");if(res){res.innerHTML="";res.style.display="none";}
+}
+function _removerDemandaInline(idx){
+  if(!window._pbiDemandas)return;
+  var obsInputs=document.querySelectorAll("[data-demanda-obs]");
+  window._pbiDemandas.forEach(function(d,i){if(obsInputs[i])d.obs=obsInputs[i].value.trim();});
+  window._pbiDemandas.splice(idx,1);
+  _renderDemandasInlineList();
+}
+function _renderDemandasInlineList(){
+  var el=document.getElementById("pbi-demandas-list");if(!el)return;
+  if(!window._pbiDemandas||!window._pbiDemandas.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);">Nenhuma demanda vinculada.</div>';return;}
+  el.innerHTML=window._pbiDemandas.map(function(d,i){
+    var card=(cards||[]).find(function(c){return c.id===d.card_id;})||{};
+    return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);">'
+      +'<span style="flex:1;font-size:12px;color:var(--bt-navy);">'+trunc(card.titulo||d.titulo||"Demanda",36)+'</span>'
+      +'<input data-demanda-obs data-idx="'+i+'" value="'+(d.obs||"")+'" placeholder="Obs..." style="width:130px;font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;"/>'
+      +'<button onclick="_removerDemandaInline('+i+')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>'
+      +'</div>';
+  }).join("");
+}
+async function openHistoricoPauta(pautaId,reuniaoIdAtual){
+  var pauta=pautasDB.find(function(p){return p.id===pautaId;})||{titulo:"Pauta"};
+  var mc=document.getElementById("modal-container");
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,560px);max-height:80vh;display:flex;flex-direction:column;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-shrink:0;">'
+    +'<div style="font-size:15px;font-weight:700;color:var(--bt-navy);">Historico: '+pauta.titulo+'</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'</div>'
+    +'<div id="hist-list" style="flex:1;overflow-y:auto;min-height:80px;">Carregando...</div>'
+    +'</div></div>';
+  try{
+    var r=await fetch(SB+"/rest/v1/reuniao_pautas?pauta_id=eq."+pautaId+"&select=*",{headers:H});
+    var rps=r.ok?await r.json():[];
+    var itens=rps.map(function(rp){
+      var re=reunioesDB.find(function(x){return x.id===rp.reuniao_id;})||{data:'1900-01-01'};
+      return {rp:rp,data:re.data||'1900-01-01',titulo:re.titulo};
+    }).sort(function(a,b){return b.data.localeCompare(a.data);});
+    var elH=document.getElementById("hist-list");if(!elH)return;
+    if(!itens.length){elH.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum historico.</div>';return;}
+    elH.innerHTML=itens.map(function(item){
+      var snap=item.rp.snapshot_json||{};
+      var isAtual=item.rp.reuniao_id===reuniaoIdAtual;
+      var dataFmt=item.data&&item.data!=='1900-01-01'?_fmtData(item.data):'Data desconhecida';
+      var notas=snap.notas;
+      var demandas=snap.demandas||[];
+      var conteudo='';
+      if(notas)conteudo+='<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;margin-top:4px;">'+notas+'</div>';
+      if(demandas.length){
+        conteudo+='<div style="margin-top:4px;">';
+        demandas.forEach(function(d){
+          var card=(cards||[]).find(function(c){return c.id===d.card_id;})||{};
+          conteudo+='<div style="font-size:11px;color:var(--bt-navy);padding:2px 0;">'+trunc(card.titulo||d.titulo||"Demanda",44)+(d.obs?' - '+d.obs:'')+'</div>';
+        });
+        conteudo+='</div>';
+      }
+      if(!conteudo)conteudo='<div style="font-size:11px;color:var(--text3);font-style:italic;">Sem notas.</div>';
+      return '<div style="padding:10px 0;border-bottom:1px solid var(--border);">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--bt-navy);margin-bottom:3px;">'+dataFmt+(isAtual?' (reuniao atual)':'')+'</div>'
+        +conteudo+'</div>';
+    }).join("");
+  }catch(e){var elH2=document.getElementById("hist-list");if(elH2)elH2.innerHTML='<div style="color:var(--text3);">Erro ao carregar.</div>';}
 }
 async function removerPautaDaReuniao(rpId){
   modalConfirm("Remover pauta desta reuniao?",async function(){
