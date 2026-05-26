@@ -39,8 +39,18 @@ async function dbDelTarefa(id){
 async function dbDelTarefasDoCard(cardId){
   await fetch(SB+"/rest/v1/tarefas?card_id=eq."+cardId,{method:"DELETE",headers:H});
 }
-async function dbFetchTarefasReuniao(reuniaoId){var r=await fetch(SB+"/rest/v1/tarefas?reuniao_id=eq."+reuniaoId+"&parent_id=is.null&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbFetchTarefasReuniao(reuniaoId){
+  var r=await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefas(*)",{headers:H});
+  if(!r.ok)return [];
+  var rows=await r.json();
+  var tarefas=rows.map(function(x){return x.tarefas;}).filter(function(t){return t&&!t.parent_id;});
+  tarefas.sort(function(a,b){return (a.criado_em||'').localeCompare(b.criado_em||'');});
+  return tarefas;
+}
 async function dbFetchSubtarefas(parentId){var r=await fetch(SB+"/rest/v1/tarefas?parent_id=eq."+parentId+"&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbFetchReuniaoTarefas(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefa_id",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertReuniaoTarefa(rt){var r=await fetch(SB+"/rest/v1/reuniao_tarefas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(rt)});if(!r.ok)throw new Error();}
+async function dbDelReuniaoTarefa(reuniaoId,tarefaId){await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&tarefa_id=eq."+tarefaId,{method:"DELETE",headers:H});}
 
 // ── EQUIPES DB ──
 async function dbFetchEquipes(){var r=await fetch(SB+"/rest/v1/equipes?select=*&order=nome",{headers:H});if(!r.ok)throw new Error();return r.json();}

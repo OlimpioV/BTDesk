@@ -956,11 +956,11 @@ async function _apSalvarNovaCategoria(){
 }
 function _gpRefreshBadges(){
   var reuniaoId=_apReuniao;if(!reuniaoId)return;
-  fetch(SB+"/rest/v1/tarefas?reuniao_id=eq."+reuniaoId+"&parent_id=is.null&select=pauta_categoria_id",{headers:H})
+  fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefas(pauta_categoria_id)",{headers:H})
     .then(function(r){return r.ok?r.json():[];})
-    .then(function(tarefas){
+    .then(function(rows){
       var counts={};
-      tarefas.forEach(function(t){var cid=t.pauta_categoria_id;if(cid){if(!counts[cid])counts[cid]=0;counts[cid]++;}});
+      rows.forEach(function(row){var t=row.tarefas;var cid=t&&t.pauta_categoria_id;if(cid){if(!counts[cid])counts[cid]=0;counts[cid]++;}});
       _apCats.forEach(function(cat){var b=document.getElementById("ap-cat-badge-"+cat.id);if(b)b.textContent=counts[cat.id]||0;});
     }).catch(function(){});
 }
@@ -969,8 +969,11 @@ async function _gpLoadItens(catId){
   el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;">Carregando...</div>';
   var reuniaoId=_apReuniao;
   try{
-    var r=await fetch(SB+"/rest/v1/tarefas?reuniao_id=eq."+reuniaoId+"&pauta_categoria_id=eq."+catId+"&parent_id=is.null&order=criado_em",{headers:H});
-    var itens=r.ok?await r.json():[];
+    var r1=await fetch(SB+"/rest/v1/tarefas?pauta_categoria_id=eq."+catId+"&parent_id=is.null&order=criado_em",{headers:H});
+    var itens=r1.ok?await r1.json():[];
+    var r2=await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefa_id",{headers:H});
+    var linked=r2.ok?await r2.json():[];
+    var linkedIds={};linked.forEach(function(x){linkedIds[x.tarefa_id]=true;});
     var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
     var formHTML='<div id="gp-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
       +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo *</label>'
@@ -993,30 +996,9 @@ async function _gpLoadItens(catId){
       +'<button onclick="_gpMostrarNovaTarefa()" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova tarefa</button>'
       +'</div>';
     var listaHTML=itens.length?itens.map(function(t){
-      if(_gpEditando===t.id){
-        var rOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
-        return '<div id="gp-row-'+t.id+'" style="padding:10px 14px;border-bottom:1px solid var(--border);background:#fffbf5;">'
-          +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
-          +'<input id="gp-edit-titulo-'+t.id+'" value="'+t.texto.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'
-          +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
-          +'<textarea id="gp-edit-descricao-'+t.id+'" rows="2" style="font-size:13px;resize:vertical;">'+(t.descricao||'')+'</textarea></div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
-          +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
-          +'<select id="gp-edit-resp-'+t.id+'" style="font-size:13px;">'+rOpts+'</select></div>'
-          +'<div></div>'
-          +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
-          +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Inicio</label>'
-          +'<input id="gp-edit-inicio-'+t.id+'" type="date" value="'+(t.data_inicio||'')+'" style="font-size:13px;"/></div>'
-          +'<div><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Encerramento</label>'
-          +'<input id="gp-edit-fim-'+t.id+'" type="date" value="'+(t.data_fim||'')+'" style="font-size:13px;"/></div>'
-          +'</div>'
-          +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
-          +'<button onclick="_gpCancelarEditTarefa(\''+catId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
-          +'<button onclick="_gpSalvarEditTarefa(\''+t.id+'\',\''+catId+'\')" class="btn" style="font-size:11px;">Salvar</button>'
-          +'</div></div>';
-      }
+      var isLinked=!!linkedIds[t.id];
       return '<div id="gp-row-'+t.id+'" style="display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);">'
+        +'<input type="checkbox"'+(isLinked?' checked':'')+' onchange="_gpToggleReuniaoTarefa(\''+reuniaoId+'\',\''+t.id+'\',this.checked,\''+catId+'\')" style="margin-top:3px;cursor:pointer;accent-color:var(--bt-orange);">'
         +'<div style="flex:1;min-width:0;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+t.texto+'</div>'
         +(t.responsavel?'<div style="font-size:11px;color:var(--text3);">'+t.responsavel+'</div>':"")
@@ -1025,10 +1007,6 @@ async function _gpLoadItens(catId){
           +(t.data_fim?'<span style="font-size:10px;color:'+(_isAtrasado(t.data_fim,t.status)?'#dc2626':'var(--text3)')+';">Encerramento: '+_fmtDateBr(t.data_fim)+'</span>':'')
           +'</div>':"")
         +(t.descricao?'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+t.descricao+'</div>':"")
-        +'</div>'
-        +'<div style="display:flex;gap:4px;flex-shrink:0;align-items:center;">'
-        +'<button onclick="_gpIniciarEditTarefa(\''+t.id+'\',\''+catId+'\')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface);cursor:pointer;">'+ic("edit")+'</button>'
-        +'<button onclick="_gpDeletarTarefa(\''+t.id+'\',\''+catId+'\')" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>'
         +'</div>'
         +'</div>';
     }).join(""):'<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma tarefa nesta categoria. Crie a primeira.</div>';
@@ -1055,7 +1033,9 @@ async function _gpSalvarNovaTarefa(catId){
   var fim=document.getElementById("gp-ni-fim").value||null;
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
-    await dbUpsertTarefa({id:uid(),texto:texto,descricao:descricao||null,responsavel:resp||null,status:'pendente',data_inicio:inicio||null,data_fim:fim||null,reuniao_id:_apReuniao,pauta_categoria_id:catId,equipe_id:eqId,criado_em:new Date().toISOString()});
+    var tarefaId=uid();
+    await dbUpsertTarefa({id:tarefaId,texto:texto,descricao:descricao||null,responsavel:resp||null,status:'pendente',data_inicio:inicio||null,data_fim:fim||null,pauta_categoria_id:catId,equipe_id:eqId,criado_em:new Date().toISOString()});
+    await dbUpsertReuniaoTarefa({reuniao_id:_apReuniao,tarefa_id:tarefaId});
     _gpLoadItens(catId);
     _gpRefreshBadges();
     toast("Tarefa criada!");
@@ -1070,6 +1050,13 @@ async function _gpDeletarTarefa(tarefaId,catId){
       toast("Tarefa removida!");
     }catch(_){toast("Erro",true);}
   });
+}
+async function _gpToggleReuniaoTarefa(reuniaoId,tarefaId,checked,catId){
+  try{
+    if(checked){await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:tarefaId});}
+    else{await dbDelReuniaoTarefa(reuniaoId,tarefaId);}
+    _gpRefreshBadges();
+  }catch(_){toast("Erro",true);_gpLoadItens(catId);}
 }
 function _gpIniciarEditTarefa(tarefaId,catId){
   _gpEditando=tarefaId;
@@ -1578,7 +1565,10 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='</div>';
   }
   if(t.descricao){
-    html+='<div style="font-size:12px;color:var(--text3);margin-top:5px;white-space:pre-wrap;line-height:1.45;">'+t.descricao+'</div>';
+    html+='<div id="tp-desc-'+t.id+'" style="font-size:12px;color:var(--text3);margin-top:5px;white-space:pre-wrap;line-height:1.45;'+((ce&&!ehPassado&&_itemEditando!==t.id)?'cursor:text;':'')+'"'
+      +((ce&&!ehPassado&&_itemEditando!==t.id)?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
+  } else if(ce&&!ehPassado&&_itemEditando!==t.id){
+    html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" style="font-size:12px;color:var(--text3);font-style:italic;margin-top:5px;cursor:text;">Adicionar descricao...</div>';
   }
   if(_itemEditando===t.id){
     var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
@@ -1867,6 +1857,44 @@ async function _doSaveDescricaoSub(subId,parentId,ehPassado){
 function _cancelarDescricaoSub(subId,parentId,ehPassado){
   _descEsc=false;
   _reloadTarefaCard(parentId,ehPassado);
+}
+
+// ── EDICAO INLINE DE DESCRICAO DE TAREFA PRINCIPAL ──
+var _descMainEsc=false;
+function _iniciarEdicaoDescricaoMain(tarefaId,ehPassado){
+  var el=document.getElementById('tp-desc-'+tarefaId);if(!el)return;
+  var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
+  _descMainEsc=false;
+  el.innerHTML='<textarea id="tp-desc-ta-'+tarefaId+'" rows="2"'
+    +' style="width:100%;display:block;font-size:12px;font-family:inherit;border:1.5px solid var(--bt-orange);border-radius:4px;padding:3px 6px;box-sizing:border-box;resize:vertical;"'
+    +' onkeydown="_descMainKeydown(event,\''+tarefaId+'\','+!!ehPassado+')"'
+    +' onblur="_salvarDescricaoMain(\''+tarefaId+'\','+!!ehPassado+')">'+tex+'</textarea>';
+  var ta=document.getElementById('tp-desc-ta-'+tarefaId);
+  if(ta){ta.focus();var l=ta.value.length;ta.setSelectionRange(l,l);}
+}
+function _descMainKeydown(e,tarefaId,ehPassado){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_descMainEsc=true;_doSaveDescricaoMain(tarefaId,ehPassado);}
+  else if(e.key==='Escape'){_descMainEsc=true;_cancelarDescricaoMain(tarefaId,ehPassado);}
+}
+async function _salvarDescricaoMain(tarefaId,ehPassado){
+  if(_descMainEsc){_descMainEsc=false;return;}
+  await _doSaveDescricaoMain(tarefaId,ehPassado);
+}
+async function _doSaveDescricaoMain(tarefaId,ehPassado){
+  var ta=document.getElementById('tp-desc-ta-'+tarefaId);
+  if(!ta)return;
+  var descricao=ta.value.trim()||null;
+  try{
+    await dbUpsertTarefa({id:tarefaId,descricao:descricao});
+    var rId=reuniaoAtiva?reuniaoAtiva.id:'';
+    (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId)t.descricao=descricao;});
+    _reloadTarefaCard(tarefaId,ehPassado);
+    toast('Descricao salva!');
+  }catch(_){toast('Erro ao salvar',true);_cancelarDescricaoMain(tarefaId,ehPassado);}
+}
+function _cancelarDescricaoMain(tarefaId,ehPassado){
+  _descMainEsc=false;
+  _reloadTarefaCard(tarefaId,ehPassado);
 }
 
 // ── STATUS DROPDOWN DE TAREFA ──
