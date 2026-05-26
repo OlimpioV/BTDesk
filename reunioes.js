@@ -1011,7 +1011,7 @@ async function _gpSalvarNovaTarefa(catId){
   var resp=document.getElementById("gp-ni-resp").value||null;
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
-    await dbUpsertTarefa({texto:texto,responsavel:resp||null,status:'pendente',reuniao_id:_apReuniao,pauta_categoria_id:catId,equipe_id:eqId});
+    await dbUpsertTarefa({id:uid(),texto:texto,responsavel:resp||null,status:'pendente',reuniao_id:_apReuniao,pauta_categoria_id:catId,equipe_id:eqId});
     _gpLoadItens(catId);
     _gpRefreshBadges();
     toast("Tarefa criada!");
@@ -1623,7 +1623,7 @@ async function _salvarSubtarefaPauta(parentId,ehPassado){
   var rId=reuniaoAtiva?reuniaoAtiva.id:null;
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
-    await dbUpsertTarefa({texto:texto,status:'pendente',parent_id:parentId,reuniao_id:rId,equipe_id:eqId});
+    await dbUpsertTarefa({id:uid(),texto:texto,status:'pendente',parent_id:parentId,reuniao_id:rId,equipe_id:eqId});
     _subtarefasCache[parentId]=await dbFetchSubtarefas(parentId);
     _reloadTarefaCard(parentId,ehPassado);
     toast("Subtarefa adicionada!");
