@@ -5,6 +5,9 @@ var _projExpanded={};
 var _checklistCache={};
 var _commentsCache={};
 var _projCommentsExpanded={};
+var _itemExpanded={};
+var _itemCmtsCache={};
+var _reunItensCache={};
 
 async function renderReunioes(){
   var app=document.getElementById("app");app.className="page-mode";
@@ -184,17 +187,17 @@ function _buildReuniaoDetalhe(r){
     +'</div>';
   html+='<div class="reun-section">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-    +'<div class="reun-section-label">Projetos internos</div>'
-    +(ce?'<button onclick="openNovoProjeto()" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo</button>':"")
+    +'<div class="reun-section-label">Pautas</div>'
+    +(ce?'<button onclick="openAdicionarPauta(\''+r.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Gerenciar</button>':"")
     +'</div>'
-    +'<div id="reuniao-projetos-area">Carregando...</div>'
+    +'<div id="reun-pautas-area">Carregando...</div>'
     +'</div>';
   html+='<div class="reun-section">'
-    +'<div class="reun-section-label" style="margin-bottom:10px;">Itens de pauta</div>'
-    +'<div id="reuniao-itens-area">Carregando...</div>'
+    +'<div class="reun-section-label" style="margin-bottom:10px;">Comentarios</div>'
+    +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadProjetosArea(r.id);_loadReuniaoItens(r.id);},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadNovaPautasSection(r.id);_loadReuniaoComentarios(r.id);},0);
   return html;
 }
 
@@ -742,17 +745,19 @@ function _avCor(str){
 // ── PARTICIPANTES ──
 async function _loadParticipantesArea(reuniaoId){
   var el=document.getElementById("reuniao-part-area");if(!el)return;
-  var ce=perfil==="mestre"||perfil==="advogado";
   try{
-    var parts=await dbFetchReuniaoParticipantes(reuniaoId);
-    if(!parts.length){
-      el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum participante.'
-        +(ce?' <button onclick="openGerenciarParticipantes(\''+reuniaoId+'\')" style="background:none;border:none;color:var(--bt-navy);cursor:pointer;font-size:12px;font-weight:600;text-decoration:underline;">Adicionar</button>':'')
-        +'</span>';
-      return;
+    var eqId=equipeAtiva?equipeAtiva.id:null;
+    var membros=[];
+    if(eqId){
+      var rm=await fetch(SB+"/rest/v1/equipe_membros?equipe_id=eq."+eqId+"&select=usuario_id,usuarios(id,nome,sigla,email)",{headers:H});
+      if(rm.ok)membros=await rm.json();
     }
-    var avs=parts.map(function(p){
-      var u=p.usuarios||{};
+    var parts=await dbFetchReuniaoParticipantes(reuniaoId);
+    var seen={};var users=[];
+    membros.forEach(function(m){var u=m.usuarios;if(u&&!seen[u.id]){seen[u.id]=1;users.push(u);}});
+    parts.forEach(function(p){var u=p.usuarios;if(u&&!seen[u.id]){seen[u.id]=1;users.push(u);}});
+    if(!users.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum participante.</span>';return;}
+    var avs=users.map(function(u){
       var nome=u.nome||u.email||'?';
       var ini=u.sigla||(nome.replace(/\s+/g,' ').trim().split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase());
       var cor=_avCor(u.id||nome);
@@ -968,7 +973,7 @@ async function _apToggleItem(itemId,catId,checked){
       if(ri)await dbDelReuniaoItem(ri.id);
       _apAtivosIds=(_apAtivosIds||[]).filter(function(id){return id!==itemId;});
     }
-    var area=document.getElementById("reuniao-itens-area");if(area)_loadReuniaoItens(reuniaoId);
+    _loadNovaPautasSection(reuniaoId);
   }catch(e){var cb=document.getElementById("ap-item-"+itemId);if(cb)cb.checked=!checked;toast("Erro",true);}
 }
 function _apTab(n,reuniaoId){
@@ -1229,8 +1234,23 @@ async function salvarProjeto(id){
     var eqId=equipeAtiva?equipeAtiva.id:null;
     projetosDB=await dbFetchProjetos(eqId);
     if(id&&_checklistCache[id])delete _checklistCache[id];
+    if(!id&&salvo){
+      // Criar pauta_itens vinculado a categoria de projetos da equipe ativa
+      try{
+        var cats=await dbFetchPautaCategorias(eqId);
+        var catProj=cats.find(function(c){return c.tipo==='projetos';});
+        if(catProj){
+          var pi=await dbUpsertPautaItem({titulo:salvo.titulo,responsavel_id:resp||null,referencia_id:salvo.id,categoria_id:catProj.id,equipe_id:eqId});
+          // Se ha reuniao ativa, adicionar tambem a reuniao_pauta_itens
+          if(reuniaoAtiva&&pi){
+            var riAtual=await dbFetchReuniaoItens(reuniaoAtiva.id);
+            await dbUpsertReuniaoItem({reuniao_id:reuniaoAtiva.id,item_id:pi.id,categoria_id:catProj.id,estado:'pendente',ordem:riAtual.length});
+          }
+        }
+      }catch(_){}
+    }
     closeModal();
-    if(reuniaoAtiva)_loadReuniaoPautas(reuniaoAtiva.id);
+    if(reuniaoAtiva)_loadNovaPautasSection(reuniaoAtiva.id);
     toast("Projeto salvo!");
   }catch(e){toast("Erro ao salvar",true);}
 }
@@ -1389,6 +1409,272 @@ async function gerarAta(reuniaoId){
   var a=document.createElement("a");a.href=url;a.download="ata-"+dataFmt.replace(/\//g,"-")+".txt";a.click();
   setTimeout(function(){URL.revokeObjectURL(url);},1000);
   toast("Ata gerada!");
+}
+
+// ── NOVA SECAO PAUTAS ──
+async function _loadNovaPautasSection(reuniaoId){
+  var el=document.getElementById("reun-pautas-area");if(!el)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
+  var hoje=new Date().toISOString().slice(0,10);
+  var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
+  try{
+    var itens=await dbFetchReuniaoItens(reuniaoId);
+    _reunItensCache[reuniaoId]=itens;
+    if(!itens.length){
+      el.innerHTML='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhuma pauta adicionada. Use o botao Gerenciar.</div>';
+      return;
+    }
+    var cats={};var catOrder=[];
+    itens.forEach(function(it){
+      var cid=it.categoria_id||"sem_cat";
+      if(!cats[cid]){cats[cid]={nome:(it.pauta_categorias&&it.pauta_categorias.nome)||'Geral',tipo:(it.pauta_categorias&&it.pauta_categorias.tipo)||null,itens:[]};catOrder.push(cid);}
+      cats[cid].itens.push(it);
+    });
+    // Buscar projetos referenciados
+    var projetoIds=[];
+    catOrder.forEach(function(cid){var cat=cats[cid];if(cat.tipo==='projetos'){cat.itens.forEach(function(it){var pi=it.pauta_itens||{};if(pi.referencia_id)projetoIds.push(pi.referencia_id);});}});
+    var projetosMap={};
+    if(projetoIds.length){
+      try{var projs=await dbFetchProjetosPorIds(projetoIds);projs.forEach(function(p){projetosMap[p.id]=p;});}catch(_){}
+    }
+    var html='<div style="display:flex;flex-direction:column;gap:12px;">';
+    catOrder.forEach(function(catId){
+      var cat=cats[catId];
+      html+='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+      html+='<div style="padding:9px 16px;background:var(--surface);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);">';
+      html+='<div style="font-size:11px;font-weight:700;color:var(--bt-navy);text-transform:uppercase;letter-spacing:.05em;">'+cat.nome+'</div>';
+      if(ce&&!ehPassado&&cat.tipo==='projetos'){html+='<button onclick="openNovoProjeto()" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("plus")+' Novo projeto</button>';}
+      html+='</div>';
+      html+='<div style="padding:8px;">';
+      cat.itens.forEach(function(it){
+        var pi=it.pauta_itens||{};
+        if(cat.tipo==='projetos'&&pi.referencia_id&&projetosMap[pi.referencia_id]){
+          var proj=projetosMap[pi.referencia_id];
+          html+='<div id="proj-item-'+proj.id+'">'+_buildProjetoCardHTML(proj,!!_projExpanded[proj.id],_checklistCache[proj.id]||null,_commentsCache[proj.id]||null,ce,ehPassado)+'</div>';
+        } else {
+          html+=_buildItemCard(it,pi,ce,ehPassado);
+        }
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+    el.innerHTML=html;
+  }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar pautas.</div>';}
+}
+function _buildItemCard(ri,pi,ce,ehPassado){
+  var u=pi.usuarios||{};
+  var resp=u.sigla||u.nome||"";
+  var expanded=!!_itemExpanded[ri.id];
+  var html='<div id="ri-card-'+ri.id+'" class="proj-card"><div class="proj-card-bar" style="background:'+(ri.estado==='concluido'?'#22c55e':'#94a3b8')+';"></div><div class="proj-card-content">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">';
+  html+='<div class="proj-card-titulo">'+pi.titulo+'</div>';
+  html+='<div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">';
+  if(ce&&!ehPassado){
+    html+='<input type="checkbox"'+(ri.estado==='concluido'?' checked':'')+' onchange="_toggleReuniaoItem(\''+ri.id+'\',this.checked,\''+ri.reuniao_id+'\')" style="width:auto;cursor:pointer;" title="Marcar concluido"/>';
+  }
+  html+='<button onclick="_toggleItemCard(\''+ri.id+'\','+!!ehPassado+')" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
+  html+='</div></div>';
+  if(resp)html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:5px;"><div class="av av-sm" style="background:'+_avCor((u.id)||resp)+';flex-shrink:0;">'+resp.slice(0,2).toUpperCase()+'</div><span>'+resp+'</span></div>';
+  if(pi.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;">'+pi.descricao+'</div>';
+  if(expanded){
+    if(ce&&!ehPassado){
+      html+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
+      html+='<textarea id="ri-notas-'+ri.id+'" rows="2" placeholder="Observacoes..." style="width:100%;resize:none;font-size:12px;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;" onblur="_saveReuniaoItemNotas(\''+ri.id+'\')">'+(ri.notas||'')+'</textarea>';
+      html+='</div>';
+    } else if(ri.notas){
+      html+='<div style="font-size:12px;color:var(--text2);margin-top:8px;padding:8px;background:var(--surface);border-radius:6px;border-top:1px solid var(--border);">'+ri.notas+'</div>';
+    }
+    html+=_buildItemCmtsHTML(ri.id,pi.id,_itemCmtsCache[ri.id]||[],ce,ehPassado);
+    if(ce&&!ehPassado){html+='<div style="display:flex;gap:4px;margin-top:8px;"><button onclick="_delReuniaoItem(\''+ri.id+'\',\''+ri.reuniao_id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Remover</button></div>';}
+  }
+  html+='</div></div>';
+  return html;
+}
+async function _toggleItemCard(riId,ehPassado){
+  _itemExpanded[riId]=!_itemExpanded[riId];
+  if(_itemExpanded[riId]){
+    var riAll=_reunItensCache[reuniaoAtiva?reuniaoAtiva.id:'']||[];
+    var ri=riAll.find(function(x){return x.id===riId;});
+    if(ri&&ri.pauta_itens&&ri.pauta_itens.id){
+      try{_itemCmtsCache[riId]=await dbFetchPautaItemComentarios(ri.pauta_itens.id);}catch(_){_itemCmtsCache[riId]=[];}
+    }
+  }
+  _reloadItemCard(riId,ehPassado);
+}
+function _reloadItemCard(riId,ehPassado){
+  var el=document.getElementById("ri-card-"+riId);if(!el)return;
+  var riAll=_reunItensCache[reuniaoAtiva?reuniaoAtiva.id:'']||[];
+  var ri=riAll.find(function(x){return x.id===riId;});if(!ri)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var pi=ri.pauta_itens||{};
+  el.outerHTML=_buildItemCard(ri,pi,ce,!!ehPassado);
+}
+async function _saveReuniaoItemNotas(riId){
+  var ta=document.getElementById("ri-notas-"+riId);if(!ta)return;
+  var notas=(ta.value||"").trim()||null;
+  try{await dbUpsertReuniaoItem({id:riId,notas:notas});
+    var riAll=_reunItensCache[reuniaoAtiva?reuniaoAtiva.id:'']||[];
+    riAll.forEach(function(x){if(x.id===riId)x.notas=notas;});
+  }catch(_){}
+}
+function _buildItemCmtsHTML(riId,pautaItemId,comments,ce,ehPassado){
+  var html='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Comentarios</div>';
+  if(!comments.length){html+='<div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:6px;">Nenhum comentario.</div>';}
+  else{
+    html+='<div style="max-height:200px;overflow-y:auto;">';
+    comments.forEach(function(c){
+      var u=c.usuarios||{};var ini=(u.sigla||u.nome||'?').slice(0,2).toUpperCase();
+      var corAv=_avCor(u.id||u.nome||'?');
+      var dt=new Date(c.criado_em);var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      var canEdit=(c.usuario_id===userDbId||perfil==='mestre')&&ce&&!ehPassado;
+      html+='<div id="icmt-'+c.id+'" style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);">';
+      html+='<div class="av av-sm" style="background:'+corAv+';flex-shrink:0;">'+ini+'</div>';
+      html+='<div style="flex:1;min-width:0;">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;">';
+      html+='<span style="font-size:11px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||u.nome||'?')+'</span>';
+      html+='<div style="display:flex;gap:3px;align-items:center;">';
+      html+='<span style="font-size:10px;color:var(--text3);">'+dtStr+'</span>';
+      if(canEdit)html+='<button onclick="_editItemComentarioInline(\''+c.id+'\',\''+riId+'\',\''+pautaItemId+'\')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>';
+      if(canEdit)html+='<button onclick="_delItemComentario(\''+c.id+'\',\''+riId+'\',\''+pautaItemId+'\')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
+      html+='</div></div>';
+      html+='<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-top:2px;">'+c.texto+'</div>';
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
+  if(ce&&!ehPassado){
+    var meIni=((nomeUser||'?').slice(0,2).toUpperCase());
+    html+='<div style="display:flex;gap:5px;margin-top:8px;align-items:flex-start;">';
+    html+='<div class="av av-sm" style="background:'+_avCor(userDbId||'')+';flex-shrink:0;">'+meIni+'</div>';
+    html+='<textarea id="icmt-new-'+riId+'" rows="1" placeholder="Comentar..." style="flex:1;resize:none;font-size:12px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
+    html+='<button onclick="_addItemComentario(\''+riId+'\',\''+pautaItemId+'\')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--bt-navy);background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+async function _addItemComentario(riId,pautaItemId){
+  var ta=document.getElementById("icmt-new-"+riId);
+  var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentario",true);return;}
+  try{
+    await dbUpsertPautaItemComentario({item_id:pautaItemId,usuario_id:userDbId,texto:txt});
+    _itemCmtsCache[riId]=await dbFetchPautaItemComentarios(pautaItemId);
+    _reloadItemCard(riId,false);toast("Comentario adicionado!");
+  }catch(_){toast("Erro",true);}
+}
+function _editItemComentarioInline(cId,riId,pautaItemId){
+  var el=document.getElementById("icmt-"+cId);if(!el)return;
+  var cmts=_itemCmtsCache[riId]||[];
+  var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
+  el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
+    +'<textarea id="icmt-edit-'+cId+'" rows="2" style="font-size:12px;resize:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;">'+c.texto+'</textarea>'
+    +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
+    +'<button onclick="_reloadItemCard(\''+riId+'\',false)" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+    +'<button onclick="_saveItemComentario(\''+cId+'\',\''+riId+'\',\''+pautaItemId+'\')" class="btn btn-primary" style="font-size:10px;padding:2px 8px;">Salvar</button>'
+    +'</div></div>';
+}
+async function _saveItemComentario(cId,riId,pautaItemId){
+  var txt=(document.getElementById("icmt-edit-"+cId).value||"").trim();
+  if(!txt){toast("Texto nao pode ser vazio",true);return;}
+  try{
+    await dbUpsertPautaItemComentario({id:cId,texto:txt});
+    _itemCmtsCache[riId]=await dbFetchPautaItemComentarios(pautaItemId);
+    _reloadItemCard(riId,false);toast("Comentario editado!");
+  }catch(_){toast("Erro",true);}
+}
+function _delItemComentario(cId,riId,pautaItemId){
+  modalConfirm("Excluir este comentario?",async function(){
+    try{
+      await dbDelPautaItemComentario(cId);
+      _itemCmtsCache[riId]=await dbFetchPautaItemComentarios(pautaItemId);
+      _reloadItemCard(riId,false);toast("Comentario excluido!");
+    }catch(_){toast("Erro",true);}
+  });
+}
+
+// ── COMENTARIOS DA REUNIAO ──
+async function _loadReuniaoComentarios(reuniaoId){
+  var el=document.getElementById("reun-cmts-area");if(!el)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
+  var hoje=new Date().toISOString().slice(0,10);
+  var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
+  try{
+    var cmts=await dbFetchReuniaoComentarios(reuniaoId);
+    el.innerHTML=_buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado);
+  }catch(_){if(el)el.innerHTML='';}
+}
+function _buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado){
+  var html='<div style="max-height:300px;overflow-y:auto;padding-right:2px;">';
+  if(!cmts.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;padding:4px 0;">Nenhum comentario.</div>';}
+  else{
+    cmts.forEach(function(c){
+      var u=c.usuarios||{};var ini=(u.sigla||u.nome||'?').slice(0,2).toUpperCase();
+      var corAv=_avCor(u.id||u.nome||'?');
+      var dt=new Date(c.criado_em);var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      var canEdit=(c.usuario_id===userDbId||perfil==='mestre')&&ce&&!ehPassado;
+      html+='<div id="rcmt-'+c.id+'" style="display:flex;gap:7px;padding:7px 0;border-bottom:1px solid var(--border);">';
+      html+='<div class="av av-sm" style="background:'+corAv+';flex-shrink:0;">'+ini+'</div>';
+      html+='<div style="flex:1;min-width:0;">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">';
+      html+='<span style="font-size:11px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||u.nome||'?')+'</span>';
+      html+='<div style="display:flex;gap:3px;align-items:center;">';
+      html+='<span style="font-size:10px;color:var(--text3);">'+dtStr+'</span>';
+      if(canEdit)html+='<button onclick="_editReuniaoComentarioInline(\''+c.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>';
+      if(canEdit)html+='<button onclick="_delReuniaoComentario(\''+c.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
+      html+='</div></div>';
+      html+='<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-top:2px;">'+c.texto+'</div>';
+      html+='</div></div>';
+    });
+  }
+  html+='</div>';
+  if(ce&&!ehPassado){
+    var meIni=((nomeUser||'?').slice(0,2).toUpperCase());
+    html+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">';
+    html+='<div style="display:flex;gap:6px;align-items:flex-start;">';
+    html+='<div class="av av-sm" style="background:'+_avCor(userDbId||'')+';flex-shrink:0;">'+meIni+'</div>';
+    html+='<textarea id="rcmt-new" rows="2" placeholder="Comentar sobre a reuniao..." style="flex:1;resize:none;font-size:13px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
+    html+='<button onclick="_addReuniaoComentario(\''+reuniaoId+'\')" style="font-size:11px;padding:6px 12px;border-radius:6px;border:none;background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
+    html+='</div></div>';
+  }
+  return html;
+}
+async function _addReuniaoComentario(reuniaoId){
+  var ta=document.getElementById("rcmt-new");
+  var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentario",true);return;}
+  try{
+    await dbUpsertReuniaoComentario({reuniao_id:reuniaoId,usuario_id:userDbId,texto:txt});
+    _loadReuniaoComentarios(reuniaoId);toast("Comentario adicionado!");
+  }catch(_){toast("Erro",true);}
+}
+async function _editReuniaoComentarioInline(cId,reuniaoId){
+  var el=document.getElementById("rcmt-"+cId);if(!el)return;
+  try{
+    var cmts=await dbFetchReuniaoComentarios(reuniaoId);
+    var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
+    el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
+      +'<textarea id="rcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+c.texto+'</textarea>'
+      +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
+      +'<button onclick="_loadReuniaoComentarios(\''+reuniaoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+      +'<button onclick="_saveReuniaoComentario(\''+cId+'\',\''+reuniaoId+'\')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
+      +'</div></div>';
+  }catch(_){toast("Erro",true);}
+}
+async function _saveReuniaoComentario(cId,reuniaoId){
+  var txt=(document.getElementById("rcmt-edit-"+cId).value||"").trim();
+  if(!txt){toast("Texto nao pode ser vazio",true);return;}
+  try{
+    await dbUpsertReuniaoComentario({id:cId,texto:txt});
+    _loadReuniaoComentarios(reuniaoId);toast("Comentario editado!");
+  }catch(_){toast("Erro",true);}
+}
+function _delReuniaoComentario(cId,reuniaoId){
+  modalConfirm("Excluir este comentario?",async function(){
+    try{await dbDelReuniaoComentario(cId);_loadReuniaoComentarios(reuniaoId);toast("Comentario excluido!");}
+    catch(_){toast("Erro",true);}
+  });
 }
 
 // ── SINALIZAR PROJETO ──
