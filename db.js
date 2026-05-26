@@ -134,6 +134,11 @@ async function dbUpsertChecklistItem(item){var r=await fetch(SB+"/rest/v1/checkl
 async function dbDelChecklistItem(id){await fetch(SB+"/rest/v1/checklist_projeto?id=eq."+id,{method:"DELETE",headers:H});}
 async function dbFetchProjetosPorIds(ids){if(!ids||!ids.length)return [];var r=await fetch(SB+"/rest/v1/projetos_internos?id=in.("+ids.join(",")+")"+"&select=*,usuarios(id,nome,sigla)",{headers:H});if(!r.ok)return [];return r.json();}
 
+// ── PAUTA ITEM CHECKLIST DB ──
+async function dbFetchPautaItemChecklist(itemId){var r=await fetch(SB+"/rest/v1/pauta_item_checklist?item_id=eq."+itemId+"&order=ordem,criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertPautaItemChecklist(item){var r=await fetch(SB+"/rest/v1/pauta_item_checklist",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbDelPautaItemChecklist(id){await fetch(SB+"/rest/v1/pauta_item_checklist?id=eq."+id,{method:"DELETE",headers:H});}
+
 // ── REUNIAO COMENTARIOS DB ──
 async function dbFetchReuniaoComentarios(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_comentarios?reuniao_id=eq."+reuniaoId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertReuniaoComentario(c){var r=await fetch(SB+"/rest/v1/reuniao_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}

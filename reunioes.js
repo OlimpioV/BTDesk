@@ -8,6 +8,7 @@ var _projCommentsExpanded={};
 var _itemExpanded={};
 var _itemCmtsCache={};
 var _reunItensCache={};
+var _itemChecklistCache={};
 
 async function renderReunioes(){
   var app=document.getElementById("app");app.className="page-mode";
@@ -909,7 +910,7 @@ function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
   _apCatSel=catSelId;
   var body=document.getElementById("ap-body");if(!body)return;
   if(!cats.length){
-    body.innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;width:100%;">Nenhuma categoria. Clique em "Gerenciar categorias" para criar.</div>';
+    body.innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;width:100%;">Nenhuma categoria cadastrada para esta equipe.</div>';
     return;
   }
   var leftHTML='<div id="ap-cats" style="width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);">';
@@ -946,19 +947,68 @@ async function _apLoadItens(catId){
   el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;">Carregando...</div>';
   try{
     var itens=await dbFetchPautaItens(catId);
-    if(!itens.length){el.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhum item nesta categoria.</div>';return;}
-    el.innerHTML=itens.map(function(item){
+    var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(u){return '<option value="'+u.id+'">'+u.nome+'</option>';}).join("");
+    var formHTML='<div id="ap-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo *</label>'
+      +'<input id="ap-ni-titulo" placeholder="Titulo do item..." style="font-size:13px;"/></div>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
+      +'<select id="ap-ni-resp" style="font-size:13px;">'+respOpts+'</select></div>'
+      +'<div class="field" style="margin-bottom:8px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+      +'<textarea id="ap-ni-desc" rows="2" placeholder="Descricao opcional..." style="font-size:12px;resize:none;"></textarea></div>'
+      +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
+      +'<button onclick="_apCancelarNovoItem()" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Cancelar</button>'
+      +'<button onclick="_apSalvarNovoItem(\''+catId+'\')" class="btn" style="font-size:11px;">Salvar</button>'
+      +'</div></div>';
+    var btnHTML='<div style="padding:10px 14px;border-bottom:1px solid var(--border);">'
+      +'<button onclick="_apMostrarNovoItem()" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo item</button>'
+      +'</div>';
+    var listaHTML=itens.length?itens.map(function(item){
       var ativo=(_apAtivosIds||[]).indexOf(item.id)>=0;
+      var u=item.usuarios||{};
+      var resp=u.sigla||u.nome||"";
       return '<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);">'
         +'<input type="checkbox" id="ap-item-'+item.id+'"'+(ativo?' checked':'')+' onchange="_apToggleItem(\''+item.id+'\',\''+catId+'\',this.checked)" style="width:auto;cursor:pointer;flex-shrink:0;"/>'
         +'<div style="flex:1;min-width:0;">'
         +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+item.titulo+'</div>'
+        +(resp?'<div style="font-size:11px;color:var(--text3);">'+resp+'</div>':"")
         +(item.descricao?'<div style="font-size:11px;color:var(--text3);margin-top:1px;">'+item.descricao+'</div>':"")
         +'</div>'
-        +(item.recorrente?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f0fdf4;color:#15803d;flex-shrink:0;">REC</span>':"")
         +'</div>';
-    }).join("");
+    }).join(""):'<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">Nenhum item ainda. Crie o primeiro.</div>';
+    el.innerHTML=formHTML+btnHTML+listaHTML;
   }catch(e){if(el)el.innerHTML='<div style="padding:16px;color:var(--text3);">Erro ao carregar.</div>';}
+}
+function _apMostrarNovoItem(){
+  var f=document.getElementById("ap-novo-item-form");if(!f)return;
+  f.style.display='';
+  var t=document.getElementById("ap-ni-titulo");if(t)t.focus();
+}
+function _apCancelarNovoItem(){
+  var f=document.getElementById("ap-novo-item-form");if(!f)return;
+  f.style.display='none';
+  var t=document.getElementById("ap-ni-titulo");if(t)t.value='';
+  var d=document.getElementById("ap-ni-desc");if(d)d.value='';
+}
+async function _apSalvarNovoItem(catId){
+  var titulo=(document.getElementById("ap-ni-titulo").value||"").trim();
+  if(!titulo){toast("Informe o titulo",true);return;}
+  var respId=document.getElementById("ap-ni-resp").value||null;
+  var desc=(document.getElementById("ap-ni-desc").value||"").trim()||null;
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var obj={titulo:titulo,categoria_id:catId,equipe_id:eqId,criado_por:userDbId};
+  if(respId)obj.responsavel_id=respId;
+  if(desc)obj.descricao=desc;
+  try{
+    var item=await dbUpsertPautaItem(obj);
+    if(!item||!item.id){toast("Erro ao criar item",true);return;}
+    var reuniaoId=_apReuniao;
+    await dbUpsertReuniaoItem({reuniao_id:reuniaoId,item_id:item.id,categoria_id:catId,estado:'pendente',ordem:(_apAtivosIds||[]).length});
+    if(!_apAtivosIds)_apAtivosIds=[];
+    _apAtivosIds.push(item.id);
+    _loadNovaPautasSection(reuniaoId);
+    _apLoadItens(catId);
+    toast("Item criado!");
+  }catch(e){toast("Erro ao criar item",true);}
 }
 async function _apToggleItem(itemId,catId,checked){
   var reuniaoId=_apReuniao;if(!reuniaoId)return;
@@ -1464,31 +1514,177 @@ async function _loadNovaPautasSection(reuniaoId){
 function _buildItemCard(ri,pi,ce,ehPassado){
   var u=pi.usuarios||{};
   var resp=u.sigla||u.nome||"";
-  var expanded=!!_itemExpanded[ri.id];
-  var html='<div id="ri-card-'+ri.id+'" class="proj-card"><div class="proj-card-bar" style="background:'+(ri.estado==='concluido'?'#22c55e':'#94a3b8')+';"></div><div class="proj-card-content">';
+  var cmtsExpanded=!!_itemExpanded[ri.id];
+  var checklist=_itemChecklistCache[pi.id]||null;
+  var corBarra=ri.estado==='concluido'?'#22c55e':'#94a3b8';
+  var html='<div id="ri-card-'+ri.id+'" class="proj-card"><div class="proj-card-bar" style="background:'+corBarra+';"></div><div class="proj-card-content">';
+  // Topo: titulo + checkbox concluido
   html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">';
-  html+='<div class="proj-card-titulo">'+pi.titulo+'</div>';
-  html+='<div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">';
+  html+='<div class="proj-card-titulo" style="'+(ri.estado==='concluido'?'text-decoration:line-through;color:var(--text3);':'')+'">'+pi.titulo+'</div>';
   if(ce&&!ehPassado){
-    html+='<input type="checkbox"'+(ri.estado==='concluido'?' checked':'')+' onchange="_toggleReuniaoItem(\''+ri.id+'\',this.checked,\''+ri.reuniao_id+'\')" style="width:auto;cursor:pointer;" title="Marcar concluido"/>';
+    html+='<input type="checkbox"'+(ri.estado==='concluido'?' checked':'')+' onchange="_toggleReuniaoItem(\''+ri.id+'\',this.checked,\''+ri.reuniao_id+'\')" style="width:auto;cursor:pointer;flex-shrink:0;" title="Marcar concluido"/>';
   }
-  html+='<button onclick="_toggleItemCard(\''+ri.id+'\','+!!ehPassado+')" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
-  html+='</div></div>';
-  if(resp)html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:5px;"><div class="av av-sm" style="background:'+_avCor((u.id)||resp)+';flex-shrink:0;">'+resp.slice(0,2).toUpperCase()+'</div><span>'+resp+'</span></div>';
+  html+='</div>';
+  // Responsavel
+  if(resp)html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:5px;"><div class="av av-sm" style="background:'+_avCor(u.id||resp)+';flex-shrink:0;">'+resp.slice(0,2).toUpperCase()+'</div><span>'+resp+'</span></div>';
+  // Descricao
   if(pi.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;">'+pi.descricao+'</div>';
-  if(expanded){
-    if(ce&&!ehPassado){
-      html+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
-      html+='<textarea id="ri-notas-'+ri.id+'" rows="2" placeholder="Observacoes..." style="width:100%;resize:none;font-size:12px;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;" onblur="_saveReuniaoItemNotas(\''+ri.id+'\')">'+(ri.notas||'')+'</textarea>';
-      html+='</div>';
-    } else if(ri.notas){
-      html+='<div style="font-size:12px;color:var(--text2);margin-top:8px;padding:8px;background:var(--surface);border-radius:6px;border-top:1px solid var(--border);">'+ri.notas+'</div>';
+  // Edicao inline
+  if(_itemEditando===ri.id){
+    var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(usr){return '<option value="'+usr.id+'"'+(pi.responsavel_id===usr.id?' selected':'')+'>'+usr.nome+'</option>';}).join("");
+    html+='<div style="margin-top:8px;padding:8px;background:var(--surface);border-radius:8px;border:1.5px solid var(--bt-orange);">'
+      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
+      +'<input id="ri-edit-titulo-'+ri.id+'" value="'+pi.titulo.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'
+      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
+      +'<select id="ri-edit-resp-'+ri.id+'" style="font-size:13px;">'+respOpts+'</select></div>'
+      +'<div class="field" style="margin-bottom:8px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+      +'<textarea id="ri-edit-desc-'+ri.id+'" rows="2" style="font-size:12px;resize:none;">'+(pi.descricao||'')+'</textarea></div>'
+      +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
+      +'<button onclick="_cancelarEditItem(\''+ri.id+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+      +'<button onclick="_salvarEditItem(\''+ri.id+'\',\''+pi.id+'\')" class="btn" style="font-size:11px;">Salvar</button>'
+      +'</div></div>';
+  }
+  // Checklist
+  html+='<div style="margin-top:8px;">';
+  if(checklist===null){
+    // nao carregado ainda, mostrar botao de carregar
+    html+='<button onclick="_carregarChecklist(\''+ri.id+'\',\''+pi.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Subtarefas</button>';
+  } else {
+    var total=checklist.length;
+    var conc=checklist.filter(function(c){return c.concluida;}).length;
+    if(total>0){
+      var pct=Math.round(conc/total*100);
+      html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+        +'<div style="flex:1;height:5px;border-radius:3px;background:#e2e8f0;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:#22c55e;border-radius:3px;"></div></div>'
+        +'<span style="font-size:10px;color:var(--text3);flex-shrink:0;">'+conc+'/'+total+'</span>'
+        +'</div>';
+      checklist.forEach(function(sub){
+        html+='<div style="display:flex;align-items:center;gap:7px;padding:3px 0;">';
+        if(ce&&!ehPassado){
+          html+='<input type="checkbox" '+(sub.concluida?'checked':'')+' onchange="_toggleSubtarefa(\''+sub.id+'\',this.checked,\''+ri.id+'\',\''+pi.id+'\','+!!ehPassado+')" style="width:auto;cursor:pointer;flex-shrink:0;"/>';
+        } else {
+          html+='<input type="checkbox" '+(sub.concluida?'checked':'')+' disabled style="width:auto;flex-shrink:0;"/>';
+        }
+        html+='<span style="font-size:12px;'+(sub.concluida?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+'flex:1;">'+sub.titulo+'</span>';
+        if(ce&&!ehPassado){html+='<button onclick="_delSubtarefa(\''+sub.id+'\',\''+ri.id+'\',\''+pi.id+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;line-height:1;">'+ic("trash")+'</button>';}
+        html+='</div>';
+      });
     }
+    // Formulario adicionar subtarefa
+    if(ce&&!ehPassado){
+      html+='<div id="ri-add-sub-'+ri.id+'">'
+        +'<button onclick="_showAddSubtarefa(\''+ri.id+'\',\''+pi.id+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;margin-top:4px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar subtarefa</button>'
+        +'</div>';
+    }
+  }
+  html+='</div>';
+  // Rodape: Editar | Arquivar | Comentarios
+  html+='<div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">';
+  if(ce&&!ehPassado){
+    html+='<button onclick="_iniciarEditItem(\''+ri.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Editar</button>';
+    html+='<button onclick="_arquivarReuniaoItem(\''+ri.id+'\',\''+ri.reuniao_id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Arquivar</button>';
+  }
+  var cmtCount=(_itemCmtsCache[ri.id]||[]).length;
+  html+='<button onclick="_toggleItemCard(\''+ri.id+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:'+(cmtsExpanded?'var(--bt-navy)':'var(--surface)')+';color:'+(cmtsExpanded?'#fff':'var(--text2)')+';cursor:pointer;">Comentarios'+(cmtCount>0?' ('+cmtCount+')':'')+'</button>';
+  html+='</div>';
+  // Comentarios (toggle)
+  if(cmtsExpanded){
     html+=_buildItemCmtsHTML(ri.id,pi.id,_itemCmtsCache[ri.id]||[],ce,ehPassado);
-    if(ce&&!ehPassado){html+='<div style="display:flex;gap:4px;margin-top:8px;"><button onclick="_delReuniaoItem(\''+ri.id+'\',\''+ri.reuniao_id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Remover</button></div>';}
   }
   html+='</div></div>';
   return html;
+}
+var _itemEditando=null;
+function _iniciarEditItem(riId){
+  _itemEditando=riId;
+  var riAll=_reunItensCache[reuniaoAtiva?reuniaoAtiva.id:'']||[];
+  var ri=riAll.find(function(x){return x.id===riId;});if(!ri)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var pi=ri.pauta_itens||{};
+  document.getElementById("ri-card-"+riId).outerHTML=_buildItemCard(ri,pi,ce,false);
+}
+function _cancelarEditItem(riId){
+  _itemEditando=null;
+  _reloadItemCard(riId,false);
+}
+async function _salvarEditItem(riId,pautaItemId){
+  var titulo=(document.getElementById("ri-edit-titulo-"+riId).value||"").trim();
+  if(!titulo){toast("Informe o titulo",true);return;}
+  var respId=document.getElementById("ri-edit-resp-"+riId).value||null;
+  var desc=(document.getElementById("ri-edit-desc-"+riId).value||"").trim()||null;
+  var obj={id:pautaItemId,titulo:titulo};
+  obj.responsavel_id=respId||null;
+  obj.descricao=desc||null;
+  try{
+    var saved=await dbUpsertPautaItem(obj);
+    if(!saved){toast("Erro ao salvar",true);return;}
+    // Atualiza cache
+    var riAll=_reunItensCache[reuniaoAtiva?reuniaoAtiva.id:'']||[];
+    riAll.forEach(function(x){if(x.id===riId&&x.pauta_itens){x.pauta_itens.titulo=titulo;x.pauta_itens.responsavel_id=respId;x.pauta_itens.descricao=desc;if(saved.usuarios)x.pauta_itens.usuarios=saved.usuarios;}});
+    _itemEditando=null;
+    _reloadItemCard(riId,false);
+    toast("Item salvo!");
+  }catch(e){toast("Erro ao salvar",true);}
+}
+async function _carregarChecklist(riId,pautaItemId,ehPassado){
+  try{
+    _itemChecklistCache[pautaItemId]=await dbFetchPautaItemChecklist(pautaItemId);
+    _reloadItemCard(riId,ehPassado);
+  }catch(_){toast("Erro ao carregar subtarefas",true);}
+}
+async function _toggleSubtarefa(subId,concluida,riId,pautaItemId,ehPassado){
+  try{
+    await dbUpsertPautaItemChecklist({id:subId,concluida:concluida});
+    var lista=_itemChecklistCache[pautaItemId]||[];
+    lista.forEach(function(s){if(s.id===subId)s.concluida=concluida;});
+    _reloadItemCard(riId,ehPassado);
+  }catch(_){toast("Erro",true);}
+}
+function _showAddSubtarefa(riId,pautaItemId,ehPassado){
+  var el=document.getElementById("ri-add-sub-"+riId);if(!el)return;
+  el.innerHTML='<div style="display:flex;gap:5px;align-items:center;margin-top:4px;">'
+    +'<input id="ri-sub-titulo-'+riId+'" placeholder="Titulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;"/>'
+    +'<button onclick="_salvarSubtarefa(\''+riId+'\',\''+pautaItemId+'\','+!!ehPassado+')" class="btn" style="font-size:11px;padding:3px 9px;">Ok</button>'
+    +'<button onclick="_cancelarAddSubtarefa(\''+riId+'\',\''+pautaItemId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">x</button>'
+    +'</div>';
+  var inp=document.getElementById("ri-sub-titulo-"+riId);if(inp)inp.focus();
+}
+function _cancelarAddSubtarefa(riId,pautaItemId,ehPassado){
+  var el=document.getElementById("ri-add-sub-"+riId);if(!el)return;
+  el.innerHTML='<button onclick="_showAddSubtarefa(\''+riId+'\',\''+pautaItemId+'\','+!!ehPassado+')" style="font-size:11px;padding:2px 8px;margin-top:4px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar subtarefa</button>';
+}
+async function _salvarSubtarefa(riId,pautaItemId,ehPassado){
+  var inp=document.getElementById("ri-sub-titulo-"+riId);
+  var titulo=(inp?inp.value||"":"").trim();
+  if(!titulo){toast("Informe o titulo",true);return;}
+  var lista=_itemChecklistCache[pautaItemId]||[];
+  try{
+    var sub=await dbUpsertPautaItemChecklist({item_id:pautaItemId,titulo:titulo,ordem:lista.length});
+    if(!sub){toast("Erro",true);return;}
+    lista.push(sub);
+    _itemChecklistCache[pautaItemId]=lista;
+    _reloadItemCard(riId,ehPassado);
+    toast("Subtarefa adicionada!");
+  }catch(_){toast("Erro ao salvar subtarefa",true);}
+}
+async function _delSubtarefa(subId,riId,pautaItemId,ehPassado){
+  modalConfirm("Excluir esta subtarefa?",async function(){
+    try{
+      await dbDelPautaItemChecklist(subId);
+      _itemChecklistCache[pautaItemId]=(_itemChecklistCache[pautaItemId]||[]).filter(function(s){return s.id!==subId;});
+      _reloadItemCard(riId,ehPassado);
+    }catch(_){toast("Erro ao excluir",true);}
+  });
+}
+async function _arquivarReuniaoItem(riId,reuniaoId){
+  modalConfirm("Arquivar este item?",async function(){
+    try{
+      await dbUpsertReuniaoItem({id:riId,estado:'arquivado'});
+      var riAll=_reunItensCache[reuniaoId]||[];
+      riAll.forEach(function(x){if(x.id===riId)x.estado='arquivado';});
+      _reloadItemCard(riId,false);
+    }catch(_){toast("Erro ao arquivar",true);}
+  });
 }
 async function _toggleItemCard(riId,ehPassado){
   _itemExpanded[riId]=!_itemExpanded[riId];
