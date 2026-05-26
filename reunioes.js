@@ -825,7 +825,7 @@ var _apCatSel=null;var _apReuniao=null;var _gpEditando=null;
 async function openGerenciarPautas(reuniaoId){
   _apReuniao=reuniaoId;
   var mc=document.getElementById("modal-container");
-  mc.innerHTML='<div class="modal-overlay" onclick="_apAplicar()"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,860px);min-height:600px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">'
+  mc.innerHTML='<div class="modal-overlay" onclick="_apAplicar()"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,860px);min-width:min(95vw,800px);min-height:600px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">'
     +'<div style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;">'
     +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Gerenciar pautas</div>'
     +'<button onclick="_apAplicar()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
@@ -860,7 +860,7 @@ function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
     +'<div id="ap-nova-cat-area" style="border-top:1px solid var(--border);padding:8px 10px;">'
     +'<button onclick="_apMostrarNovaCategoria()" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova categoria</button>'
     +'</div></div>';
-  body.innerHTML=leftHTML+'<div id="ap-items" style="flex:1;overflow-y:auto;padding:4px 0;"></div>';
+  body.innerHTML=leftHTML+'<div id="ap-items" style="flex:1;overflow-y:auto;padding:4px 0;max-height:500px;"></div>';
   _apRenderCatList(cats,catSelId);
   _gpRefreshBadges();
   if(!cats.length){
@@ -997,17 +997,16 @@ async function _gpLoadItens(catId){
       +'</div>';
     var listaHTML=itens.length?itens.map(function(t){
       var isLinked=!!linkedIds[t.id];
-      return '<div id="gp-row-'+t.id+'" style="display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);">'
-        +'<input type="checkbox"'+(isLinked?' checked':'')+' onchange="_gpToggleReuniaoTarefa(\''+reuniaoId+'\',\''+t.id+'\',this.checked,\''+catId+'\')" style="margin-top:3px;cursor:pointer;accent-color:var(--bt-orange);">'
-        +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+t.texto+'</div>'
-        +(t.responsavel?'<div style="font-size:11px;color:var(--text3);">'+t.responsavel+'</div>':"")
-        +((t.data_inicio||t.data_fim)?'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;">'
-          +(t.data_inicio?'<span style="font-size:10px;color:var(--text3);">Inicio: '+_fmtDateBr(t.data_inicio)+'</span>':'')
-          +(t.data_fim?'<span style="font-size:10px;color:'+(_isAtrasado(t.data_fim,t.status)?'#dc2626':'var(--text3)')+';">Encerramento: '+_fmtDateBr(t.data_fim)+'</span>':'')
-          +'</div>':"")
-        +(t.descricao?'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+t.descricao+'</div>':"")
-        +'</div>'
+      var rAvatar='';
+      if(t.responsavel){
+        var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
+        var ini=t.responsavel.slice(0,2).toUpperCase();
+        rAvatar='<div class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';flex-shrink:0;font-size:10px;width:22px;height:22px;min-width:22px;">'+ini+'</div>';
+      }
+      return '<div id="gp-row-'+t.id+'" style="display:flex;align-items:center;gap:10px;padding:8px 1rem;border-bottom:0.5px solid var(--border);">'
+        +'<input type="checkbox"'+(isLinked?' checked':'')+' onchange="_gpToggleReuniaoTarefa(\''+reuniaoId+'\',\''+t.id+'\',this.checked,\''+catId+'\')" style="cursor:pointer;accent-color:var(--bt-orange);flex-shrink:0;">'
+        +'<span style="font-size:13px;font-weight:500;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+t.texto+'</span>'
+        +rAvatar
         +'</div>';
     }).join(""):'<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma tarefa nesta categoria. Crie a primeira.</div>';
     el.innerHTML=formHTML+btnHTML+listaHTML;
