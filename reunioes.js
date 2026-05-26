@@ -320,13 +320,11 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   html+='<div class="proj-card-titulo">'+p.titulo+'</div>';
   html+='<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">';
   html+='<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>';
-  if(isPontual)html+='<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f0fdf4;color:#15803d;">PONTUAL</span>';
   html+='<button onclick="_toggleProjeto(\''+p.id+'\','+ehP+')" title="'+(expanded?'Fechar':'Expandir')+'" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
   html+='</div></div>';
   html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:6px;">';
   if(resp)html+='<div class="av av-sm" style="background:'+_avCor((p.usuarios&&p.usuarios.id)||respNome)+';flex-shrink:0;" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
   if(resp)html+='<span>'+resp+'</span>';
-  if(!isPontual)html+='<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:#f1f5f9;color:var(--text3);">continuo</span>';
   html+='</div>';
   if(p.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;">'+p.descricao+'</div>';
   if(isPontual&&checklist&&checklist.length){
