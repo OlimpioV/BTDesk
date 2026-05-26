@@ -143,6 +143,10 @@ async function dbDelReuniaoComentario(id){await fetch(SB+"/rest/v1/reuniao_comen
 async function dbFetchTarefaComentarios(tarefaId){var r=await fetch(SB+"/rest/v1/tarefa_comentarios?tarefa_id=eq."+tarefaId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertTarefaComentario(c){var r=await fetch(SB+"/rest/v1/tarefa_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelTarefaComentario(id){await fetch(SB+"/rest/v1/tarefa_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
+// aliases com acento para compatibilidade com chamadas em reunioes.js
+var dbFetchProjetoComentários=dbFetchProjetoComentarios;
+var dbFetchTarefaComentários=dbFetchTarefaComentarios;
+var dbFetchReuniaoComentários=dbFetchReuniaoComentarios;
 
 // ── NOTIFICACOES DB ──
 async function dbFetchNotificacoes(){var r=await fetch(SB+"/rest/v1/notificacoes?usuario_id=eq."+userDbId+"&order=criado_em.desc&limit=50",{headers:H});if(!r.ok)return [];return r.json();}

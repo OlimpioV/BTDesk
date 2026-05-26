@@ -853,6 +853,7 @@ async function _apAplicar(){
   closeModal();
   if(reuniaoId)await _loadPautasSection(reuniaoId);
 }
+function openAdicionarPauta(reuniaoId){openGerenciarPautas(reuniaoId);}
 var _apCats=[];
 function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
   _apCatSel=catSelId;
@@ -1570,7 +1571,6 @@ function _buildTarefaCard(t,ce,ehPassado){
   var lbl=lblStatus[t.status]||t.status||'Pendente';
   var subtarefas=_subtarefasCache[t.id]||null;
   var cmts=_tarefaCmtsCache[t.id]||null;
-  var cmtsExp=!!_tarefaCmtsExpanded[t.id];
   var subExp=subtarefas!==null&&!_subCollapsed[t.id];
   var canEdit=ce&&!ehPassado&&_itemEditando!==t.id;
   var html='';
@@ -1599,10 +1599,6 @@ function _buildTarefaCard(t,ce,ehPassado){
         +'</div><span style="font-size:10px;color:var(--text3);">'+conc+'/'+subtarefas.length+'</span>';
     }
   }
-  var nCmts=cmts?cmts.length:0;
-  html+='<span onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:13px;color:var(--text3);cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;" title="Comentários">'
-    +'&#128172;'+(nCmts>0?'<span style="font-size:10px;font-weight:600;background:#e2e8f0;color:#64748b;border-radius:999px;padding:0 5px;min-width:16px;text-align:center;line-height:1.5;">'+nCmts+'</span>':'')
-    +'</span>';
   html+='</div>';
   html+='</div>';
   html+='</div>';
@@ -1657,6 +1653,13 @@ function _buildTarefaCard(t,ce,ehPassado){
 
   // ── subtarefas ──
   if(subExp){
+    if(ce&&!ehPassado){
+      var respOptsQuick='<option value="">Responsavel...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
+      html+='<div class="rt-add-sub-inline">'
+        +'<input id="tp-sub-quick-txt-'+t.id+'" placeholder="+ Adicionar subtarefa..." onkeydown="_quickSubKeydown(event,\''+t.id+'\','+!!ehPassado+')">'
+        +'<select id="tp-sub-quick-resp-'+t.id+'">'+respOptsQuick+'</select>'
+        +'</div>';
+    }
     html+='<div class="rt-sub-group">';
     subtarefas.forEach(function(s){
       var sBg=corBg[s.status]||'#FCEBEB';
@@ -1684,8 +1687,8 @@ function _buildTarefaCard(t,ce,ehPassado){
       } else {
         html+='<div class="rt-sub-row">';
         html+='<div class="rt-cell rt-cell-sub-task">';
-        html+='<div style="display:flex;align-items:flex-start;gap:4px;">'
-          +'<span style="font-size:11px;color:#94a3b8;flex-shrink:0;line-height:1.4;">&#8627;</span>'
+        html+='<div style="display:flex;align-items:center;gap:6px;">'
+          +'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+sBar+';flex-shrink:0;"></span>'
           +'<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:400;'+(s.status==='concluido'?'color:#94a3b8;text-decoration:line-through;':'color:#6B7280;')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
           +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>'
           +'</div>';
@@ -1720,15 +1723,12 @@ function _buildTarefaCard(t,ce,ehPassado){
       }
     });
     html+='</div>';
-    if(ce&&!ehPassado){
-      html+='<div id="tp-add-sub-'+t.id+'" class="rt-add-sub-row" style="display:none;"></div>';
-    }
   }
 
   // ── painel de comentarios ──
-  if(cmtsExp&&subExp){
-    html+='<div id="tp-cmts-'+t.id+'" class="rt-cmts-panel">';
-    if(cmts===null){html+='<div style="font-size:12px;color:var(--text3);">Carregando...</div>';}
+  if(subExp){
+    html+='<div id="tp-cmts-'+t.id+'" class="rt-cmts-inline">';
+    if(cmts===null){html+='<div style="font-size:11px;color:var(--text3);padding:4px 0;">Carregando comentarios...</div>';}
     else{html+=_buildTarefaCmtsHTML(cmts,t.id,ce,ehPassado);}
     html+='</div>';
   }
@@ -1786,6 +1786,7 @@ async function _toggleSubExpand(tarefaId,ehPassado){
     try{
       _subtarefasCache[tarefaId]=await dbFetchSubtarefas(tarefaId);
       _subCollapsed[tarefaId]=false;
+      try{_tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);}catch(_){_tarefaCmtsCache[tarefaId]=[];}
       _reloadTarefaCard(tarefaId,ehPassado);
     }catch(_){toast("Erro ao carregar subtarefas",true);}
   }
@@ -1857,6 +1858,35 @@ async function _excluirSubtarefaPauta(subId,parentId,ehPassado){
       toast("Subtarefa excluida!");
     }catch(_){toast("Erro ao excluir",true);}
   });
+}
+function _quickSubKeydown(evt,parentId,ehPassado){
+  if(evt.key==='Enter'){evt.preventDefault();_quickSaveSubtarefa(parentId,ehPassado);}
+  else if(evt.key==='Escape'){
+    var inp=document.getElementById('tp-sub-quick-txt-'+parentId);
+    if(inp){inp.value='';inp.blur();}
+  }
+}
+async function _quickSaveSubtarefa(parentId,ehPassado){
+  var inp=document.getElementById('tp-sub-quick-txt-'+parentId);
+  var respEl=document.getElementById('tp-sub-quick-resp-'+parentId);
+  if(!inp)return;
+  var texto=inp.value.trim();if(!texto)return;
+  var resp=(respEl?respEl.value||null:null);
+  var rId=reuniaoAtiva?reuniaoAtiva.id:'';
+  var parentT=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===parentId;});
+  try{
+    var nova={id:uid(),texto:texto,responsavel:resp||null,status:'pendente',parent_id:parentId,reuniao_id:rId||null,equipe_id:equipeAtiva?equipeAtiva.id:null,criado_em:new Date().toISOString()};
+    await dbUpsertTarefa(nova);
+    if(!_subtarefasCache[parentId])_subtarefasCache[parentId]=[];
+    _subtarefasCache[parentId].push(nova);
+    inp.value='';
+    if(respEl)respEl.value='';
+    _reloadTarefaCard(parentId,ehPassado);
+    toast("Subtarefa adicionada!");
+  }catch(_){toast("Erro ao adicionar subtarefa",true);}
+}
+function _cmtKeydown(evt,tarefaId,ehPassado){
+  if(evt.key==='Enter'&&!evt.shiftKey){evt.preventDefault();_addTarefaComentario(tarefaId,ehPassado);}
 }
 
 // ── EDICAO INLINE DE TITULO ──
@@ -2037,7 +2067,6 @@ function _abrirMenuTarefa(evt,tarefaId,isSub,parentId,ehPassado){
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_excluirSubtarefaPauta(\''+tarefaId+'\',\''+parentId+'\','+!!ehPassado+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:#dc2626;" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'">Excluir</div>';
   } else {
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_editarTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Editar</div>';
-    html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_showAddSubtarefaPauta(\''+tarefaId+'\','+!!ehPassado+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Adicionar subtarefa</div>';
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_excluirTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:#dc2626;" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'">Excluir</div>';
   }
   html+='</div></div>';
@@ -2061,37 +2090,29 @@ async function _toggleTarefaCmts(tarefaId,ehPassado){
   }
 }
 function _buildTarefaCmtsHTML(cmts,tarefaId,ce,ehPassado){
-  var html='<div style="max-height:240px;overflow-y:auto;padding-right:2px;">';
-  if(!cmts.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;padding:4px 0;">Nenhum comentario.</div>';}
+  var html='<div style="max-height:150px;overflow-y:auto;margin-bottom:6px;">';
+  if(!cmts.length){html+='<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0;">Nenhum comentario.</div>';}
   else{
     cmts.forEach(function(c){
-      var u=c.usuarios||{};var ini=(u.sigla||u.nome||'?').slice(0,2).toUpperCase();
-      var corAv=_avCor(u.id||u.nome||'?');
+      var u=c.usuarios||{};
       var dt=new Date(c.criado_em);var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
       var canEdit=(c.usuario_id===userDbId||perfil==='mestre')&&ce&&!ehPassado;
-      html+='<div id="tcmt-'+c.id+'" style="display:flex;gap:7px;padding:6px 0;border-bottom:1px solid var(--border);">';
-      html+='<div class="av av-sm" style="background:'+corAv+';flex-shrink:0;">'+ini+'</div>';
-      html+='<div style="flex:1;min-width:0;">';
-      html+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">';
-      html+='<span style="font-size:11px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||u.nome||'?')+'</span>';
-      html+='<div style="display:flex;gap:3px;align-items:center;">';
+      html+='<div id="tcmt-'+c.id+'" style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:3px 0;border-bottom:1px solid var(--border);">';
+      html+='<span style="font-size:11px;font-weight:700;color:var(--bt-navy);flex-shrink:0;">'+(u.sigla||u.nome||'?')+'</span>';
+      html+='<span style="font-size:12px;color:var(--text2);flex:1;white-space:pre-wrap;word-break:break-word;">'+c.texto+'</span>';
+      html+='<div style="display:flex;gap:3px;align-items:center;flex-shrink:0;">';
       html+='<span style="font-size:10px;color:var(--text3);">'+dtStr+'</span>';
       if(canEdit)html+='<button onclick="_editTarefaComentarioInline(\''+c.id+'\',\''+tarefaId+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>';
       if(canEdit)html+='<button onclick="_delTarefaComentario(\''+c.id+'\',\''+tarefaId+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
-      html+='</div></div>';
-      html+='<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-top:2px;">'+c.texto+'</div>';
       html+='</div></div>';
     });
   }
   html+='</div>';
   if(ce&&!ehPassado){
-    var meIni=((nomeUser||'?').slice(0,2).toUpperCase());
-    html+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">';
-    html+='<div style="display:flex;gap:6px;align-items:flex-start;">';
-    html+='<div class="av av-sm" style="background:'+_avCor(userDbId||'')+';flex-shrink:0;">'+meIni+'</div>';
-    html+='<textarea id="tcmt-new-'+tarefaId+'" rows="2" placeholder="Comentar sobre esta tarefa..." style="flex:1;resize:none;font-size:13px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
-    html+='<button onclick="_addTarefaComentario(\''+tarefaId+'\','+!!ehPassado+')" style="font-size:11px;padding:6px 12px;border-radius:6px;border:none;background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
-    html+='</div></div>';
+    html+='<div style="display:flex;gap:5px;align-items:center;">';
+    html+='<input id="tcmt-new-'+tarefaId+'" placeholder="Comentar..." onkeydown="_cmtKeydown(event,\''+tarefaId+'\','+!!ehPassado+')" style="flex:1;font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;min-width:0;">';
+    html+='<button onclick="_addTarefaComentario(\''+tarefaId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 10px;border-radius:5px;border:none;background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
+    html+='</div>';
   }
   return html;
 }
