@@ -1579,7 +1579,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div class="rt-row" style="border-left:3px solid '+bar+';">';
   html+='<div class="rt-cell rt-cell-task" style="align-items:flex-start;">';
   html+='<div style="display:flex;align-items:flex-start;gap:5px;width:100%;">';
-  html+='<span onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;display:inline-block;transition:transform .15s;cursor:pointer;flex-shrink:0;margin-top:3px;'+(subExp?'transform:rotate(90deg);color:var(--bt-navy);':'color:var(--text3);')+'">&#9658;</span>';
+  html+='<span onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" style="font-size:16px;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex-shrink:0;transition:transform .15s;cursor:pointer;'+(subExp?'transform:rotate(90deg);color:var(--bt-navy);':'color:var(--text3);')+'">&#9658;</span>';
   html+='<div style="min-width:0;flex:1;">';
   html+='<div id="tp-txt-'+t.id+'" style="font-size:13px;font-weight:600;line-height:1.35;'+(t.status==='concluido'?'text-decoration:line-through;color:var(--text3);':'color:var(--bt-navy);')+(canEdit?'cursor:pointer;':'')+'"'
     +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</div>';
@@ -1588,17 +1588,21 @@ function _buildTarefaCard(t,ce,ehPassado){
       html+='<div id="tp-desc-'+t.id+'" style="font-size:11px;color:var(--text3);line-height:1.35;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
         +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
     } else if(canEdit){
-      html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
+      html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
     }
     if(subtarefas&&subtarefas.length>0){
       var conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
-      html+='<div class="rt-progress">';
-      subtarefas.forEach(function(s){var sc={'concluido':'#639922','em_andamento':'#185FA5','pausado':'#EF9F27','pendente':'#E24B4A'}[s.status]||'#E24B4A';html+='<div class="rt-progress-seg" style="background:'+sc+';"></div>';});
-      html+='</div><span style="font-size:10px;color:var(--text3);">'+conc+'/'+subtarefas.length+'</span>';
+      var pct=subtarefas.length?Math.round(conc/subtarefas.length*100):0;
+      var pctClr=pct===100?'#639922':pct>=67?'#185FA5':pct>=34?'#EF9F27':'#E24B4A';
+      html+='<div class="rt-progress" title="'+conc+'/'+subtarefas.length+' concluidas" style="background:#e2e8f0;border-radius:4px;">'
+        +'<div style="width:'+pct+'%;background:'+pctClr+';height:100%;border-radius:4px;min-width:'+(pct>0?'4px':'0')+';transition:width .2s;"></div>'
+        +'</div><span style="font-size:10px;color:var(--text3);">'+conc+'/'+subtarefas.length+'</span>';
     }
   }
   var nCmts=cmts?cmts.length:0;
-  html+='<span onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);cursor:pointer;margin-top:3px;">Comentários ('+nCmts+')</span>';
+  html+='<span onclick="_toggleTarefaCmts(\''+t.id+'\','+!!ehPassado+')" style="font-size:13px;color:var(--text3);cursor:pointer;margin-top:3px;display:inline-flex;align-items:center;gap:3px;" title="Comentários">'
+    +'&#128172;'+(nCmts>0?'<span style="font-size:10px;font-weight:600;background:#e2e8f0;color:#64748b;border-radius:999px;padding:0 5px;min-width:16px;text-align:center;line-height:1.5;">'+nCmts+'</span>':'')
+    +'</span>';
   html+='</div>';
   html+='</div>';
   html+='</div>';
@@ -1680,13 +1684,16 @@ function _buildTarefaCard(t,ce,ehPassado){
       } else {
         html+='<div class="rt-sub-row">';
         html+='<div class="rt-cell rt-cell-sub-task">';
-        html+='<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:500;'+(s.status==='concluido'?'color:var(--text3);text-decoration:line-through;':'color:var(--text2);')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
-          +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
+        html+='<div style="display:flex;align-items:flex-start;gap:4px;">'
+          +'<span style="font-size:11px;color:#94a3b8;flex-shrink:0;line-height:1.4;">&#8627;</span>'
+          +'<span id="tp-stxt-'+s.id+'" style="font-size:12px;font-weight:400;'+(s.status==='concluido'?'color:#94a3b8;text-decoration:line-through;':'color:#6B7280;')+((ce&&!ehPassado&&_subEditando!==s.id)?'cursor:pointer;':'')+'"'
+          +((ce&&!ehPassado&&_subEditando!==s.id)?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>'
+          +'</div>';
         if(s.descricao){
           html+='<div id="tp-sdesc-'+s.id+'" style="font-size:11px;color:var(--text3);white-space:pre-wrap;line-height:1.35;'+((ce&&!ehPassado)?'cursor:text;':'')+'"'
             +((ce&&!ehPassado)?' onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</div>';
         } else if(ce&&!ehPassado){
-          html+='<div id="tp-sdesc-'+s.id+'" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
+          html+='<div id="tp-sdesc-'+s.id+'" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
         }
         html+='</div>';
         if(s.responsavel){
