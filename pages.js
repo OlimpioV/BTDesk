@@ -304,3 +304,224 @@ async function reenviarEmail(logId){
   catch(e){toast("Erro ao reenviar: "+e.message,true);}
 }
 
+// ── PAUTA CATEGORIAS (admin) ──
+var _catSel=null;
+var _catItensCache={};
+
+async function renderPautaCategorias(){
+  if(perfil!=="mestre"){renderView();return;}
+  var app=document.getElementById("app");app.className="page-mode";
+  app.innerHTML=headerHTML("reun")+'<div style="padding:24px;max-width:1100px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
+  try{
+    var eqId=equipeAtiva?equipeAtiva.id:null;
+    var cats=await dbFetchPautaCategorias(eqId);
+    _renderCatPagina(cats);
+  }catch(e){toast("Erro ao carregar categorias",true);}
+}
+
+function _renderCatPagina(cats){
+  var app=document.getElementById("app");
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var catRows=!cats.length
+    ?'<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">Nenhuma categoria</div>'
+    :cats.map(function(c){
+      var sel=_catSel===c.id;
+      return '<div id="catrow-'+c.id+'" onclick="_catSelect(\''+c.id+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;border-radius:8px;margin:2px 4px;background:'+(sel?'rgba(37,63,79,0.09)':'transparent')+';">'
+        +'<span style="font-size:13px;font-weight:'+(sel?'700':'500')+';color:var(--bt-navy);flex:1;">'+c.nome+'</span>'
+        +'<div style="display:flex;gap:4px;flex-shrink:0;" onclick="event.stopPropagation();">'
+        +'<button onclick="_editCat(\''+c.id+'\',\''+c.nome.replace(/'/g,"\\'")+'\',\''+eqId+'\')" style="font-size:10px;padding:2px 6px;border-radius:5px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;">'+ic('edit')+'</button>'
+        +'<button onclick="_delCat(\''+c.id+'\',\''+c.nome.replace(/'/g,"\\'")+'\')\" style="font-size:10px;padding:2px 6px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;">'+ic('trash')+'</button>'
+        +'</div></div>';
+    }).join("");
+  app.innerHTML=headerHTML("reun")
+    +'<div style="padding:24px;max-width:1100px;margin:0 auto;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:18px;font-weight:700;color:var(--bt-navy);">Categorias de pauta</div>'
+    +'<button class="btn btn-accent" onclick="_novaCat(\''+eqId+'\')" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+ic('plus')+' Nova categoria</button>'
+    +'</div>'
+    +'<div style="display:flex;gap:16px;align-items:flex-start;">'
+    +'<div style="width:280px;flex-shrink:0;background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;">'
+    +'<div style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);border-bottom:1px solid var(--border);">Categorias</div>'
+    +'<div style="max-height:65vh;overflow-y:auto;padding:6px 0;">'+catRows+'</div>'
+    +'</div>'
+    +'<div style="flex:1;" id="cat-itens-panel">'
+    +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);padding:40px;text-align:center;color:var(--text3);font-size:13px;box-shadow:var(--shadow);">Selecione uma categoria para ver os itens</div>'
+    +'</div>'
+    +'</div></div>';
+  if(_catSel)_catLoadItens(_catSel);
+}
+
+async function _catSelect(catId){
+  _catSel=catId;
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var cats=await dbFetchPautaCategorias(eqId);
+  _renderCatPagina(cats);
+}
+
+async function _catLoadItens(catId){
+  var panel=document.getElementById("cat-itens-panel");if(!panel)return;
+  try{
+    var itens=await dbFetchPautaItens(catId);
+    _catItensCache[catId]=itens;
+    var rows=!itens.length
+      ?'<div style="text-align:center;padding:40px;color:var(--text3);font-size:13px;">Nenhum item nesta categoria</div>'
+      :itens.map(function(it){
+        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+it.titulo+'</div>'
+          +(it.descricao?'<div style="font-size:12px;color:var(--text2);margin-top:3px;">'+it.descricao+'</div>':"")
+          +(it.recorrente?'<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:#e0f2fe;color:#0369a1;margin-top:4px;display:inline-block;">Recorrente</span>':"")
+          +'</div>'
+          +'<div style="display:flex;gap:5px;flex-shrink:0;margin-left:10px;">'
+          +'<button onclick="_editItemCat(\''+catId+'\',\''+it.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('edit')+' Editar</button>'
+          +'<button onclick="_delItemCat(\''+it.id+'\',\''+catId+'\',\''+it.titulo.replace(/'/g,"\\'")+'\')\" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('trash')+' Excluir</button>'
+          +'</div></div>';
+      }).join("");
+    panel.innerHTML='<div style="background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;">'
+      +'<div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);">'
+      +'<div style="font-size:14px;font-weight:700;color:var(--bt-navy);">Itens</div>'
+      +'<button onclick="_novoItemCat(\''+catId+'\')" style="font-size:11px;padding:4px 12px;border-radius:7px;border:none;background:var(--bt-navy);color:#fff;cursor:pointer;display:flex;align-items:center;gap:4px;">'+ic('plus')+' Novo item</button>'
+      +'</div>'
+      +'<div>'+rows+'</div></div>';
+  }catch(e){if(panel)panel.innerHTML='<div style="padding:20px;color:#dc2626;font-size:13px;">Erro ao carregar itens</div>';}
+}
+
+function _novaCat(eqId){
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Nova categoria</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Nome</label><input id="ncat-nome" placeholder="Ex: Projetos de equipe"/></div>'
+    +'<input type="hidden" id="ncat-eq" value="'+(eqId&&eqId!=="null"?eqId:"")+'"/>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="_salvarNovaCat()">Criar</button>'
+    +'</div></div></div>';
+  setTimeout(function(){var el=document.getElementById("ncat-nome");if(el)el.focus();},50);
+}
+
+function _editCat(id,nome,eqId){
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Editar categoria</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Nome</label><input id="ecat-nome" value="'+nome+'" placeholder="Ex: Projetos de equipe"/></div>'
+    +'<input type="hidden" id="ecat-id" value="'+id+'"/>'
+    +'<input type="hidden" id="ecat-eq" value="'+(eqId&&eqId!=="null"?eqId:"")+'"/>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="_salvarEditCat()">Salvar</button>'
+    +'</div></div></div>';
+  setTimeout(function(){var el=document.getElementById("ecat-nome");if(el)el.focus();},50);
+}
+
+async function _salvarNovaCat(){
+  var nome=(document.getElementById("ncat-nome").value||"").trim();
+  var eqEl=document.getElementById("ncat-eq");var eqId=eqEl&&eqEl.value?eqEl.value:null;
+  if(!nome){toast("Informe o nome",true);return;}
+  try{
+    await dbUpsertPautaCategoria({nome,equipe_id:eqId});
+    toast("Criada!");closeModal();
+    var cats=await dbFetchPautaCategorias(eqId);_renderCatPagina(cats);
+  }catch(e){toast("Erro",true);}
+}
+
+async function _salvarEditCat(){
+  var id=document.getElementById("ecat-id").value;
+  var nome=(document.getElementById("ecat-nome").value||"").trim();
+  var eqEl=document.getElementById("ecat-eq");var eqId=eqEl&&eqEl.value?eqEl.value:null;
+  if(!nome){toast("Informe o nome",true);return;}
+  try{
+    await dbUpsertPautaCategoria({id,nome,equipe_id:eqId});
+    toast("Salva!");closeModal();
+    var cats=await dbFetchPautaCategorias(eqId);_renderCatPagina(cats);
+  }catch(e){toast("Erro",true);}
+}
+
+function _delCat(id,nome){
+  modalConfirm('Excluir a categoria "'+nome+'"?',async function(){
+    try{
+      await dbDelPautaCategoria(id);
+      if(_catSel===id)_catSel=null;
+      toast("Excluida!");
+      var eqId=equipeAtiva?equipeAtiva.id:null;
+      var cats=await dbFetchPautaCategorias(eqId);_renderCatPagina(cats);
+    }catch(e){toast("Erro",true);}
+  });
+}
+
+function _novoItemCat(catId){
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Novo item de pauta</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Titulo</label><input id="nitem-titulo" placeholder="Ex: Relatorio mensal de demandas"/></div>'
+    +'<div class="field"><label>Descricao (opcional)</label><textarea id="nitem-desc" rows="2" style="resize:vertical;"></textarea></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;font-size:13px;color:var(--text2);">'
+    +'<input type="checkbox" id="nitem-rec" style="width:auto;cursor:pointer;"/>'
+    +'Recorrente <span style="font-size:11px;color:var(--text3);">(aparece em novas reunioes automaticamente)</span></label>'
+    +'<input type="hidden" id="nitem-cat" value="'+catId+'"/>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="_salvarNovoItemCat()">Criar</button>'
+    +'</div></div></div>';
+  setTimeout(function(){var el=document.getElementById("nitem-titulo");if(el)el.focus();},50);
+}
+
+function _editItemCat(catId,itemId){
+  var cache=_catItensCache[catId]||[];
+  var it=cache.find(function(x){return x.id===itemId;});
+  if(!it){toast("Item nao encontrado",true);return;}
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Editar item</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Titulo</label><input id="eitem-titulo" value="'+it.titulo.replace(/"/g,"&quot;")+'"/></div>'
+    +'<div class="field"><label>Descricao (opcional)</label><textarea id="eitem-desc" rows="2" style="resize:vertical;">'+(it.descricao||'')+'</textarea></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;font-size:13px;color:var(--text2);">'
+    +'<input type="checkbox" id="eitem-rec"'+(it.recorrente?' checked':'')+' style="width:auto;cursor:pointer;"/>'
+    +'Recorrente</label>'
+    +'<input type="hidden" id="eitem-id" value="'+itemId+'"/>'
+    +'<input type="hidden" id="eitem-cat" value="'+catId+'"/>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="_salvarEditItemCat()">Salvar</button>'
+    +'</div></div></div>';
+}
+
+async function _salvarNovoItemCat(){
+  var titulo=(document.getElementById("nitem-titulo").value||"").trim();
+  var catId=document.getElementById("nitem-cat").value;
+  var descricao=(document.getElementById("nitem-desc").value||"").trim();
+  var recorrente=document.getElementById("nitem-rec").checked;
+  if(!titulo){toast("Informe o titulo",true);return;}
+  try{
+    await dbUpsertPautaItem({titulo,descricao:descricao||null,recorrente,categoria_id:catId});
+    toast("Criado!");closeModal();_catLoadItens(catId);
+  }catch(e){toast("Erro",true);}
+}
+
+async function _salvarEditItemCat(){
+  var id=document.getElementById("eitem-id").value;
+  var catId=document.getElementById("eitem-cat").value;
+  var titulo=(document.getElementById("eitem-titulo").value||"").trim();
+  var descricao=(document.getElementById("eitem-desc").value||"").trim();
+  var recorrente=document.getElementById("eitem-rec").checked;
+  if(!titulo){toast("Informe o titulo",true);return;}
+  try{
+    await dbUpsertPautaItem({id,titulo,descricao:descricao||null,recorrente,categoria_id:catId});
+    toast("Salvo!");closeModal();_catLoadItens(catId);
+  }catch(e){toast("Erro",true);}
+}
+
+function _delItemCat(id,catId,titulo){
+  modalConfirm('Excluir o item "'+titulo+'"?',async function(){
+    try{await dbDelPautaItem(id);toast("Excluido!");_catLoadItens(catId);}
+    catch(e){toast("Erro",true);}
+  });
+}
+

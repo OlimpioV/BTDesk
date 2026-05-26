@@ -103,6 +103,21 @@ async function dbFetchReuniaoPautas(reuniaoId){var r=await fetch(SB+"/rest/v1/re
 async function dbUpsertReuniaoPauta(rp){var r=await fetch(SB+"/rest/v1/reuniao_pautas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(rp)});if(!r.ok)throw new Error();}
 async function dbDelReuniaoPauta(id){await fetch(SB+"/rest/v1/reuniao_pautas?id=eq."+id,{method:"DELETE",headers:H});}
 
+// ── PAUTA CATEGORIAS DB ──
+async function dbFetchPautaCategorias(equipeId){var q=equipeId?"&equipe_id=eq."+equipeId:"";var r=await fetch(SB+"/rest/v1/pauta_categorias?select=*&order=nome"+q,{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbUpsertPautaCategoria(cat){var r=await fetch(SB+"/rest/v1/pauta_categorias",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(cat)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbDelPautaCategoria(id){await fetch(SB+"/rest/v1/pauta_categorias?id=eq."+id,{method:"DELETE",headers:H});}
+
+// ── PAUTA ITENS DB ──
+async function dbFetchPautaItens(categoriaId){var r=await fetch(SB+"/rest/v1/pauta_itens?categoria_id=eq."+categoriaId+"&select=*&order=titulo",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbUpsertPautaItem(item){var r=await fetch(SB+"/rest/v1/pauta_itens",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbDelPautaItem(id){await fetch(SB+"/rest/v1/pauta_itens?id=eq."+id,{method:"DELETE",headers:H});}
+
+// ── REUNIAO PAUTA ITENS DB ──
+async function dbFetchReuniaoItens(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_pauta_itens?reuniao_id=eq."+reuniaoId+"&select=*,pauta_itens(id,titulo,descricao,recorrente),pauta_categorias(id,nome)&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbUpsertReuniaoItem(ri){var r=await fetch(SB+"/rest/v1/reuniao_pauta_itens",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(ri)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbDelReuniaoItem(id){await fetch(SB+"/rest/v1/reuniao_pauta_itens?id=eq."+id,{method:"DELETE",headers:H});}
+
 // ── PROJETOS INTERNOS DB ──
 async function dbFetchProjetos(equipeId){
   var q=equipeId?"&equipe_id=eq."+equipeId:"";

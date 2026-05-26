@@ -3,6 +3,8 @@ var _calMes=(new Date()).getMonth();
 var _calAno=(new Date()).getFullYear();
 var _projExpanded={};
 var _checklistCache={};
+var _commentsCache={};
+var _projCommentsExpanded={};
 
 async function renderReunioes(){
   var app=document.getElementById("app");app.className="page-mode";
@@ -56,7 +58,8 @@ function _renderReunioesPagina(){
     +'<div class="reun-sidebar-list">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
     +'<div class="reun-sidebar-footer">'
     +'<div class="reun-section-label" style="margin-bottom:6px;">Pautas</div>'
-    +(ce?'<button onclick="renderPautas()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:4px;">'+ic("edit")+' Gerenciar pautas</button>':"")
+    +(ce?'<button onclick="renderPautaCategorias()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:4px;margin-bottom:4px;">'+ic("edit")+' Gerenciar categorias</button>':"")
+    +(ce?'<button onclick="renderPautas()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:4px;">'+ic("edit")+' Pautas (legado)</button>':"")
     +'</div>'
     +'</div>'
     +'<div class="reun-main">'
@@ -180,11 +183,18 @@ function _buildReuniaoDetalhe(r){
     +'<div id="reuniao-part-area" style="min-height:24px;">Carregando...</div>'
     +'</div>';
   html+='<div class="reun-section">'
-    +'<div class="reun-section-label" style="margin-bottom:10px;">Pautas</div>'
-    +'<div id="reuniao-pautas-area">Carregando pautas...</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    +'<div class="reun-section-label">Projetos internos</div>'
+    +(ce?'<button onclick="openNovoProjeto()" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo</button>':"")
+    +'</div>'
+    +'<div id="reuniao-projetos-area">Carregando...</div>'
+    +'</div>';
+  html+='<div class="reun-section">'
+    +'<div class="reun-section-label" style="margin-bottom:10px;">Itens de pauta</div>'
+    +'<div id="reuniao-itens-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadReuniaoPautas(r.id);},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadProjetosArea(r.id);_loadReuniaoItens(r.id);},0);
   return html;
 }
 
@@ -288,7 +298,7 @@ function _buildProjetosSection(snap,ce,ehPassado){
   else{
     html+='<div style="display:flex;flex-direction:column;gap:8px;">';
     projs.forEach(function(p){
-      html+='<div id="proj-item-'+p.id+'">'+_buildProjetoCardHTML(p,!!_projExpanded[p.id],_checklistCache[p.id]||null,ce,ehPassado)+'</div>';
+      html+='<div id="proj-item-'+p.id+'">'+_buildProjetoCardHTML(p,!!_projExpanded[p.id],_checklistCache[p.id]||null,_commentsCache[p.id]||null,ce,ehPassado)+'</div>';
     });
     html+='</div>';
   }
@@ -296,9 +306,9 @@ function _buildProjetosSection(snap,ce,ehPassado){
   if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);"><div class="reun-section-label" style="margin-bottom:4px;">Notas da reuniao</div><div class="pauta-notas">'+snap.notas+'</div></div>';
   return html;
 }
-function _buildProjetoCardHTML(p,expanded,checklist,ce,ehPassado){
-  var corSt={'em_andamento':'#3b82f6','concluido':'#22c55e','pausado':'#a855f7'};
-  var lblSt={'em_andamento':'Em andamento','concluido':'Concluido','pausado':'Pausado'};
+function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
+  var corSt={'em_andamento':'#3b82f6','concluida':'#22c55e','pausado':'#a855f7','concluido':'#22c55e'};
+  var lblSt={'em_andamento':'Em andamento','concluida':'Concluido','pausado':'Pausado','concluido':'Concluido'};
   var cor=corSt[p.status]||'#94a3b8';
   var lbl=lblSt[p.status]||p.status.replace('_',' ');
   var resp=(p.usuarios&&(p.usuarios.sigla||p.usuarios.nome))||"";
@@ -311,7 +321,7 @@ function _buildProjetoCardHTML(p,expanded,checklist,ce,ehPassado){
   html+='<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">';
   html+='<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>';
   if(isPontual)html+='<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f0fdf4;color:#15803d;">PONTUAL</span>';
-  if(isPontual&&ce&&!ehP)html+='<button onclick="_toggleProjeto(\''+p.id+'\','+ehP+')" title="'+(expanded?'Fechar checklist':'Ver checklist')+'" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
+  html+='<button onclick="_toggleProjeto(\''+p.id+'\','+ehP+')" title="'+(expanded?'Fechar':'Expandir')+'" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
   html+='</div></div>';
   html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:6px;">';
   if(resp)html+='<div class="av av-sm" style="background:'+_avCor((p.usuarios&&p.usuarios.id)||respNome)+';flex-shrink:0;" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
@@ -321,37 +331,36 @@ function _buildProjetoCardHTML(p,expanded,checklist,ce,ehPassado){
   if(p.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;">'+p.descricao+'</div>';
   if(isPontual&&checklist&&checklist.length){
     html+=_buildChecklistBar(checklist);
-    var done=checklist.filter(function(i){return i.status==='concluido';}).length;
+    var done=checklist.filter(function(i){return i.status==='concluida';}).length;
     html+='<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">'+done+'/'+checklist.length+' concluidos</div>';
   }
-  if(isPontual&&expanded){
-    if(checklist)html+=_buildChecklistUI(p.id,checklist,ce,ehP);
+  if(expanded){
+    if(checklist!==null)html+=_buildChecklistUI(p.id,checklist||[],ce,ehP);
     else html+='<div style="font-size:12px;color:var(--text3);margin-top:6px;font-style:italic;">Carregando...</div>';
+    html+=_buildInlineComments(p.id,comments||[],ce,ehP,!!(_projCommentsExpanded&&_projCommentsExpanded[p.id]));
   }
   html+='<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">';
   if(ce&&!ehP){
-    html+='<button onclick="openEditProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>';
-    html+='<button onclick="sinalizarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;cursor:pointer;font-weight:600;">! Sinalizar</button>';
+    html+='<button onclick="_editProjetoInline(\''+p.id+'\','+ehP+')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>';
     html+='<button onclick="arquivarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;">Arquivar</button>';
   }
-  if(ce)html+='<button onclick="openProjetoComentarios(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("comment")+' Comentarios</button>';
   html+='</div>';
   html+='</div></div>';
   return html;
 }
 function _buildChecklistBar(checklist){
   if(!checklist||!checklist.length)return '';
-  var corItem={'pendente':'#e2e8f0','em_andamento':'#3b82f6','concluido':'#22c55e'};
+  var corItem={'nao_iniciada':'#e2e8f0','pendente':'#e2e8f0','em_andamento':'#3b82f6','bloqueada':'#ef4444','concluida':'#22c55e','concluido':'#22c55e'};
   return '<div style="display:flex;gap:2px;margin-top:8px;margin-bottom:2px;">'+checklist.map(function(it){
     return '<div style="flex:1;height:6px;background:'+(corItem[it.status]||'#e2e8f0')+';border-radius:2px;"></div>';
   }).join("")+'</div>';
 }
 function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
-  var corStatus={'pendente':'#94a3b8','em_andamento':'#3b82f6','concluido':'#22c55e'};
-  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','concluido':'Concluido'};
+  var corStatus={'nao_iniciada':'#94a3b8','pendente':'#94a3b8','em_andamento':'#3b82f6','bloqueada':'#ef4444','concluida':'#22c55e','concluido':'#22c55e'};
+  var lblStatus={'nao_iniciada':'Nao iniciada','pendente':'Nao iniciada','em_andamento':'Em andamento','bloqueada':'Bloqueada','concluida':'Concluida','concluido':'Concluida'};
   var html='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
   html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Checklist</div>';
-  if(!checklist.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhum item cadastrado.</div>';}
+  if(!checklist.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhum item.</div>';}
   else{
     checklist.forEach(function(it){
       var cor=corStatus[it.status]||'#94a3b8';
@@ -380,10 +389,8 @@ function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
 async function _toggleProjeto(projetoId,ehPassado){
   _projExpanded[projetoId]=!_projExpanded[projetoId];
   if(_projExpanded[projetoId]){
-    var p=projetosDB.find(function(x){return x.id===projetoId;});
-    if(p&&p.tipo==='pontual'){
-      try{_checklistCache[projetoId]=await dbFetchChecklist(projetoId);}catch(_){_checklistCache[projetoId]=[];}
-    }
+    try{_checklistCache[projetoId]=await dbFetchChecklist(projetoId);}catch(_){_checklistCache[projetoId]=[];}
+    try{_commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);}catch(_){_commentsCache[projetoId]=[];}
   }
   _reloadProjetoCard(projetoId,ehPassado);
 }
@@ -402,7 +409,7 @@ function _reloadProjetoCard(projetoId,ehPassado){
   var el=document.getElementById("proj-item-"+projetoId);if(!el)return;
   var p=projetosDB.find(function(x){return x.id===projetoId;});if(!p)return;
   var ce=perfil==="mestre"||perfil==="advogado";
-  el.innerHTML=_buildProjetoCardHTML(p,!!_projExpanded[projetoId],_checklistCache[projetoId]||null,ce,!!ehPassado);
+  el.innerHTML=_buildProjetoCardHTML(p,!!_projExpanded[projetoId],_checklistCache[projetoId]||null,_commentsCache[projetoId]||null,ce,!!ehPassado);
 }
 // ── CHECKLIST ──
 async function _showAddChecklistItem(projetoId,ehPassado){
@@ -414,7 +421,7 @@ async function _showAddChecklistItem(projetoId,ehPassado){
     +'<input id="cli-titulo-'+projetoId+'" placeholder="Titulo do item *" style="font-size:12px;"/>'
     +'<div style="display:flex;gap:6px;">'
     +'<select id="cli-resp-'+projetoId+'" style="flex:1;font-size:11px;"><option value="">Responsavel...</option>'+respOpts+'</select>'
-    +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;"><option value="pendente">Pendente</option><option value="em_andamento">Em andamento</option><option value="concluido">Concluido</option></select>'
+    +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;"><option value="nao_iniciada">Nao iniciada</option><option value="em_andamento">Em andamento</option><option value="bloqueada">Bloqueada</option><option value="concluida">Concluida</option></select>'
     +'</div>'
     +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
     +'<button onclick="_cancelAddChecklistItem(\''+projetoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
@@ -431,7 +438,7 @@ async function _salvarAddChecklistItem(projetoId,ehPassado){
   var titulo=(inp?inp.value||"":"").trim();
   if(!titulo){toast("Informe o titulo do item",true);return;}
   var respId=document.getElementById("cli-resp-"+projetoId).value||null;
-  var status=document.getElementById("cli-status-"+projetoId).value||"pendente";
+  var status=document.getElementById("cli-status-"+projetoId).value||"nao_iniciada";
   var cl=_checklistCache[projetoId]||[];
   try{
     var criado=await dbUpsertChecklistItem({projeto_id:projetoId,titulo:titulo,status:status,responsavel_id:respId,ordem:cl.length});
@@ -451,7 +458,7 @@ async function _editChecklistItemInline(itemId,projetoId,ehPassado){
     +'<input id="cli-edit-t-'+itemId+'" value="'+it.titulo+'" style="font-size:12px;width:100%;"/>'
     +'<div style="display:flex;gap:6px;">'
     +'<select id="cli-edit-r-'+itemId+'" style="flex:1;font-size:11px;"><option value="">Responsavel...</option>'+respOpts+'</select>'
-    +'<select id="cli-edit-s-'+itemId+'" style="flex:1;font-size:11px;"><option value="pendente"'+(it.status==="pendente"?" selected":"")+'>Pendente</option><option value="em_andamento"'+(it.status==="em_andamento"?" selected":"")+'>Em andamento</option><option value="concluido"'+(it.status==="concluido"?" selected":"")+'>Concluido</option></select>'
+    +'<select id="cli-edit-s-'+itemId+'" style="flex:1;font-size:11px;"><option value="nao_iniciada"'+((it.status==="nao_iniciada"||it.status==="pendente"||!it.status)?" selected":"")+'>Nao iniciada</option><option value="em_andamento"'+(it.status==="em_andamento"?" selected":"")+'>Em andamento</option><option value="bloqueada"'+(it.status==="bloqueada"?" selected":"")+'>Bloqueada</option><option value="concluida"'+((it.status==="concluida"||it.status==="concluido")?" selected":"")+'>Concluida</option></select>'
     +'</div>'
     +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
     +'<button onclick="_reloadProjetoCard(\''+projetoId+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
@@ -478,6 +485,174 @@ async function delChecklistItem(itemId,projetoId,ehPassado){
       _reloadProjetoCard(projetoId,ehPassado);toast("Item excluido!");
     }catch(e){toast("Erro",true);}
   });
+}
+
+function _buildInlineComments(projetoId,comments,ce,ehPassado,expanded){
+  var toShow=expanded?[].concat(comments).reverse():([].concat(comments).reverse()).slice(0,3);
+  var hasMore=comments.length>3;
+  var html='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Comentarios</div>';
+  if(!toShow.length){html+='<div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:6px;">Nenhum comentario.</div>';}
+  else{
+    html+='<div style="max-height:240px;overflow-y:auto;padding-right:2px;">';
+    toShow.forEach(function(c){
+      var u=c.usuarios||{};
+      var isSinal=c.tipo==='sinalizado';
+      var corAv=_avCor(u.id||u.nome||"?");
+      var ini=(u.sigla||u.nome||"?").slice(0,2).toUpperCase();
+      var dt=new Date(c.criado_em);
+      var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      html+='<div style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);'+(isSinal?'background:#fff5f5;border-left:3px solid #ef4444;padding-left:6px;border-radius:0 4px 4px 0;':'')+';">';
+      html+='<div class="av av-sm" style="background:'+corAv+';flex-shrink:0;" title="'+(u.nome||u.sigla||"")+'">'+ini+'</div>';
+      html+='<div style="flex:1;min-width:0;">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">';
+      html+='<span style="font-size:11px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||u.nome||"?")+(isSinal?' <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fee2e2;color:#ef4444;">SINAL</span>':'')+'</span>';
+      html+='<span style="font-size:10px;color:var(--text3);">'+dtStr+'</span>';
+      html+='</div>';
+      html+='<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-top:2px;">'+c.texto+'</div>';
+      html+='</div></div>';
+    });
+    html+='</div>';
+    if(hasMore&&!expanded){
+      html+='<button onclick="_toggleProjetoComments(\''+projetoId+'\',true)" style="font-size:11px;color:var(--bt-navy);background:none;border:none;cursor:pointer;padding:4px 0;text-decoration:underline;">Ver todos ('+comments.length+')</button>';
+    } else if(expanded&&comments.length>3){
+      html+='<button onclick="_toggleProjetoComments(\''+projetoId+'\',false)" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:4px 0;text-decoration:underline;">Mostrar menos</button>';
+    }
+  }
+  if(ce&&!ehPassado){
+    html+='<div style="display:flex;gap:5px;margin-top:8px;align-items:flex-start;">';
+    var meIni=((nomeUser||"?").slice(0,2).toUpperCase());
+    html+='<div class="av av-sm" style="background:'+_avCor(userDbId||"")+';flex-shrink:0;">'+meIni+'</div>';
+    html+='<textarea id="cmt-inline-'+projetoId+'" rows="1" placeholder="Comentar..." style="flex:1;resize:none;font-size:12px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
+    html+='<button onclick="_addProjetoComentarioInline(\''+projetoId+'\')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--bt-navy);background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
+    html+='<button onclick="sinalizarProjeto(\''+projetoId+'\')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fecaca;background:#fff5f5;color:#dc2626;cursor:pointer;font-weight:700;flex-shrink:0;">! Sinalizar</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+function _toggleProjetoComments(projetoId,expand){
+  if(!_projCommentsExpanded)_projCommentsExpanded={};
+  _projCommentsExpanded[projetoId]=expand;
+  var p=projetosDB.find(function(x){return x.id===projetoId;});
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var el=document.getElementById("proj-item-"+projetoId);if(!el||!p)return;
+  el.innerHTML=_buildProjetoCardHTML(p,true,_checklistCache[projetoId]||null,_commentsCache[projetoId]||null,ce,false);
+}
+async function _addProjetoComentarioInline(projetoId){
+  var ta=document.getElementById("cmt-inline-"+projetoId);
+  var txt=(ta?ta.value||"":"").trim();
+  if(!txt){toast("Escreva um comentario",true);return;}
+  try{
+    await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:txt,tipo:"comentario"});
+    _commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);
+    _reloadProjetoCard(projetoId,false);toast("Comentario adicionado!");
+  }catch(e){toast("Erro",true);}
+}
+async function _editProjetoInline(projetoId,ehPassado){
+  var p=projetosDB.find(function(x){return x.id===projetoId;})||{};
+  var el=document.getElementById("proj-item-"+projetoId);if(!el)return;
+  var advs=[];try{var us=await dbFetchUsers();advs=us.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});}catch(_){}
+  var respOpts=advs.map(function(u){return '<option value="'+u.id+'"'+(p.responsavel_id===u.id?' selected':'')+'>'+((u.sigla||"")||(u.nome||u.email||""))+'</option>';}).join("");
+  var eqOpts=equipesDB.map(function(e){return '<option value="'+e.id+'"'+(p.equipe_id===e.id?' selected':'')+'>'+e.nome+'</option>';}).join("");
+  el.innerHTML='<div class="proj-card"><div class="proj-card-bar" style="background:#94a3b8;"></div><div class="proj-card-content">'
+    +'<div class="field" style="margin-bottom:10px;"><label>Titulo *</label><input id="pei-titulo-'+projetoId+'" value="'+p.titulo+'" style="font-size:13px;"/></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+    +'<div><label class="icell-label">Tipo</label><select id="pei-tipo-'+projetoId+'" style="width:100%;font-size:12px;"><option value="continuo"'+(!p.tipo||p.tipo==="continuo"?" selected":"")+'>Continuo</option><option value="pontual"'+(p.tipo==="pontual"?" selected":"")+'>Pontual (checklist)</option></select></div>'
+    +'<div><label class="icell-label">Status</label><select id="pei-status-'+projetoId+'" style="width:100%;font-size:12px;"><option value="em_andamento"'+(!p.status||p.status==="em_andamento"?" selected":"")+'>Em andamento</option><option value="concluido"'+(p.status==="concluido"?" selected":"")+'>Concluido</option><option value="pausado"'+(p.status==="pausado"?" selected":"")+'>Pausado</option></select></div>'
+    +'</div>'
+    +'<div style="margin-bottom:10px;"><label class="icell-label">Responsavel</label><select id="pei-resp-'+projetoId+'" style="width:100%;font-size:12px;"><option value="">Nenhum</option>'+respOpts+'</select></div>'
+    +(eqOpts?'<div style="margin-bottom:10px;"><label class="icell-label">Equipe</label><select id="pei-equipe-'+projetoId+'" style="width:100%;font-size:12px;"><option value="">Sem equipe</option>'+eqOpts+'</select></div>':"")
+    +'<div style="margin-bottom:10px;"><label class="icell-label">Descricao</label><textarea id="pei-desc-'+projetoId+'" rows="2" style="font-size:12px;">'+(p.descricao||"")+'</textarea></div>'
+    +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
+    +'<button onclick="delProjeto(\''+projetoId+'\')" class="btn btn-danger" style="font-size:11px;padding:3px 10px;margin-right:auto;">Excluir</button>'
+    +'<button onclick="_reloadProjetoCard(\''+projetoId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
+    +'<button onclick="_saveProjetoInline(\''+projetoId+'\','+!!ehPassado+')" class="btn btn-primary" style="font-size:11px;padding:3px 10px;">Salvar</button>'
+    +'</div></div></div>';
+}
+async function _saveProjetoInline(projetoId,ehPassado){
+  var titulo=(document.getElementById("pei-titulo-"+projetoId).value||"").trim();
+  if(!titulo){toast("Informe o titulo",true);return;}
+  var tipo=document.getElementById("pei-tipo-"+projetoId).value||"continuo";
+  var status=document.getElementById("pei-status-"+projetoId).value||"em_andamento";
+  var respId=document.getElementById("pei-resp-"+projetoId).value||null;
+  var desc=(document.getElementById("pei-desc-"+projetoId).value||"").trim();
+  var eqEl=document.getElementById("pei-equipe-"+projetoId);
+  var p=projetosDB.find(function(x){return x.id===projetoId;})||{};
+  var equipe_id=eqEl?eqEl.value||null:(p.equipe_id||null);
+  var obj={id:projetoId,titulo:titulo,tipo:tipo,status:status,responsavel_id:respId,descricao:desc||null,equipe_id:equipe_id};
+  try{
+    var salvo=await dbUpsertProjeto(obj);
+    projetosDB=projetosDB.map(function(x){return x.id===projetoId?Object.assign({},x,salvo||obj):x;});
+    if(_checklistCache[projetoId])delete _checklistCache[projetoId];
+    _reloadProjetoCard(projetoId,!!ehPassado);toast("Projeto salvo!");
+  }catch(e){toast("Erro ao salvar",true);}
+}
+function _loadProjetosArea(reuniaoId){
+  var el=document.getElementById("reuniao-projetos-area");if(!el)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
+  var hoje=new Date().toISOString().slice(0,10);
+  var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
+  el.innerHTML=_buildProjetosSection({},ce,ehPassado);
+}
+async function _loadReuniaoItens(reuniaoId){
+  var el=document.getElementById("reuniao-itens-area");if(!el)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
+  var hoje=new Date().toISOString().slice(0,10);
+  var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
+  try{
+    var itens=await dbFetchReuniaoItens(reuniaoId);
+    var addBtn=(ce&&!ehPassado)?'<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" class="btn-outlined" style="margin-bottom:12px;">'+ic("plus")+' Adicionar item</button>':"";
+    if(!itens.length){el.innerHTML=addBtn+'<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhum item de pauta adicionado.</div>';return;}
+    var cats={};
+    itens.forEach(function(it){
+      var cid=it.categoria_id||"sem_cat";
+      if(!cats[cid])cats[cid]={nome:(it.pauta_categorias&&it.pauta_categorias.nome)||'Geral',itens:[]};
+      cats[cid].itens.push(it);
+    });
+    var html='<div style="display:flex;flex-direction:column;gap:10px;">';
+    Object.keys(cats).forEach(function(catId){
+      var cat=cats[catId];
+      html+='<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">';
+      html+='<div style="padding:7px 14px;background:var(--surface);font-size:11px;font-weight:700;color:var(--bt-navy);text-transform:uppercase;letter-spacing:.04em;">'+cat.nome+'</div>';
+      html+='<div>';
+      cat.itens.forEach(function(it){
+        var item=it.pauta_itens||{};
+        var isConcluido=it.estado==='concluido';
+        html+='<div id="reun-item-'+it.id+'" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);">';
+        if(ce&&!ehPassado){
+          html+='<input type="checkbox"'+(isConcluido?' checked':'')+' onchange="_toggleReuniaoItem(\''+it.id+'\',this.checked,\''+reuniaoId+'\')" style="width:auto;flex-shrink:0;cursor:pointer;"/>';
+        } else {
+          html+='<input type="checkbox"'+(isConcluido?' checked':'')+' disabled style="width:auto;flex-shrink:0;"/>';
+        }
+        html+='<span style="flex:1;font-size:13px;color:'+(isConcluido?'var(--text3)':'var(--bt-navy)')+';'+(isConcluido?'text-decoration:line-through;':'')+'">'+item.titulo+'</span>';
+        if(it.notas)html+='<span style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+it.notas+'</span>';
+        if(ce&&!ehPassado){
+          html+='<button onclick="_delReuniaoItem(\''+it.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;flex-shrink:0;">'+ic("trash")+'</button>';
+        }
+        html+='</div>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+    el.innerHTML=addBtn+html;
+  }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar itens.</div>';}
+}
+async function _toggleReuniaoItem(itemId,concluido,reuniaoId){
+  try{
+    await dbUpsertReuniaoItem({id:itemId,estado:concluido?'concluido':'pendente'});
+    var row=document.getElementById("reun-item-"+itemId);
+    if(row){
+      var sp=row.querySelector("span:not(.reun-status-chip)");
+      if(sp){sp.style.color=concluido?'var(--text3)':'var(--bt-navy)';sp.style.textDecoration=concluido?'line-through':'';}
+    }
+  }catch(e){toast("Erro",true);var cb=document.querySelector("input[onchange*=\"'"+itemId+"'\"]");if(cb)cb.checked=!concluido;}
+}
+async function _delReuniaoItem(itemId,reuniaoId){
+  try{await dbDelReuniaoItem(itemId);_loadReuniaoItens(reuniaoId);toast("Item removido!");}
+  catch(e){toast("Erro",true);}
 }
 
 async function selecionarReuniao(id){
@@ -703,52 +878,100 @@ function _tiposOpts(sel){
     +'<option value="atualizacao_demandas"'+(sel==='atualizacao_demandas'?' selected':'')+'>Atualizacao de demandas</option>'
     +'<option value="avisos_gerais"'+(sel==='avisos_gerais'?' selected':'')+'>Avisos gerais</option>';
 }
-function openAdicionarPauta(reuniaoId){
-  var eqId=equipeAtiva?equipeAtiva.id:null;
-  var pautasFiltradas=pautasDB.filter(function(p){return !p.equipe_id||p.equipe_id===eqId||perfil==='mestre';});
-  var padroes=pautasFiltradas.filter(function(p){return p.padrao;});
-  var outras=pautasFiltradas.filter(function(p){return !p.padrao;});
-  var lista=padroes.concat(outras);
-  function rowPauta(p){
-    var tipoCor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8','avisos_gerais':'#22c55e'}[p.tipo]||'#94a3b8';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--border);">'
-      +(p.padrao?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#eff6ff;color:var(--bt-navy);flex-shrink:0;">PADRAO</span>':'')
-      +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.titulo+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:1px;"><span style="color:'+tipoCor+';">'+_labelTipoPauta(p.tipo)+'</span>'+(p.recorrente?' - recorrente':'')+'</div>'
-      +'</div>'
-      +'<div style="display:flex;gap:4px;flex-shrink:0;">'
-      +'<button onclick="adicionarPautaExistenteReuniao(\''+reuniaoId+'\',\''+p.id+'\')" class="btn btn-primary" style="font-size:11px;padding:3px 10px;">Adicionar</button>'
-      +'<button onclick="openEditPauta(\''+p.id+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>'
-      +'<button onclick="delPautaDoModal(\''+p.id+'\',\''+reuniaoId+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">'+ic("trash")+'</button>'
-      +'</div></div>';
-  }
-  var listaHtml=lista.length
-    ?'<div style="max-height:260px;overflow-y:auto;">'+lista.map(rowPauta).join('')+'</div>'
-    :'<div class="reun-empty" style="padding:28px 0;"><div class="reun-empty-icon">'+ic("edit")+'</div><div class="reun-empty-msg">Nenhuma pauta cadastrada. Crie uma na aba "Nova pauta".</div></div>';
-  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,520px);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Adicionar pauta</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
-    +'<div style="display:flex;border-bottom:2px solid var(--border);margin:12px 0 0;">'
-    +'<button id="ap-tab-1" onclick="_apTab(1,\''+reuniaoId+'\')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:var(--bt-navy);border-bottom:2px solid var(--bt-navy);margin-bottom:-2px;cursor:pointer;">Pautas cadastradas</button>'
-    +'<button id="ap-tab-2" onclick="_apTab(2,\''+reuniaoId+'\')" style="padding:8px 16px;border:none;background:none;font-size:13px;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;">Nova pauta</button>'
+var _apCatSel=null;var _apAtivosIds=[];var _apReuniao=null;
+async function openAdicionarPauta(reuniaoId){
+  _apReuniao=reuniaoId;
+  var mc=document.getElementById("modal-container");
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,640px);padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">'
+    +'<div style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Adicionar itens de pauta</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
     +'</div>'
-    +'<div id="ap-panel-1" style="padding-top:12px;">'+listaHtml+'</div>'
-    +'<div id="ap-panel-2" style="display:none;padding-top:12px;">'
-    +'<div class="field"><label>Titulo *</label><input id="np-titulo" placeholder="Nome da pauta"/></div>'
-    +'<div class="field"><label>Tipo</label><select id="np-tipo">'+_tiposOpts('livre')+'</select></div>'
-    +'<div class="field"><label>Responsavel</label><select id="np-resp"><option value="">Nenhum</option></select></div>'
-    +'<div style="display:flex;gap:16px;margin-bottom:12px;">'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="np-recorrente"/> Recorrente</label>'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="np-padrao"/> Padrao</label>'
+    +'<div id="ap-body" style="display:flex;flex:1;overflow:hidden;min-height:320px;">'
+    +'<div style="padding:20px;text-align:center;color:var(--text3);width:100%;">Carregando...</div>'
     +'</div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarNovaPautaReuniao(\''+reuniaoId+'\')">Criar e adicionar</button></div>'
+    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">'
+    +(perfil==='mestre'?'<button onclick="closeModal();renderPautaCategorias()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Gerenciar categorias</button>':'<div></div>')
+    +'<button class="btn" onclick="closeModal()">Fechar</button>'
     +'</div>'
     +'</div></div>';
-  dbFetchUsers().then(function(users){
-    var advs=(users||[]).filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});
-    var sel=document.getElementById("np-resp");if(!sel)return;
-    advs.forEach(function(u){var o=document.createElement("option");o.value=u.id;o.textContent=(u.sigla?u.sigla+' - ':'')+u.nome;sel.appendChild(o);});
-  }).catch(function(){});
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  try{
+    var cats=await dbFetchPautaCategorias(eqId);
+    var itensAtivos=await dbFetchReuniaoItens(reuniaoId);
+    _apAtivosIds=itensAtivos.map(function(ri){return ri.item_id;});
+    _apRenderDoisPaineis(reuniaoId,cats,cats[0]?cats[0].id:null);
+  }catch(e){var b=document.getElementById("ap-body");if(b)b.innerHTML='<div style="padding:20px;color:var(--text3);">Erro ao carregar.</div>';}
+}
+function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
+  _apCatSel=catSelId;
+  var body=document.getElementById("ap-body");if(!body)return;
+  if(!cats.length){
+    body.innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;width:100%;">Nenhuma categoria. Clique em "Gerenciar categorias" para criar.</div>';
+    return;
+  }
+  var leftHTML='<div id="ap-cats" style="width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);">';
+  cats.forEach(function(cat){
+    var sel=cat.id===catSelId;
+    leftHTML+='<div onclick="_apSelectCat(\''+cat.id+'\')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:'+(sel?'#fff':'')+';border-left:3px solid '+(sel?'var(--bt-orange)':'transparent')+';">'
+      +'<span style="font-size:13px;font-weight:'+(sel?'700':'400')+';color:var(--bt-navy);">'+cat.nome+'</span>'
+      +'<span id="ap-cat-badge-'+cat.id+'" style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:#e2e8f0;color:var(--text3);">...</span>'
+      +'</div>';
+  });
+  leftHTML+='</div>';
+  body.innerHTML=leftHTML+'<div id="ap-items" style="flex:1;overflow-y:auto;padding:4px 0;"></div>';
+  cats.forEach(function(cat){
+    dbFetchPautaItens(cat.id).then(function(itens){
+      var badge=document.getElementById("ap-cat-badge-"+cat.id);
+      if(badge)badge.textContent=itens.length;
+    }).catch(function(){});
+  });
+  if(catSelId)_apLoadItens(catSelId);
+}
+async function _apSelectCat(catId){
+  _apCatSel=catId;
+  var allDivs=document.querySelectorAll("#ap-cats > div");
+  allDivs.forEach(function(div){
+    var isSel=div.getAttribute("onclick")&&div.getAttribute("onclick").indexOf(catId)>=0;
+    div.style.background=isSel?'#fff':'';
+    div.style.borderLeftColor=isSel?'var(--bt-orange)':'transparent';
+    var sp=div.querySelector("span:first-child");if(sp)sp.style.fontWeight=isSel?'700':'400';
+  });
+  _apLoadItens(catId);
+}
+async function _apLoadItens(catId){
+  var el=document.getElementById("ap-items");if(!el)return;
+  el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;">Carregando...</div>';
+  try{
+    var itens=await dbFetchPautaItens(catId);
+    if(!itens.length){el.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhum item nesta categoria.</div>';return;}
+    el.innerHTML=itens.map(function(item){
+      var ativo=(_apAtivosIds||[]).indexOf(item.id)>=0;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);">'
+        +'<input type="checkbox" id="ap-item-'+item.id+'"'+(ativo?' checked':'')+' onchange="_apToggleItem(\''+item.id+'\',\''+catId+'\',this.checked)" style="width:auto;cursor:pointer;flex-shrink:0;"/>'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:13px;font-weight:600;color:var(--bt-navy);">'+item.titulo+'</div>'
+        +(item.descricao?'<div style="font-size:11px;color:var(--text3);margin-top:1px;">'+item.descricao+'</div>':"")
+        +'</div>'
+        +(item.recorrente?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f0fdf4;color:#15803d;flex-shrink:0;">REC</span>':"")
+        +'</div>';
+    }).join("");
+  }catch(e){if(el)el.innerHTML='<div style="padding:16px;color:var(--text3);">Erro ao carregar.</div>';}
+}
+async function _apToggleItem(itemId,catId,checked){
+  var reuniaoId=_apReuniao;if(!reuniaoId)return;
+  try{
+    if(checked){
+      await dbUpsertReuniaoItem({reuniao_id:reuniaoId,item_id:itemId,categoria_id:catId,estado:'pendente'});
+      if(!_apAtivosIds)_apAtivosIds=[];_apAtivosIds.push(itemId);
+    } else {
+      var itens=await dbFetchReuniaoItens(reuniaoId);
+      var ri=itens.find(function(x){return x.item_id===itemId;});
+      if(ri)await dbDelReuniaoItem(ri.id);
+      _apAtivosIds=(_apAtivosIds||[]).filter(function(id){return id!==itemId;});
+    }
+    var area=document.getElementById("reuniao-itens-area");if(area)_loadReuniaoItens(reuniaoId);
+  }catch(e){var cb=document.getElementById("ap-item-"+itemId);if(cb)cb.checked=!checked;toast("Erro",true);}
 }
 function _apTab(n,reuniaoId){
   var p1=document.getElementById("ap-panel-1");
