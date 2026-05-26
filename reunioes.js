@@ -61,9 +61,6 @@ function _renderReunioesPagina(){
     +'<div id="mini-cal-area"></div>'
     +'<div class="reun-sidebar-list">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
     +'<div class="reun-sidebar-footer">'
-    +'<div class="reun-section-label" style="margin-bottom:6px;">Pautas</div>'
-    +(ce?'<button onclick="renderPautaCategorias()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:4px;margin-bottom:4px;">'+ic("edit")+' Gerenciar categorias</button>':"")
-    +(ce?'<button onclick="renderPautas()" style="width:100%;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:4px;">'+ic("edit")+' Pautas (legado)</button>':"")
     +'</div>'
     +'</div>'
     +'<div class="reun-main">'
