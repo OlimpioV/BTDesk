@@ -109,12 +109,12 @@ async function dbUpsertPautaCategoria(cat){var r=await fetch(SB+"/rest/v1/pauta_
 async function dbDelPautaCategoria(id){await fetch(SB+"/rest/v1/pauta_categorias?id=eq."+id,{method:"DELETE",headers:H});}
 
 // ── PAUTA ITENS DB ──
-async function dbFetchPautaItens(categoriaId){var r=await fetch(SB+"/rest/v1/pauta_itens?categoria_id=eq."+categoriaId+"&select=*&order=titulo",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbFetchPautaItens(categoriaId){var r=await fetch(SB+"/rest/v1/pauta_itens?categoria_id=eq."+categoriaId+"&select=*,usuarios!responsavel_id(id,nome,sigla)&order=titulo",{headers:H});if(!r.ok)throw new Error();return r.json();}
 async function dbUpsertPautaItem(item){var r=await fetch(SB+"/rest/v1/pauta_itens",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelPautaItem(id){await fetch(SB+"/rest/v1/pauta_itens?id=eq."+id,{method:"DELETE",headers:H});}
 
 // ── REUNIAO PAUTA ITENS DB ──
-async function dbFetchReuniaoItens(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_pauta_itens?reuniao_id=eq."+reuniaoId+"&select=*,pauta_itens(id,titulo,descricao,recorrente,responsavel_id,referencia_id,usuarios(id,nome,sigla)),pauta_categorias(id,nome,tipo)&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbFetchReuniaoItens(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_pauta_itens?reuniao_id=eq."+reuniaoId+"&select=*,pauta_itens(id,titulo,descricao,recorrente,responsavel_id,referencia_id,usuarios!responsavel_id(id,nome,sigla)),pauta_categorias!categoria_id(id,nome,tipo)&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertReuniaoItem(ri){var r=await fetch(SB+"/rest/v1/reuniao_pauta_itens",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(ri)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelReuniaoItem(id){await fetch(SB+"/rest/v1/reuniao_pauta_itens?id=eq."+id,{method:"DELETE",headers:H});}
 

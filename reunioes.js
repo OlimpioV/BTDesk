@@ -891,9 +891,8 @@ async function openAdicionarPauta(reuniaoId){
     +'<div id="ap-body" style="display:flex;flex:1;overflow:hidden;min-height:320px;">'
     +'<div style="padding:20px;text-align:center;color:var(--text3);width:100%;">Carregando...</div>'
     +'</div>'
-    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">'
+    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;align-items:center;flex-shrink:0;">'
     +'<button class="btn" onclick="_apAplicar()">Aplicar</button>'
-    +'<button onclick="closeModal()" style="font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Fechar</button>'
     +'</div>'
     +'</div></div>';
   var eqId=equipeAtiva?equipeAtiva.id:null;
