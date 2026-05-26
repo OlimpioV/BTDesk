@@ -39,6 +39,8 @@ async function dbDelTarefa(id){
 async function dbDelTarefasDoCard(cardId){
   await fetch(SB+"/rest/v1/tarefas?card_id=eq."+cardId,{method:"DELETE",headers:H});
 }
+async function dbFetchTarefasReuniao(reuniaoId){var r=await fetch(SB+"/rest/v1/tarefas?reuniao_id=eq."+reuniaoId+"&parent_id=is.null&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbFetchSubtarefas(parentId){var r=await fetch(SB+"/rest/v1/tarefas?parent_id=eq."+parentId+"&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
 
 // ── EQUIPES DB ──
 async function dbFetchEquipes(){var r=await fetch(SB+"/rest/v1/equipes?select=*&order=nome",{headers:H});if(!r.ok)throw new Error();return r.json();}
@@ -108,16 +110,6 @@ async function dbFetchPautaCategorias(equipeId){var q=equipeId?"&equipe_id=eq."+
 async function dbUpsertPautaCategoria(cat){var r=await fetch(SB+"/rest/v1/pauta_categorias",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(cat)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelPautaCategoria(id){await fetch(SB+"/rest/v1/pauta_categorias?id=eq."+id,{method:"DELETE",headers:H});}
 
-// ── PAUTA ITENS DB ──
-async function dbFetchPautaItens(categoriaId){var r=await fetch(SB+"/rest/v1/pauta_itens?categoria_id=eq."+categoriaId+"&select=*,usuarios!responsavel_id(id,nome,sigla)&order=titulo",{headers:H});if(!r.ok)throw new Error();return r.json();}
-async function dbUpsertPautaItem(item){var r=await fetch(SB+"/rest/v1/pauta_itens",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
-async function dbDelPautaItem(id){await fetch(SB+"/rest/v1/pauta_itens?id=eq."+id,{method:"DELETE",headers:H});}
-
-// ── REUNIAO PAUTA ITENS DB ──
-async function dbFetchReuniaoItens(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_pauta_itens?reuniao_id=eq."+reuniaoId+"&select=*,pauta_itens(id,titulo,descricao,recorrente,responsavel_id,referencia_id,usuarios!responsavel_id(id,nome,sigla)),pauta_categorias!categoria_id(id,nome,tipo)&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
-async function dbUpsertReuniaoItem(ri){var r=await fetch(SB+"/rest/v1/reuniao_pauta_itens",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(ri)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
-async function dbDelReuniaoItem(id){await fetch(SB+"/rest/v1/reuniao_pauta_itens?id=eq."+id,{method:"DELETE",headers:H});}
-
 // ── PROJETOS INTERNOS DB ──
 async function dbFetchProjetos(equipeId){
   var q=equipeId?"&equipe_id=eq."+equipeId:"";
@@ -132,22 +124,10 @@ async function dbDelProjetoComentario(id){await fetch(SB+"/rest/v1/projeto_comen
 async function dbFetchChecklist(projetoId){var r=await fetch(SB+"/rest/v1/checklist_projeto?projeto_id=eq."+projetoId+"&select=*,usuarios(id,nome,sigla)&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertChecklistItem(item){var r=await fetch(SB+"/rest/v1/checklist_projeto",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelChecklistItem(id){await fetch(SB+"/rest/v1/checklist_projeto?id=eq."+id,{method:"DELETE",headers:H});}
-async function dbFetchProjetosPorIds(ids){if(!ids||!ids.length)return [];var r=await fetch(SB+"/rest/v1/projetos_internos?id=in.("+ids.join(",")+")"+"&select=*,usuarios(id,nome,sigla)",{headers:H});if(!r.ok)return [];return r.json();}
-
-// ── PAUTA ITEM CHECKLIST DB ──
-async function dbFetchPautaItemChecklist(itemId){var r=await fetch(SB+"/rest/v1/pauta_item_checklist?item_id=eq."+itemId+"&order=ordem,criado_em",{headers:H});if(!r.ok)return [];return r.json();}
-async function dbUpsertPautaItemChecklist(item){var r=await fetch(SB+"/rest/v1/pauta_item_checklist",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
-async function dbDelPautaItemChecklist(id){await fetch(SB+"/rest/v1/pauta_item_checklist?id=eq."+id,{method:"DELETE",headers:H});}
-
 // ── REUNIAO COMENTARIOS DB ──
 async function dbFetchReuniaoComentarios(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_comentarios?reuniao_id=eq."+reuniaoId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertReuniaoComentario(c){var r=await fetch(SB+"/rest/v1/reuniao_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelReuniaoComentario(id){await fetch(SB+"/rest/v1/reuniao_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
-
-// ── PAUTA ITEM COMENTARIOS DB ──
-async function dbFetchPautaItemComentarios(itemId){var r=await fetch(SB+"/rest/v1/pauta_item_comentarios?item_id=eq."+itemId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
-async function dbUpsertPautaItemComentario(c){var r=await fetch(SB+"/rest/v1/pauta_item_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
-async function dbDelPautaItemComentario(id){await fetch(SB+"/rest/v1/pauta_item_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
 
 // ── NOTIFICACOES DB ──
 async function dbFetchNotificacoes(){var r=await fetch(SB+"/rest/v1/notificacoes?usuario_id=eq."+userDbId+"&order=criado_em.desc&limit=50",{headers:H});if(!r.ok)return [];return r.json();}
