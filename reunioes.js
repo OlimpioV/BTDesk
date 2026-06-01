@@ -1046,7 +1046,10 @@ async function _gpSalvarNovaTarefa(catId){
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
     var tarefaId=uid();
-    await dbUpsertTarefa({id:tarefaId,texto:texto,descricao:descricao||null,responsavel:resp||null,status:'pendente',data_inicio:inicio||null,data_fim:fim||null,pauta_categoria_id:catId,equipe_id:eqId,criado_em:new Date().toISOString()});
+    var payload={id:tarefaId,texto:texto,descricao:descricao||null,responsavel:resp||null,status:'pendente',data_inicio:inicio||null,data_fim:fim||null,criado_em:new Date().toISOString()};
+    if(catId)payload.pauta_categoria_id=catId;
+    if(eqId)payload.equipe_id=eqId;
+    await dbUpsertTarefa(payload);
     await dbUpsertReuniaoTarefa({reuniao_id:_apReuniao,tarefa_id:tarefaId});
     _gpLoadItens(catId);
     _gpRefreshBadges();
@@ -1382,7 +1385,7 @@ async function _loadProjetoComentários(projetoId){
     el.innerHTML=cmts.map(function(c){
       var u=c.usuarios||{};
       var isSinal=c.tipo==='sinalizado';
-      var canEdit=(c.usuario_id===userDbId||perfil==='mestre')&&ce;
+      var canEdit=(c.usuario_id===userDbId||perfil==='mestre'||perfil==='advogado')&&ce;
       var bgStyle=isSinal?'background:#fff5f5;border-left:3px solid #ef4444;padding:8px 12px;margin:0 -4px;border-radius:0 6px 6px 0;':'';
       return '<div id="proj-cmt-'+c.id+'" style="padding:8px 0;border-bottom:1px solid var(--border);">'
         +'<div style="'+bgStyle+'">'
@@ -1843,7 +1846,11 @@ async function _salvarSubtarefaPauta(parentId,ehPassado){
   var rId=reuniaoAtiva?reuniaoAtiva.id:null;
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
-    await dbUpsertTarefa({id:uid(),texto:texto,status:'pendente',responsavel:respSub||null,parent_id:parentId,reuniao_id:rId,equipe_id:eqId,criado_em:new Date().toISOString()});
+    var payload={id:uid(),texto:texto,status:'pendente',responsavel:respSub||null,criado_em:new Date().toISOString()};
+    if(parentId)payload.parent_id=parentId;
+    if(rId)payload.reuniao_id=rId;
+    if(eqId)payload.equipe_id=eqId;
+    await dbUpsertTarefa(payload);
     _subtarefasCache[parentId]=await dbFetchSubtarefas(parentId);
     _reloadTarefaCard(parentId,ehPassado);
     toast("Subtarefa adicionada!");
@@ -1873,9 +1880,13 @@ async function _quickSaveSubtarefa(parentId,ehPassado){
   var texto=inp.value.trim();if(!texto)return;
   var resp=(respEl?respEl.value||null:null);
   var rId=reuniaoAtiva?reuniaoAtiva.id:'';
+  var eqId=equipeAtiva?equipeAtiva.id:null;
   var parentT=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===parentId;});
   try{
-    var nova={id:uid(),texto:texto,responsavel:resp||null,status:'pendente',parent_id:parentId,reuniao_id:rId||null,equipe_id:equipeAtiva?equipeAtiva.id:null,criado_em:new Date().toISOString()};
+    var nova={id:uid(),texto:texto,responsavel:resp||null,status:'pendente',criado_em:new Date().toISOString()};
+    if(parentId)nova.parent_id=parentId;
+    if(rId)nova.reuniao_id=rId;
+    if(eqId)nova.equipe_id=eqId;
     await dbUpsertTarefa(nova);
     if(!_subtarefasCache[parentId])_subtarefasCache[parentId]=[];
     _subtarefasCache[parentId].push(nova);
@@ -2096,7 +2107,7 @@ function _buildTarefaCmtsHTML(cmts,tarefaId,ce,ehPassado){
     cmts.forEach(function(c){
       var u=c.usuarios||{};
       var dt=new Date(c.criado_em);var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-      var canEdit=(c.usuario_id===userDbId||perfil==='mestre')&&ce&&!ehPassado;
+      var canEdit=(c.usuario_id===userDbId||perfil==='mestre'||perfil==='advogado')&&ce&&!ehPassado;
       html+='<div id="tcmt-'+c.id+'" style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:3px 0;border-bottom:1px solid var(--border);">';
       html+='<span style="font-size:11px;font-weight:700;color:var(--bt-navy);flex-shrink:0;">'+(u.sigla||u.nome||'?')+'</span>';
       html+='<span style="font-size:12px;color:var(--text2);flex:1;white-space:pre-wrap;word-break:break-word;">'+c.texto+'</span>';
@@ -2192,7 +2203,7 @@ function _buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado){
       var u=c.usuarios||{};var ini=(u.sigla||u.nome||'?').slice(0,2).toUpperCase();
       var corAv=_avCor(u.id||u.nome||'?');
       var dt=new Date(c.criado_em);var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-      var canEdit=(c.usuario_id===userDbId||perfil==='mestre')&&ce&&!ehPassado;
+      var canEdit=(c.usuario_id===userDbId||perfil==='mestre'||perfil==='advogado')&&ce&&!ehPassado;
       html+='<div id="rcmt-'+c.id+'" style="display:flex;gap:7px;padding:7px 0;border-bottom:1px solid var(--border);">';
       html+='<div class="av av-sm" style="background:'+corAv+';flex-shrink:0;">'+ini+'</div>';
       html+='<div style="flex:1;min-width:0;">';

@@ -30,6 +30,15 @@ async function dbFetchTodasTarefas(){
   return all;
 }
 async function dbUpsertTarefa(t){
+  // Colunas uuid: string vazia ou undefined gera 400 (invalid input syntax for type uuid). Remover antes de enviar.
+  if(t){["equipe_id","reuniao_id","pauta_categoria_id","parent_id"].forEach(function(k){if(t[k]===""||t[k]===undefined)delete t[k];});}
+  // Update parcial (id sem texto): usar PATCH. O upsert merge-duplicates roda INSERT ... ON CONFLICT e viola texto NOT NULL quando texto e omitido.
+  if(t&&t.id&&t.texto===undefined){
+    var idp=t.id,body=Object.assign({},t);delete body.id;
+    var rp=await fetch(SB+"/rest/v1/tarefas?id=eq."+encodeURIComponent(idp),{method:"PATCH",headers:H,body:JSON.stringify(body)});
+    if(!rp.ok)throw new Error();
+    return;
+  }
   var r=await fetch(SB+"/rest/v1/tarefas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(t)});
   if(!r.ok)throw new Error();
 }
