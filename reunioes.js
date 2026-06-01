@@ -33,7 +33,10 @@ function _renderReunioesPagina(){
   var statusCores={'agendada':'#3b82f6','realizada':'#22c55e','cancelada':'#ef4444'};
   var diasSem=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
   var mesesCurtos=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  var listaSidebar=proximas.concat(passadas).slice(0,20).map(function(r){
+  // Reserva espaco para reunioes passadas recentes: sem isso, muitas futuras pre-criadas escondiam as passadas.
+  var proximasMostrar=proximas.slice(0,15);
+  var passadasMostrar=passadas.slice(0,Math.max(5,20-proximasMostrar.length));
+  var listaSidebar=proximasMostrar.concat(passadasMostrar).map(function(r){
     var ativa=reuniaoAtiva&&reuniaoAtiva.id===r.id;
     var p=r.data.split('-');
     var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
