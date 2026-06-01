@@ -1,0 +1,2 @@
+# Config local do Claude Code (caminhos e permissoes da maquina do usuario)
+.claude/settings.local.json
