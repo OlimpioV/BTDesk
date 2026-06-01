@@ -114,7 +114,8 @@ async function dbDelReuniaoParticipante(reuniaoId,userId){await fetch(SB+"/rest/
 
 // ── PAUTAS DB ──
 async function dbFetchPautas(equipeId){
-  var q=equipeId?"&equipe_id=eq."+equipeId:"";
+  // Inclui pautas globais (equipe_id nulo) alem das da equipe ativa.
+  var q=equipeId?"&or=(equipe_id.eq."+equipeId+",equipe_id.is.null)":"";
   var r=await fetch(SB+"/rest/v1/pautas?select=*&order=titulo"+q,{headers:H});
   if(!r.ok)throw new Error();return r.json();
 }
@@ -125,7 +126,7 @@ async function dbUpsertReuniaoPauta(rp){var r=await fetch(SB+"/rest/v1/reuniao_p
 async function dbDelReuniaoPauta(id){await fetch(SB+"/rest/v1/reuniao_pautas?id=eq."+id,{method:"DELETE",headers:H});}
 
 // ── PAUTA CATEGORIAS DB ──
-async function dbFetchPautaCategorias(equipeId){var q=equipeId?"&equipe_id=eq."+equipeId:"";var r=await fetch(SB+"/rest/v1/pauta_categorias?select=*&order=nome"+q,{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbFetchPautaCategorias(equipeId){var q=equipeId?"&or=(equipe_id.eq."+equipeId+",equipe_id.is.null)":"";var r=await fetch(SB+"/rest/v1/pauta_categorias?select=*&order=nome"+q,{headers:H});if(!r.ok)throw new Error();return r.json();}
 async function dbUpsertPautaCategoria(cat){var r=await fetch(SB+"/rest/v1/pauta_categorias",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(cat)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelPautaCategoria(id){await fetch(SB+"/rest/v1/pauta_categorias?id=eq."+id,{method:"DELETE",headers:H});}
 
