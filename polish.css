@@ -1,0 +1,356 @@
+/* BTDesk visual polish pass. Loaded after styles.css. */
+:root {
+  --bt-focus: rgba(250,81,14,.16);
+  --bt-soft-line: rgba(148,163,184,.18);
+}
+
+body {
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+button svg,
+.btn svg,
+.tab svg,
+.view-btn svg,
+.msbtn svg,
+.btn-outlined svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.btn,
+.view-btn,
+.msbtn,
+.btn-outlined {
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn {
+  box-shadow: 0 1px 0 rgba(15,23,42,.04);
+}
+
+.btn-primary,
+.btn-accent {
+  border-color: transparent;
+}
+
+.tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding-inline: 14px;
+  line-height: 1.15;
+}
+
+#app.kanban-mode > div:first-child,
+#app.page-mode > div:first-child {
+  min-width: 0;
+}
+
+#app.kanban-mode > div:first-child img[src="logo-branco-negativo.png"],
+#app.page-mode > div:first-child img[src="logo-branco-negativo.png"] {
+  height: 48px !important;
+  max-width: 158px;
+  object-fit: contain;
+}
+
+#app.kanban-mode div[style*="height:52px"][style*="justify-content:flex-end"],
+#app.page-mode div[style*="height:52px"][style*="justify-content:flex-end"] {
+  height: auto !important;
+  min-height: 56px;
+  padding: 8px 16px !important;
+  gap: 18px;
+  justify-content: space-between !important;
+}
+
+#app.kanban-mode div[style*="translateX(-50%)"][style*="pointer-events:none"],
+#app.page-mode div[style*="translateX(-50%)"][style*="pointer-events:none"] {
+  position: static !important;
+  transform: none !important;
+  flex: 0 0 auto;
+  min-width: 128px;
+  margin-right: auto;
+  text-align: left !important;
+}
+
+#app.kanban-mode div[style*="height:52px"] > div[style*="display:flex;align-items:center;gap:8px"],
+#app.page-mode div[style*="height:52px"] > div[style*="display:flex;align-items:center;gap:8px"] {
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+#app.kanban-mode > div:first-child div[style*="background:rgba(0,0,0,.15)"],
+#app.page-mode > div:first-child div[style*="background:rgba(0,0,0,.15)"] {
+  gap: 3px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.toolbar {
+  min-height: 50px;
+  padding-block: 6px;
+  row-gap: 6px;
+  border-bottom-color: rgba(255,255,255,.08);
+}
+
+.toolbar > div:last-child {
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.toolbar select,
+.toolbar input[type="number"],
+.toolbar input[type="text"] {
+  min-height: 32px;
+}
+
+.view-btn {
+  width: 34px;
+  min-width: 34px;
+  padding-inline: 0;
+}
+
+.col-wrap {
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.085);
+}
+
+.col-header {
+  min-height: 42px;
+}
+
+.col-title {
+  line-height: 1.2;
+}
+
+.card-item {
+  border-radius: 8px;
+  border: 1px solid rgba(15,23,42,.05);
+}
+
+.card-cover {
+  height: 30px;
+}
+
+.card-body {
+  padding: 10px 11px 11px;
+}
+
+.chip,
+.cc {
+  min-height: 22px;
+  align-items: center;
+}
+
+.modal-overlay {
+  padding: 24px 16px;
+}
+
+.modal-trello,
+.modal-box {
+  border-radius: 12px;
+}
+
+.modal-trello {
+  max-height: calc(100vh - 32px);
+}
+
+.modal-trello > div[style*="display:grid"] {
+  grid-template-columns: minmax(0,1.25fr) minmax(260px,.75fr) !important;
+}
+
+.modal-cover {
+  height: 96px;
+  min-height: 96px;
+}
+
+.modal-cover > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.modal-cover > div:first-child {
+  right: 54%;
+  max-width: 44%;
+}
+
+.modal-cover > div:last-child {
+  left: auto;
+  max-width: 52%;
+  justify-content: flex-end;
+}
+
+.modal-cover .mcclose {
+  position: static !important;
+  min-height: 32px;
+}
+
+.modal-main {
+  padding: 20px 24px 28px;
+}
+
+.info-grid {
+  gap: 8px;
+}
+
+.icell,
+.obs-block,
+.pauta-card,
+.proj-card,
+.reun-card {
+  border-radius: 8px;
+}
+
+.reun-detalhe-hdr {
+  gap: 12px;
+}
+
+.reun-detalhe-hdr > div:last-child {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.rt-row,
+.rt-sub-row,
+.rt-thead {
+  min-width: 780px;
+}
+
+.rt-actions,
+td div[style*="display:flex;gap:5px"] {
+  flex-wrap: wrap;
+}
+
+.toast {
+  max-width: min(460px, calc(100vw - 32px));
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  #app.kanban-mode div[style*="height:52px"] > div[style*="display:flex;align-items:center;gap:8px"] > span[style*="font-size:11px"],
+  #app.page-mode div[style*="height:52px"] > div[style*="display:flex;align-items:center;gap:8px"] > span[style*="font-size:11px"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 860px) {
+  #app.kanban-mode > div:first-child > div:has(img[src="logo-branco-negativo.png"]),
+  #app.page-mode > div:first-child > div:has(img[src="logo-branco-negativo.png"]) {
+    display: none !important;
+  }
+
+  #app.kanban-mode div[style*="translateX(-50%)"][style*="pointer-events:none"],
+  #app.page-mode div[style*="translateX(-50%)"][style*="pointer-events:none"] {
+    min-width: 96px;
+  }
+
+  .toolbar {
+    align-items: flex-start;
+  }
+
+  .toolbar > div:last-child {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .modal-trello > div[style*="display:grid"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal-main {
+    border-right: 0 !important;
+  }
+
+  #tarefas-panel,
+  .modal-trello div[id^="tarefas-panel-"] {
+    border-left: 0 !important;
+    border-top: 1px solid #dfe1e6;
+  }
+
+  .reun-detalhe-hdr {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reun-detalhe-hdr > div:last-child {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 620px) {
+  .tab {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+
+  #app.kanban-mode div[style*="translateX(-50%)"][style*="pointer-events:none"],
+  #app.page-mode div[style*="translateX(-50%)"][style*="pointer-events:none"] {
+    display: none !important;
+  }
+
+  .toolbar select,
+  .toolbar input[type="number"],
+  .toolbar input[type="text"] {
+    flex: 1 1 86px;
+    min-width: 72px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-cover {
+    height: 118px;
+    min-height: 118px;
+  }
+
+  .modal-cover > div:first-child,
+  .modal-cover > div:last-child {
+    max-width: calc(100% - 20px);
+    right: 10px !important;
+    left: 10px !important;
+  }
+
+  .modal-cover > div:first-child {
+    top: 10px !important;
+  }
+
+  .modal-cover > div:last-child {
+    top: 52px !important;
+    justify-content: flex-start;
+  }
+
+  .modal-main {
+    padding: 16px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-box {
+    padding: 20px;
+  }
+}
