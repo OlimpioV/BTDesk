@@ -36,30 +36,34 @@ function _renderReunioesPagina(){
   // Reserva espaco para reunioes passadas recentes: sem isso, muitas futuras pre-criadas escondiam as passadas.
   var proximasMostrar=proximas.slice(0,15);
   var passadasMostrar=passadas.slice(0,Math.max(5,20-proximasMostrar.length));
-  var listaSidebar=proximasMostrar.concat(passadasMostrar).map(function(r){
+  var _mkRcard=function(r){
     var ativa=reuniaoAtiva&&reuniaoAtiva.id===r.id;
     var p=r.data.split('-');
     var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
     var dataLabel=diasSem[d.getDay()]+', '+p[2]+' '+mesesCurtos[parseInt(p[1])-1];
     var sc=statusCores[r.status]||'#94a3b8';
+    var stLbl=(r.status||'').charAt(0).toUpperCase()+(r.status||'').slice(1);
     return '<div onclick="selecionarReuniao(\''+r.id+'\')" class="reun-card'+(ativa?' ativa':'')+'">'
       +'<div class="reun-card-stripe" style="background:'+sc+';"></div>'
-      +'<div class="reun-card-titulo">'+trunc(r.titulo||('Reuniao de '+dataLabel),34)+'</div>'
+      +'<div class="reun-card-titulo">'+trunc(r.titulo||('Reunião de '+dataLabel),34)+'</div>'
       +'<div class="reun-card-meta">'
       +'<span class="reun-card-data">'+dataLabel+' '+r.hora.slice(0,5)+'</span>'
-      +'<span class="reun-status-chip" style="background:'+sc+'22;color:'+sc+';">'+r.status+'</span>'
+      +'<span class="reun-status-chip flat" style="background:'+sc+'22;color:'+sc+';">'+stLbl+'</span>'
       +'</div>'
       +'</div>';
-  }).join("");
+  };
+  var listaSidebar='';
+  if(proximasMostrar.length)listaSidebar+='<div class="reun-grp-lbl">Próximas</div>'+proximasMostrar.map(_mkRcard).join("");
+  if(passadasMostrar.length)listaSidebar+='<div class="reun-grp-lbl">Anteriores</div>'+passadasMostrar.map(_mkRcard).join("");
   var mainContent=reuniaoAtiva?_buildReuniaoDetalhe(reuniaoAtiva):_buildReuniaoPlaceholder();
   app.innerHTML=headerHTML("reunioes")
     +'<div class="reun-wrap">'
     +'<div id="reun-backdrop" class="reun-backdrop" onclick="toggleReunSidebar()"></div>'
     +'<div class="reun-sidebar" id="reun-sidebar">'
     +'<div class="reun-sidebar-hdr">'
-    +'<span class="reun-sidebar-title">Reunioes</span>'
+    +'<span class="reun-sidebar-title">Reuniões</span>'
     +'<div style="display:flex;align-items:center;gap:5px;">'
-    +(ce?'<button onclick="openNovaReuniao()" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("plus")+' Nova</button>':"")
+    +(ce?'<button onclick="openNovaReuniao()" class="rbtn rbtn-accent rbtn-sm">'+ic("plus")+' Nova</button>':"")
     +'<button class="reun-mob-btn" onclick="toggleReunSidebar()" style="padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text3);cursor:pointer;font-size:16px;line-height:1;">&times;</button>'
     +'</div>'
     +'</div>'
@@ -70,7 +74,7 @@ function _renderReunioesPagina(){
     +'</div>'
     +'<div class="reun-main">'
     +'<div class="reun-mob-topbar">'
-    +'<button onclick="toggleReunSidebar()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--bt-navy);cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;">&#9776; Reunioes</button>'
+    +'<button onclick="toggleReunSidebar()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--bt-navy);cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;">&#9776; Reuniões</button>'
     +(reuniaoAtiva?'<span style="font-size:12px;color:var(--text3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">'+trunc(reuniaoAtiva.titulo||_fmtData(reuniaoAtiva.data),28)+'</span>':"")
     +'</div>'
     +mainContent
@@ -167,6 +171,7 @@ function _buildReuniaoDetalhe(r){
   var html='<div class="reun-detalhe">'
     +'<div class="reun-detalhe-hdr">'
     +'<div style="min-width:0;">'
+    +'<div class="reun-eyebrow">Reunião de equipe</div>'
     +'<div class="reun-detalhe-titulo">'+(r.titulo||('Reuniao de '+dataFmt))+'</div>'
     +'<div class="reun-detalhe-sub">'
     +'<span style="font-size:12px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;">'+ic("cal")+' '+dataLong+'</span>'
@@ -175,28 +180,28 @@ function _buildReuniaoDetalhe(r){
     +'</div>'
     +'</div>'
     +(ce?'<div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px;">'
-      +'<button onclick="openEditReuniao(\''+r.id+'\')" class="btn-outlined" style="font-size:11px;padding:4px 10px;display:inline-flex;align-items:center;gap:3px;">'+ic("edit")+' Editar</button>'
-      +'<button onclick="gerarAta(\''+r.id+'\')" class="btn-outlined" style="font-size:11px;padding:4px 10px;display:inline-flex;align-items:center;gap:3px;">Gerar ata</button>'
+      +'<button onclick="openEditReuniao(\''+r.id+'\')" class="rbtn rbtn-sm">'+ic("edit")+' Editar</button>'
+      +'<button onclick="gerarAta(\''+r.id+'\')" class="rbtn rbtn-primary rbtn-sm">Gerar ata</button>'
       +'</div>':"")
     +'</div>';
-  if(r.observacoes){html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--bt-navy);border-radius:0 8px 8px 0;padding:10px 14px;margin-top:12px;font-size:13px;color:var(--text2);line-height:1.6;">'+r.observacoes+'</div>';}
+  if(r.observacoes){html+='<div class="reun-obs"><span class="reun-obs-lbl">Observações</span>'+r.observacoes+'</div>';}
   html+='<hr class="reun-detalhe-sep"/>';
   html+='<div class="reun-section">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-    +'<div class="reun-section-label">Participantes</div>'
-    +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("users")+' Gerenciar</button>':"")
+    +'<div class="reun-sechdr">'
+    +'<div class="reun-sectitles"><span class="reun-sec-eye">Quem está presente</span><span class="reun-sec-ttl">Participantes</span></div>'
+    +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" class="rbtn rbtn-sm rbtn-ghost">'+ic("users")+' Gerenciar</button>':"")
     +'</div>'
     +'<div id="reuniao-part-area" style="min-height:24px;">Carregando...</div>'
     +'</div>';
   html+='<div class="reun-section">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-    +'<div class="reun-section-label">Pautas</div>'
-    +(ce?'<button onclick="openGerenciarPautas(\''+r.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Gerenciar</button>':"")
+    +'<div class="reun-sechdr">'
+    +'<div class="reun-sectitles"><span class="reun-sec-eye">O que será discutido</span><span class="reun-sec-ttl">Pautas</span></div>'
+    +(ce?'<button onclick="openGerenciarPautas(\''+r.id+'\')" class="rbtn rbtn-sm rbtn-ghost">'+ic("plus")+' Gerenciar</button>':"")
     +'</div>'
     +'<div id="reun-pautas-area">Carregando...</div>'
     +'</div>';
   html+='<div class="reun-section">'
-    +'<div class="reun-section-label" style="margin-bottom:10px;">Comentários</div>'
+    +'<div class="reun-sechdr"><div class="reun-sectitles"><span class="reun-sec-eye">Discussão geral</span><span class="reun-sec-ttl">Comentários</span></div></div>'
     +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
@@ -205,14 +210,14 @@ function _buildReuniaoDetalhe(r){
 }
 
 async function _loadReuniaoPautas(reuniaoId){
-  var el=document.getElementById("reuniao-pautas-area");if(!el)return;
+  var el=document.getElementById("reun-pautas-area");if(!el)return;
   var ce=perfil==="mestre"||perfil==="advogado";
   var hoje=new Date().toISOString().slice(0,10);
   var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
   var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
   try{
     var rps=await dbFetchReuniaoPautas(reuniaoId);
-    var addBtn=(ce&&!ehPassado)?'<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" class="btn-outlined" style="margin-bottom:14px;">'+ic("plus")+' Adicionar pauta</button>':"";
+    var addBtn=(ce&&!ehPassado)?'<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" class="rbtn rbtn-accent" style="margin-bottom:14px;">'+ic("plus")+' Adicionar pauta</button>':"";
     if(!rps.length){
       el.innerHTML=addBtn
         +'<div class="reun-empty" style="padding:28px 20px;">'
@@ -221,34 +226,26 @@ async function _loadReuniaoPautas(reuniaoId){
         +'</div>';
       return;
     }
-    var html='<div style="display:flex;flex-direction:column;gap:10px;">';
+    var tipoCor={'seminario':'#7c3aed','projeto':'#2563eb','atualizacao_demandas':'#d97706','livre':'#64748b','avisos_gerais':'#16a34a'};
+    var html='';
     rps.forEach(function(rp){
       var pauta=pautasDB.find(function(p){return p.id===rp.pauta_id;})||{titulo:"Pauta",tipo:"livre"};
       var snap=rp.snapshot_json||{};
-      var tipoCor={'seminario':'#8b5cf6','projeto':'#3b82f6','atualizacao_demandas':'#f59e0b','livre':'#94a3b8','avisos_gerais':'#22c55e'}[pauta.tipo]||'#94a3b8';
-      html+='<div class="pauta-card" id="pauta-card-'+rp.id+'">';
-      html+='<div class="pauta-card-hdr">';
-      html+='<div class="pauta-card-titulo">'+pauta.titulo+'</div>';
-      html+='<div style="display:flex;align-items:center;gap:6px;">';
-      html+='<span class="reun-status-chip" style="background:'+tipoCor+'22;color:'+tipoCor+';">'+_labelTipoPauta(pauta.tipo)+'</span>';
-      if(ehPassado)html+='<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#f1f5f9;color:var(--text3);">snapshot</span>';
+      var cor=tipoCor[pauta.tipo]||'#64748b';
+      html+='<div class="pauta" id="pauta-card-'+rp.id+'">';
+      html+='<div class="pauta-hdr"><div class="left"><span class="pauta-tipo-bar" style="background:'+cor+';"></span><span class="pauta-t">'+pauta.titulo+'</span></div>';
+      html+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">';
+      html+='<span class="reun-status-chip" style="background:'+cor+'1f;color:'+cor+';">'+_labelTipoPauta(pauta.tipo)+'</span>';
+      if(ehPassado)html+='<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surface);color:var(--text3);">snapshot</span>';
       html+='</div></div>';
-      html+='<div id="pb-'+rp.id+'" class="pauta-card-body">';
-      html+=_renderPautaView(pauta,snap,ce,ehPassado);
+      html+='<div id="pb-'+rp.id+'" class="pauta-body">'+_renderPautaView(pauta,snap,ce,ehPassado)+'</div>';
+      var foot='';
+      if(ce&&!ehPassado)foot+='<button onclick="_editPautaInline(\''+rp.id+'\',\''+reuniaoId+'\',\''+pauta.tipo+'\')" class="rbtn rbtn-sm">'+ic("edit")+' Editar notas</button>';
+      if(pauta.tipo==='livre'||pauta.tipo==='avisos_gerais'||pauta.tipo==='atualizacao_demandas')foot+='<button onclick="openHistoricoPauta(\''+rp.pauta_id+'\',\''+reuniaoId+'\')" class="rbtn rbtn-sm">Histórico</button>';
+      if(ce&&!ehPassado)foot+='<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" class="rbtn rbtn-sm rbtn-danger" style="margin-left:auto;">Remover</button>';
+      if(foot)html+='<div class="pauta-foot">'+foot+'</div>';
       html+='</div>';
-      html+='<div class="pauta-card-footer">';
-      if(ce&&!ehPassado){
-        html+='<button onclick="_editPautaInline(\''+rp.id+'\',\''+reuniaoId+'\',\''+pauta.tipo+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("edit")+' Editar notas</button>';
-      }
-      if(pauta.tipo==='livre'||pauta.tipo==='avisos_gerais'||pauta.tipo==='atualizacao_demandas'){
-        html+='<button onclick="openHistoricoPauta(\''+rp.pauta_id+'\',\''+reuniaoId+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Historico</button>';
-      }
-      if(ce&&!ehPassado){
-        html+='<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;margin-left:auto;">Remover</button>';
-      }
-      html+='</div></div>';
     });
-    html+='</div>';
     el.innerHTML=addBtn+html;
   }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar pautas.</div>';}
 }
@@ -263,35 +260,29 @@ function _renderPautaView(pauta,snap,ce,ehPassado){
     var rSem=snap.responsavel_nome||'';
     var oSem=snap.observacoes||'';
     if(!tSem&&!rSem&&!oSem){
-      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem registros para este seminario.</div>';
+      html+='<div class="pauta-empty">Sem registros para este seminario.</div>';
     } else {
-      if(tSem)html+='<div style="margin-bottom:6px;"><span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;">Titulo:</span> <span style="font-size:13px;color:var(--bt-navy);font-weight:600;">'+tSem+'</span></div>';
-      if(rSem)html+='<div style="margin-bottom:6px;"><span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;">Responsavel:</span> <span style="font-size:13px;color:var(--text2);">'+rSem+'</span></div>';
-      if(oSem)html+='<div class="pauta-notas" style="margin-top:6px;">'+oSem+'</div>';
+      if(tSem)html+='<div class="pauta-kv"><b>Tema</b><span style="color:var(--bt-navy);font-weight:600;">'+tSem+'</span></div>';
+      if(rSem)html+='<div class="pauta-kv"><b>Responsavel</b><span style="color:var(--text2);">'+rSem+'</span></div>';
+      if(oSem)html+='<div class="notas" style="margin-top:8px;">'+oSem+'</div>';
     }
   } else if(tipo==='atualizacao_demandas'){
     var adNotas=snap.notas||'';
     var adDemandas=snap.demandas||[];
     if(!adNotas&&!adDemandas.length){
-      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem atualizacoes registradas.</div>';
+      html+='<div class="pauta-empty">Sem atualizacoes registradas.</div>';
     } else {
-      if(adDemandas.length){
-        html+='<div style="margin-bottom:8px;">';
-        adDemandas.forEach(function(d){
-          var card=(cards||[]).find(function(c){return c.id===d.card_id;})||{};
-          var titulo=card.titulo||d.titulo||d.card_id||"Demanda";
-          html+='<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);">';
-          html+='<span style="font-size:12px;font-weight:600;color:var(--bt-navy);flex:1;">'+trunc(titulo,46)+'</span>';
-          if(d.obs)html+='<span style="font-size:11px;color:var(--text3);flex-shrink:0;">'+d.obs+'</span>';
-          html+='</div>';
-        });
-        html+='</div>';
-      }
-      if(adNotas)html+='<div class="pauta-notas">'+adNotas+'</div>';
+      adDemandas.forEach(function(d){
+        var card=(cards||[]).find(function(c){return c.id===d.card_id;})||{};
+        var titulo=card.titulo||d.titulo||d.card_id||"Demanda";
+        var col=(typeof COLS!=='undefined'&&COLS?COLS.find(function(c){return c.id===card.status;}):null)||{dot:'#94a3b8'};
+        html+='<div class="dem-row"><span class="dem-tick" style="background:'+(col.dot||'#94a3b8')+';"></span><span class="dem-t">'+trunc(titulo,52)+'</span>'+(d.obs?'<span class="dem-obs">'+d.obs+'</span>':'')+'</div>';
+      });
+      if(adNotas)html+='<div class="notas" style="margin-top:10px;">'+adNotas+'</div>';
     }
   } else {
-    if(snap.notas)html+='<div class="pauta-notas">'+snap.notas+'</div>';
-    else html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Sem notas para esta pauta nesta reuniao.</div>';
+    if(snap.notas)html+='<div class="notas">'+snap.notas+'</div>';
+    else html+='<div class="pauta-empty">Sem notas para esta pauta nesta reuniao.</div>';
   }
   return html;
 }
@@ -300,16 +291,14 @@ function _buildProjetosSection(snap,ce,ehPassado){
   var eqId=equipeAtiva?equipeAtiva.id:null;
   var projs=projetosDB.filter(function(p){return(!eqId||p.equipe_id===eqId)&&!p.arquivado;});
   var html='';
-  if(!projs.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhum projeto de equipe.</div>';}
+  if(!projs.length){html+='<div class="pauta-empty">Nenhum projeto de equipe.</div>';}
   else{
-    html+='<div style="display:flex;flex-direction:column;gap:8px;">';
     projs.forEach(function(p){
       html+='<div id="proj-item-'+p.id+'">'+_buildProjetoCardHTML(p,!!_projExpanded[p.id],_checklistCache[p.id]||null,_commentsCache[p.id]||null,ce,ehPassado)+'</div>';
     });
-    html+='</div>';
   }
-  if(ce&&!ehPassado)html+='<button onclick="openNovoProjeto()" style="margin-top:10px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Novo projeto</button>';
-  if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);"><div class="reun-section-label" style="margin-bottom:4px;">Notas da reuniao</div><div class="pauta-notas">'+snap.notas+'</div></div>';
+  if(ce&&!ehPassado)html+='<button onclick="openNovoProjeto()" class="rbtn rbtn-sm" style="margin-top:6px;">'+ic("plus")+' Novo projeto</button>';
+  if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);"><div class="cl-lbl">Notas da reuniao</div><div class="notas">'+snap.notas+'</div></div>';
   return html;
 }
 function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
@@ -321,70 +310,62 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   var respNome=(p.usuarios&&p.usuarios.nome)||resp;
   var isPontual=p.tipo==='pontual';
   var ehP=!!ehPassado;
-  var html='<div class="proj-card"><div class="proj-card-bar" style="background:'+cor+';"></div><div class="proj-card-content">';
-  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">';
-  html+='<div class="proj-card-titulo">'+p.titulo+'</div>';
-  html+='<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">';
-  html+='<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';">'+lbl+'</span>';
-  html+='<button onclick="_toggleProjeto(\''+p.id+'\','+ehP+')" title="'+(expanded?'Fechar':'Expandir')+'" style="font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;line-height:1.5;">'+(expanded?'&#9650;':'&#9660;')+'</button>';
+  var html='<div class="proj"><div class="proj-top"><div class="proj-bar" style="background:'+cor+';"></div><div class="proj-main">';
+  html+='<div class="proj-row1"><span class="proj-t">'+p.titulo+'</span><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">';
+  html+='<span class="reun-status-chip" style="background:'+cor+'1f;color:'+cor+';">'+lbl+'</span>';
+  html+='<button onclick="_toggleProjeto(\''+p.id+'\','+ehP+')" class="rbtn rbtn-sm" style="padding:3px 7px;" title="'+(expanded?'Fechar':'Expandir')+'">'+(expanded?'&#9650;':'&#9660;')+'</button>';
   html+='</div></div>';
-  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:6px;">';
-  if(resp)html+='<div class="av av-sm" style="background:'+_avCor((p.usuarios&&p.usuarios.id)||respNome)+';flex-shrink:0;" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</div>';
-  if(resp)html+='<span>'+resp+'</span>';
-  html+='</div>';
-  if(p.descricao)html+='<div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;">'+p.descricao+'</div>';
+  if(resp)html+='<div class="proj-resp"><span class="av av-sm" style="background:'+_avCor((p.usuarios&&p.usuarios.id)||respNome)+';" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</span><span class="nm">'+resp+'</span></div>';
+  if(p.descricao)html+='<div class="proj-desc">'+p.descricao+'</div>';
   if(isPontual&&checklist&&checklist.length){
     html+=_buildChecklistBar(checklist);
-    var done=checklist.filter(function(i){return i.status==='concluida';}).length;
-    html+='<div style="font-size:10px;color:var(--text3);margin-bottom:2px;">'+done+'/'+checklist.length+' concluidos</div>';
+    var done=checklist.filter(function(i){return i.status==='concluida'||i.status==='concluido';}).length;
+    html+='<div class="prog-info">'+done+' de '+checklist.length+' itens concluidos</div>';
   }
   if(expanded){
     if(checklist!==null)html+=_buildChecklistUI(p.id,checklist||[],ce,ehP);
-    else html+='<div style="font-size:12px;color:var(--text3);margin-top:6px;font-style:italic;">Carregando...</div>';
+    else html+='<div class="pauta-empty" style="margin-top:10px;">Carregando...</div>';
     html+=_buildInlineComments(p.id,comments||[],ce,ehP,!!(_projCommentsExpanded&&_projCommentsExpanded[p.id]));
   }
-  html+='<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">';
   if(ce&&!ehP){
-    html+='<button onclick="_editProjetoInline(\''+p.id+'\','+ehP+')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:2px;">'+ic("edit")+' Editar</button>';
-    html+='<button onclick="arquivarProjeto(\''+p.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;">Arquivar</button>';
+    html+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">';
+    html+='<button onclick="_editProjetoInline(\''+p.id+'\','+ehP+')" class="rbtn rbtn-sm">'+ic("edit")+' Editar</button>';
+    html+='<button onclick="arquivarProjeto(\''+p.id+'\')" class="rbtn rbtn-sm">Arquivar</button>';
+    html+='</div>';
   }
-  html+='</div>';
-  html+='</div></div>';
+  html+='</div></div></div>';
   return html;
 }
 function _buildChecklistBar(checklist){
   if(!checklist||!checklist.length)return '';
-  var corItem={'nao_iniciada':'#e2e8f0','pendente':'#e2e8f0','em_andamento':'#3b82f6','bloqueada':'#ef4444','concluida':'#22c55e','concluido':'#22c55e'};
-  return '<div style="display:flex;gap:2px;margin-top:8px;margin-bottom:2px;">'+checklist.map(function(it){
-    return '<div style="flex:1;height:6px;background:'+(corItem[it.status]||'#e2e8f0')+';border-radius:2px;"></div>';
+  var corItem={'nao_iniciada':'#e8edf2','pendente':'#e8edf2','em_andamento':'#2563eb','bloqueada':'#dc2626','concluida':'#16a34a','concluido':'#16a34a'};
+  return '<div class="prog">'+checklist.map(function(it){
+    return '<div class="prog-seg" style="background:'+(corItem[it.status]||'#e8edf2')+';"></div>';
   }).join("")+'</div>';
 }
 function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
   var corStatus={'nao_iniciada':'#94a3b8','pendente':'#94a3b8','em_andamento':'#3b82f6','bloqueada':'#ef4444','concluida':'#22c55e','concluido':'#22c55e'};
-  var lblStatus={'nao_iniciada':'Nao iniciada','pendente':'Nao iniciada','em_andamento':'Em andamento','bloqueada':'Bloqueada','concluida':'Concluida','concluido':'Concluida'};
-  var html='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
-  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Checklist</div>';
-  if(!checklist.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhum item.</div>';}
+  var lblStatus={'nao_iniciada':'Nao iniciada','pendente':'Nao iniciada','em_andamento':'Em andamento','bloqueada':'Bloqueada','concluida':'Concluida','concluido':'Concluída'};
+  var html='<div class="cl"><div class="cl-lbl">Checklist</div>';
+  if(!checklist.length){html+='<div class="pauta-empty">Nenhum item.</div>';}
   else{
     checklist.forEach(function(it){
       var cor=corStatus[it.status]||'#94a3b8';
-      var lbl=lblStatus[it.status]||it.status;
       var respIt=(it.usuarios&&(it.usuarios.sigla||it.usuarios.nome))||"";
-      html+='<div id="cl-item-'+it.id+'" style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);">';
-      html+='<div style="width:8px;height:8px;border-radius:50%;background:'+cor+';flex-shrink:0;"></div>';
-      html+='<span style="flex:1;font-size:12px;color:var(--bt-navy);">'+it.titulo+'</span>';
-      if(respIt)html+='<span style="font-size:10px;padding:1px 5px;border-radius:4px;background:#f1f5f9;color:var(--text3);flex-shrink:0;">'+respIt+'</span>';
-      html+='<span style="font-size:10px;padding:1px 5px;border-radius:4px;background:'+cor+'22;color:'+cor+';flex-shrink:0;">'+lbl+'</span>';
+      html+='<div id="cl-item-'+it.id+'" class="cl-item">';
+      html+='<span class="cl-dot" style="background:'+cor+';"></span>';
+      html+='<span class="cl-t">'+it.titulo+'</span>';
+      if(respIt)html+='<span class="cl-resp">'+respIt+'</span>';
       if(ce&&!ehPassado){
-        html+='<button onclick="_editChecklistItemInline(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;flex-shrink:0;">'+ic("edit")+'</button>';
-        html+='<button onclick="delChecklistItem(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;flex-shrink:0;">'+ic("trash")+'</button>';
+        html+='<button onclick="_editChecklistItemInline(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" class="rbtn rbtn-sm" style="padding:2px 6px;flex-shrink:0;">'+ic("edit")+'</button>';
+        html+='<button onclick="delChecklistItem(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" class="rbtn rbtn-sm rbtn-danger" style="padding:2px 6px;flex-shrink:0;">'+ic("trash")+'</button>';
       }
       html+='</div>';
     });
   }
   if(ce&&!ehPassado){
-    html+='<div id="cl-add-'+projetoId+'" style="margin-top:6px;">';
-    html+='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar item</button>';
+    html+='<div id="cl-add-'+projetoId+'" style="margin-top:8px;">';
+    html+='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar item</button>';
     html+='</div>';
   }
   html+='</div>';
@@ -424,7 +405,7 @@ async function _showAddChecklistItem(projetoId,ehPassado){
   el.innerHTML='<div style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:flex;flex-direction:column;gap:6px;">'
     +'<input id="cli-titulo-'+projetoId+'" placeholder="Titulo do item *" style="font-size:12px;"/>'
     +'<div style="display:flex;gap:6px;">'
-    +'<select id="cli-resp-'+projetoId+'" style="flex:1;font-size:11px;"><option value="">Responsavel...</option>'+respOpts+'</select>'
+    +'<select id="cli-resp-'+projetoId+'" style="flex:1;font-size:11px;"><option value="">Responsável...</option>'+respOpts+'</select>'
     +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;"><option value="nao_iniciada">Nao iniciada</option><option value="em_andamento">Em andamento</option><option value="bloqueada">Bloqueada</option><option value="concluida">Concluida</option></select>'
     +'</div>'
     +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
@@ -461,7 +442,7 @@ async function _editChecklistItemInline(itemId,projetoId,ehPassado){
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:4px;width:100%;padding:4px 0;">'
     +'<input id="cli-edit-t-'+itemId+'" value="'+it.titulo+'" style="font-size:12px;width:100%;"/>'
     +'<div style="display:flex;gap:6px;">'
-    +'<select id="cli-edit-r-'+itemId+'" style="flex:1;font-size:11px;"><option value="">Responsavel...</option>'+respOpts+'</select>'
+    +'<select id="cli-edit-r-'+itemId+'" style="flex:1;font-size:11px;"><option value="">Responsável...</option>'+respOpts+'</select>'
     +'<select id="cli-edit-s-'+itemId+'" style="flex:1;font-size:11px;"><option value="nao_iniciada"'+((it.status==="nao_iniciada"||it.status==="pendente"||!it.status)?" selected":"")+'>Nao iniciada</option><option value="em_andamento"'+(it.status==="em_andamento"?" selected":"")+'>Em andamento</option><option value="bloqueada"'+(it.status==="bloqueada"?" selected":"")+'>Bloqueada</option><option value="concluida"'+((it.status==="concluida"||it.status==="concluido")?" selected":"")+'>Concluida</option></select>'
     +'</div>'
     +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
@@ -494,11 +475,11 @@ async function delChecklistItem(itemId,projetoId,ehPassado){
 function _buildInlineComments(projetoId,comments,ce,ehPassado,expanded){
   var toShow=expanded?[].concat(comments).reverse():([].concat(comments).reverse()).slice(0,3);
   var hasMore=comments.length>3;
-  var html='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
-  html+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Comentários</div>';
-  if(!toShow.length){html+='<div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:6px;">Nenhum comentario.</div>';}
+  var html='<div class="cmts">';
+  html+='<div class="cl-lbl">Comentários</div>';
+  if(!toShow.length){html+='<div class="pauta-empty" style="margin-bottom:6px;">Nenhum comentário.</div>';}
   else{
-    html+='<div style="max-height:240px;overflow-y:auto;padding-right:2px;">';
+    html+='<div style="max-height:260px;overflow-y:auto;">';
     toShow.forEach(function(c){
       var u=c.usuarios||{};
       var isSinal=c.tipo==='sinalizado';
@@ -506,14 +487,14 @@ function _buildInlineComments(projetoId,comments,ce,ehPassado,expanded){
       var ini=(u.sigla||u.nome||"?").slice(0,2).toUpperCase();
       var dt=new Date(c.criado_em);
       var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-      html+='<div style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);'+(isSinal?'background:#fff5f5;border-left:3px solid #ef4444;padding-left:6px;border-radius:0 4px 4px 0;':'')+';">';
-      html+='<div class="av av-sm" style="background:'+corAv+';flex-shrink:0;" title="'+(u.nome||u.sigla||"")+'">'+ini+'</div>';
-      html+='<div style="flex:1;min-width:0;">';
-      html+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">';
-      html+='<span style="font-size:11px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||u.nome||"?")+(isSinal?' <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fee2e2;color:#ef4444;">SINAL</span>':'')+'</span>';
-      html+='<span style="font-size:10px;color:var(--text3);">'+dtStr+'</span>';
+      html+='<div class="cmt'+(isSinal?' sinal':'')+'">';
+      html+='<span class="av av-sm" style="background:'+corAv+';" title="'+(u.nome||u.sigla||"")+'">'+ini+'</span>';
+      html+='<div class="cmt-body">';
+      html+='<div class="cmt-head">';
+      html+='<span class="cmt-nm">'+(u.sigla||u.nome||"?")+(isSinal?'<span class="cmt-flag">SINAL</span>':'')+'</span>';
+      html+='<span class="cmt-dt">'+dtStr+'</span>';
       html+='</div>';
-      html+='<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-top:2px;">'+c.texto+'</div>';
+      html+='<div class="cmt-tx">'+c.texto+'</div>';
       html+='</div></div>';
     });
     html+='</div>';
@@ -524,12 +505,12 @@ function _buildInlineComments(projetoId,comments,ce,ehPassado,expanded){
     }
   }
   if(ce&&!ehPassado){
-    html+='<div style="display:flex;gap:5px;margin-top:8px;align-items:flex-start;">';
     var meIni=((nomeUser||"?").slice(0,2).toUpperCase());
-    html+='<div class="av av-sm" style="background:'+_avCor(userDbId||"")+';flex-shrink:0;">'+meIni+'</div>';
-    html+='<textarea id="cmt-inline-'+projetoId+'" rows="1" placeholder="Comentar..." style="flex:1;resize:none;font-size:12px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
-    html+='<button onclick="_addProjetoComentarioInline(\''+projetoId+'\')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--bt-navy);background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
-    html+='<button onclick="sinalizarProjeto(\''+projetoId+'\')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fecaca;background:#fff5f5;color:#dc2626;cursor:pointer;font-weight:700;flex-shrink:0;">! Sinalizar</button>';
+    html+='<div class="cmt-box">';
+    html+='<span class="av av-sm" style="background:'+_avCor(userDbId||"")+';">'+meIni+'</span>';
+    html+='<input id="cmt-inline-'+projetoId+'" placeholder="Comentar..."/>';
+    html+='<button onclick="_addProjetoComentarioInline(\''+projetoId+'\')" class="rbtn rbtn-primary rbtn-sm">Enviar</button>';
+    html+='<button onclick="sinalizarProjeto(\''+projetoId+'\')" class="rbtn rbtn-sm rbtn-danger" style="font-weight:700;">! Sinalizar</button>';
     html+='</div>';
   }
   html+='</div>';
@@ -546,7 +527,7 @@ function _toggleProjetoComments(projetoId,expand){
 async function _addProjetoComentarioInline(projetoId){
   var ta=document.getElementById("cmt-inline-"+projetoId);
   var txt=(ta?ta.value||"":"").trim();
-  if(!txt){toast("Escreva um comentario",true);return;}
+  if(!txt){toast("Escreva um comentário",true);return;}
   try{
     await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:txt,tipo:"comentario"});
     _commentsCache[projetoId]=await dbFetchProjetoComentários(projetoId);
@@ -701,13 +682,14 @@ async function _loadParticipantesArea(reuniaoId){
     var parts=await dbFetchReuniaoParticipantes(reuniaoId);
     var users=parts.map(function(p){return p.usuarios;}).filter(Boolean);
     if(!users.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum participante.</span>';return;}
-    var avs=users.map(function(u){
+    var chips=users.map(function(u){
       var nome=u.nome||u.email||'?';
       var ini=u.sigla||(nome.replace(/\s+/g,' ').trim().split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase());
       var cor=_avCor(u.id||nome);
-      return '<div class="av" style="background:'+cor+';" title="'+nome+'">'+ini+'</div>';
+      var primeiro=nome.split(' ')[0];
+      return '<div class="reun-part" title="'+nome+'"><span class="av av-sm" style="background:'+cor+';">'+ini+'</span><span class="reun-part-nm">'+primeiro+'</span></div>';
     }).join("");
-    el.innerHTML='<div class="av-group" style="flex-direction:row;">'+avs+'</div>';
+    el.innerHTML='<div class="reun-parts">'+chips+'</div>';
   }catch(_){if(el)el.innerHTML='';}
 }
 async function openGerenciarParticipantes(reuniaoId){
@@ -1384,7 +1366,7 @@ async function _loadProjetoComentários(projetoId){
   var ce=perfil==="mestre"||perfil==="advogado";
   try{
     var cmts=await dbFetchProjetoComentários(projetoId);
-    if(!cmts.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum comentario ainda.</div>';return;}
+    if(!cmts.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum comentário ainda.</div>';return;}
     el.innerHTML=cmts.map(function(c){
       var u=c.usuarios||{};
       var isSinal=c.tipo==='sinalizado';
@@ -1411,7 +1393,7 @@ async function _loadProjetoComentários(projetoId){
 }
 async function addProjetoComentario(projetoId){
   var txt=(document.getElementById("proj-cmt-txt").value||"").trim();
-  if(!txt){toast("Escreva um comentario",true);return;}
+  if(!txt){toast("Escreva um comentário",true);return;}
   try{
     await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:txt,tipo:"comentario"});
     document.getElementById("proj-cmt-txt").value="";
@@ -1519,7 +1501,7 @@ async function _loadPautasSection(reuniaoId){
     var tarefas=await dbFetchTarefasReuniao(reuniaoId);
     _tarefasPautaCache[reuniaoId]=tarefas;
     if(!tarefas.length){
-      el.innerHTML='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhuma tarefa de pauta. Use o botao Gerenciar.</div>';
+      el.innerHTML='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhuma tarefa de pauta. Use o botão Gerenciar.</div>';
       return;
     }
     var cats={};var catOrder=[];
@@ -1570,7 +1552,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   var corBar={'pendente':'#E24B4A','em_andamento':'#185FA5','pausado':'#EF9F27','concluido':'#639922'};
   var corBg={'pendente':'#FCEBEB','em_andamento':'#E6F1FB','pausado':'#FAEEDA','concluido':'#EAF3DE'};
   var corTxt={'pendente':'#A32D2D','em_andamento':'#0C447C','pausado':'#854F0B','concluido':'#27500A'};
-  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
+  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluída'};
   var bar=corBar[t.status]||'#E24B4A';
   var bg=corBg[t.status]||'#FCEBEB';
   var txt=corTxt[t.status]||'#A32D2D';
@@ -1660,7 +1642,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   // ── subtarefas ──
   if(subExp){
     if(ce&&!ehPassado){
-      var respOptsQuick='<option value="">Responsavel...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
+      var respOptsQuick='<option value="">Responsável...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
       html+='<div class="rt-add-sub-inline">'
         +'<input id="tp-sub-quick-txt-'+t.id+'" placeholder="+ Adicionar subtarefa..." onkeydown="_quickSubKeydown(event,\''+t.id+'\','+!!ehPassado+')">'
         +'<select id="tp-sub-quick-resp-'+t.id+'">'+respOptsQuick+'</select>'
@@ -1828,7 +1810,7 @@ async function _showAddSubtarefaPauta(parentId,ehPassado){
   }
   var el=document.getElementById("tp-add-sub-"+parentId);if(!el)return;
   el.style.display='flex';
-  var respOptsSub='<option value="">Responsavel...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
+  var respOptsSub='<option value="">Responsável...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
   el.innerHTML='<input id="tp-sub-titulo-'+parentId+'" placeholder="Titulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;min-width:100px;"/>'
     +'<select id="tp-sub-resp-'+parentId+'" style="font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;color:var(--text2);">'+respOptsSub+'</select>'
     +'<button onclick="_salvarSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" class="btn" style="font-size:11px;padding:3px 9px;">Ok</button>'
@@ -2105,7 +2087,7 @@ async function _toggleTarefaCmts(tarefaId,ehPassado){
 }
 function _buildTarefaCmtsHTML(cmts,tarefaId,ce,ehPassado){
   var html='<div style="max-height:150px;overflow-y:auto;margin-bottom:6px;">';
-  if(!cmts.length){html+='<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0;">Nenhum comentario.</div>';}
+  if(!cmts.length){html+='<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0;">Nenhum comentário.</div>';}
   else{
     cmts.forEach(function(c){
       var u=c.usuarios||{};
@@ -2132,7 +2114,7 @@ function _buildTarefaCmtsHTML(cmts,tarefaId,ce,ehPassado){
 }
 async function _addTarefaComentario(tarefaId,ehPassado){
   var ta=document.getElementById("tcmt-new-"+tarefaId);
-  var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentario",true);return;}
+  var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentário",true);return;}
   try{
     await dbUpsertTarefaComentario({tarefa_id:tarefaId,usuario_id:userDbId,texto:txt});
     _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentários(tarefaId);
@@ -2200,7 +2182,7 @@ async function _loadReuniaoComentários(reuniaoId){
 }
 function _buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado){
   var html='<div style="max-height:300px;overflow-y:auto;padding-right:2px;">';
-  if(!cmts.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;padding:4px 0;">Nenhum comentario.</div>';}
+  if(!cmts.length){html+='<div style="font-size:12px;color:var(--text3);font-style:italic;padding:4px 0;">Nenhum comentário.</div>';}
   else{
     cmts.forEach(function(c){
       var u=c.usuarios||{};var ini=(u.sigla||u.nome||'?').slice(0,2).toUpperCase();
@@ -2235,7 +2217,7 @@ function _buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado){
 }
 async function _addReuniaoComentario(reuniaoId){
   var ta=document.getElementById("rcmt-new");
-  var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentario",true);return;}
+  var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentário",true);return;}
   try{
     await dbUpsertReuniaoComentario({reuniao_id:reuniaoId,usuario_id:userDbId,texto:txt});
     _loadReuniaoComentários(reuniaoId);toast("Comentario adicionado!");

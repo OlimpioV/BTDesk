@@ -292,3 +292,187 @@ button{font-family:inherit;cursor:pointer;}
   .tp-add-desc-ph{transition:none;}
   .skeleton-line{animation:none;}
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   REDESIGN — MODULO DE REUNIOES
+   Scopado em .reun-wrap para vencer styles.css e polish.css por
+   especificidade (0,2,0 > 0,1,0), sem alterar os outros modulos nem o
+   trabalho de polish.css.
+   ════════════════════════════════════════════════════════════════════ */
+.reun-wrap{
+  --text3:#64748b;          /* secundario com contraste WCAG AA dentro de Reunioes */
+  --text-faint:#94a3b8;     /* apenas detalhe decorativo (eyebrows) */
+  --border-soft:#eef2f6;
+  --surface2:#fafbfc;
+  --r-sm:7px;--r-md:10px;--r-lg:14px;
+}
+
+/* Cores das colunas como no mock: sidebar branca, area principal cinza
+   (e o que faz os cartoes brancos de pauta/projeto se destacarem) */
+.reun-wrap .reun-sidebar{background:#fff;}
+.reun-wrap .reun-main{background:var(--surface);}
+
+/* Sistema de botoes do modulo (CTAs com hierarquia de marca) */
+.rbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-family:var(--font-corpo);font-size:12px;font-weight:600;line-height:1;
+  padding:7px 13px;border-radius:7px;border:1.5px solid var(--border);
+  background:#fff;color:var(--text2);cursor:pointer;white-space:nowrap;
+  transition:background .16s,border-color .16s,color .16s,box-shadow .16s,filter .16s;}
+.rbtn:hover{background:var(--surface);border-color:#cdd6df;color:var(--text);}
+.rbtn svg{width:14px;height:14px;display:block;flex:0 0 auto;}
+.rbtn-sm{font-size:11px;padding:5px 10px;}
+.rbtn-primary{background:var(--bt-navy);border-color:var(--bt-navy);color:#fff;}
+.rbtn-primary:hover{background:var(--bt-navy-dark);border-color:var(--bt-navy-dark);color:#fff;}
+.rbtn-accent{background:var(--bt-grad);border:none;color:#fff;box-shadow:0 2px 8px rgba(250,81,14,.28);}
+.rbtn-accent:hover{filter:brightness(1.05);color:#fff;}
+.rbtn-ghost{border-color:transparent;background:transparent;color:var(--text3);}
+.rbtn-ghost:hover{background:var(--surface);color:var(--text);}
+.rbtn-danger{border-color:#f3c9c9;background:#fff;color:#c0392b;}
+.rbtn-danger:hover{background:#fef2f2;border-color:#e7a9a9;color:#a93226;}
+
+/* Chips de status: pilula unificada com ponto colorido (cor vem do inline) */
+.reun-wrap .reun-status-chip{display:inline-flex;align-items:center;gap:5px;
+  border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:600;line-height:1.5;letter-spacing:.01em;}
+.reun-wrap .reun-status-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+/* Cards de pauta: mais respiro e bordas suaves (vence polish .pauta-card 8px) */
+.reun-wrap .pauta-card{border-radius:var(--r-lg);border-color:var(--border);box-shadow:var(--shadow);}
+.reun-wrap .pauta-card-hdr{padding:15px 18px 11px;border-bottom:1px solid var(--border-soft);}
+.reun-wrap .pauta-card-body{padding:14px 18px;}
+.reun-wrap .pauta-card-footer{padding:10px 18px;border-top-color:var(--border-soft);background:var(--surface2);}
+.reun-wrap .pauta-notas{background:var(--surface2);border:1px solid var(--border-soft);}
+
+/* Cards de projeto e de reuniao: cantos e sombra coerentes */
+.reun-wrap .proj-card{border-radius:var(--r-md);}
+.reun-wrap .proj-card:hover{box-shadow:var(--shadow);}
+.reun-wrap .reun-card{border-radius:var(--r-md);}
+
+/* Mini calendario: hoje discreto, selecionado navy (como o mock) */
+.reun-wrap .mini-cal-day{border-radius:9px;}
+.reun-wrap .mini-cal-day.tem-reun:hover{background:rgba(37,63,79,.06);}
+.reun-wrap .mini-cal-day.hoje{background:var(--surface);color:var(--bt-navy);}
+.reun-wrap .mini-cal-day.hoje.tem-reun::after{background:var(--bt-orange);}
+.reun-wrap .mini-cal-day.sel{background:var(--bt-navy);color:#fff;box-shadow:0 3px 8px rgba(37,63,79,.3);}
+.reun-wrap .mini-cal-day.sel::after{background:#fff;}
+
+/* Rotulo de grupo na sidebar (Proximas / Anteriores) */
+.reun-wrap .reun-grp-lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.1em;padding:14px 18px 8px;}
+.reun-wrap .reun-sidebar-list > .reun-grp-lbl:first-child{padding-top:6px;}
+
+/* Chip flat (sem bolinha) usado na lista da sidebar */
+.reun-wrap .reun-status-chip.flat::before{display:none;}
+
+/* Eyebrow de secao (titulos ja em Oxanium via styles.css) */
+.reun-wrap .reun-section-label{font-size:11px;letter-spacing:.08em;color:var(--text-faint);}
+
+/* Cabecalho do detalhe: eyebrow laranja + titulo maior */
+.reun-wrap .reun-eyebrow{font-size:11px;font-weight:700;color:var(--bt-orange);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px;}
+.reun-wrap .reun-detalhe-titulo{font-size:28px;}
+
+/* Observacoes com rotulo */
+.reun-wrap .reun-obs{position:relative;margin-top:18px;padding:13px 16px;background:var(--surface);border-radius:0 var(--r-md) var(--r-md) 0;border-left:3px solid var(--bt-navy);font-size:13.5px;color:var(--text2);line-height:1.6;}
+.reun-wrap .reun-obs-lbl{display:block;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+
+/* Cabecalho de secao em dois niveis (eyebrow + titulo Oxanium) */
+.reun-wrap .reun-sechdr{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.reun-wrap .reun-sectitles{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.reun-wrap .reun-sec-eye{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.1em;}
+.reun-wrap .reun-sec-ttl{font-family:var(--font-titulo);font-size:17px;font-weight:600;color:var(--bt-navy);letter-spacing:.01em;}
+
+/* Participantes como chips com avatar + primeiro nome */
+.reun-wrap .reun-parts{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.reun-wrap .reun-part{display:inline-flex;align-items:center;gap:8px;padding:5px 13px 5px 5px;background:#fff;border:1px solid var(--border);border-radius:999px;box-shadow:var(--shadow);}
+.reun-wrap .reun-part .av{width:26px;height:26px;font-size:10px;border-width:0;box-shadow:none;}
+.reun-wrap .reun-part-nm{font-size:12.5px;font-weight:600;color:var(--text2);}
+
+/* ── PAUTAS COMO CARDS (identico ao mock) ────────────────────────── */
+.reun-wrap .pauta{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;}
+.reun-wrap .pauta-hdr{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--border-soft);}
+.reun-wrap .pauta-hdr .left{display:flex;align-items:center;gap:11px;min-width:0;}
+.reun-wrap .pauta-tipo-bar{width:4px;height:30px;border-radius:3px;flex-shrink:0;}
+.reun-wrap .pauta-t{font-family:var(--font-titulo);font-size:17px;font-weight:600;color:var(--bt-navy);}
+.reun-wrap .pauta-body{padding:18px 20px;}
+.reun-wrap .pauta-foot{padding:10px 20px;border-top:1px solid var(--border-soft);background:var(--surface2);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.reun-wrap .notas{font-size:13.5px;color:var(--text2);line-height:1.7;white-space:pre-wrap;}
+.reun-wrap .pauta-empty{font-size:12.5px;color:var(--text3);font-style:italic;}
+.reun-wrap .pauta-kv{margin-bottom:6px;font-size:13px;}
+.reun-wrap .pauta-kv b{font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-right:5px;}
+
+/* Lista de demandas atualizadas */
+.reun-wrap .dem-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border-soft);}
+.reun-wrap .dem-row:last-child{border-bottom:none;}
+.reun-wrap .dem-tick{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.reun-wrap .dem-t{flex:1;font-size:13.5px;font-weight:600;color:var(--bt-navy);min-width:0;}
+.reun-wrap .dem-obs{font-size:12px;color:var(--text3);flex-shrink:0;}
+
+/* Card de projeto interno */
+.reun-wrap .proj{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:#fff;margin-bottom:10px;transition:box-shadow .16s;}
+.reun-wrap .proj:hover{box-shadow:var(--shadow);}
+.reun-wrap .proj-top{display:flex;gap:13px;padding:14px 16px;}
+.reun-wrap .proj-bar{width:3px;border-radius:3px;flex-shrink:0;}
+.reun-wrap .proj-main{flex:1;min-width:0;}
+.reun-wrap .proj-row1{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.reun-wrap .proj-t{font-size:14px;font-weight:700;color:var(--bt-navy);}
+.reun-wrap .proj-resp{display:flex;align-items:center;gap:7px;margin-top:7px;}
+.reun-wrap .proj-resp .av{width:22px;height:22px;font-size:10px;border-width:0;box-shadow:none;}
+.reun-wrap .proj-resp .nm{font-size:12px;color:var(--text3);font-weight:500;}
+.reun-wrap .proj-desc{font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.55;}
+
+/* Barra de progresso do checklist */
+.reun-wrap .prog{display:flex;gap:3px;margin-top:12px;}
+.reun-wrap .prog-seg{flex:1;height:5px;border-radius:3px;background:#e8edf2;}
+.reun-wrap .prog-info{font-size:11px;color:var(--text3);margin-top:6px;font-weight:500;}
+
+/* Checklist */
+.reun-wrap .cl{margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);}
+.reun-wrap .cl-lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px;}
+.reun-wrap .cl-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-soft);}
+.reun-wrap .cl-item:last-of-type{border-bottom:none;}
+.reun-wrap .cl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.reun-wrap .cl-t{flex:1;font-size:13px;color:var(--text);min-width:0;}
+.reun-wrap .cl-resp{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--surface);color:var(--text3);flex-shrink:0;}
+
+/* Comentarios */
+.reun-wrap .cmts{margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);}
+.reun-wrap .cmt{display:flex;gap:10px;padding:9px 0;}
+.reun-wrap .cmt .av{width:30px;height:30px;font-size:11px;border-width:0;box-shadow:none;flex-shrink:0;}
+.reun-wrap .cmt-body{flex:1;min-width:0;}
+.reun-wrap .cmt-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.reun-wrap .cmt-nm{font-size:12.5px;font-weight:700;color:var(--bt-navy);}
+.reun-wrap .cmt-dt{font-size:11px;color:var(--text-faint);flex-shrink:0;}
+.reun-wrap .cmt-tx{font-size:13px;color:var(--text2);line-height:1.55;margin-top:2px;white-space:pre-wrap;}
+.reun-wrap .cmt.sinal{background:#fff8f6;border-left:3px solid var(--bt-orange);border-radius:0 8px 8px 0;padding-left:11px;margin-left:-11px;}
+.reun-wrap .cmt-flag{font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;background:rgba(250,81,14,.12);color:var(--bt-orange);letter-spacing:.06em;margin-left:5px;}
+.reun-wrap .cmt-box{display:flex;gap:9px;align-items:center;margin-top:12px;padding-top:13px;border-top:1px solid var(--border-soft);}
+.reun-wrap .cmt-box .av{flex-shrink:0;}
+.reun-wrap .cmt-box input,.reun-wrap .cmt-box textarea{flex:1;font-family:var(--font-corpo);font-size:13px;padding:9px 13px;border:1.5px solid var(--border);border-radius:999px;outline:none;transition:.16s;background:var(--surface2);resize:none;min-width:0;}
+.reun-wrap .cmt-box input:focus,.reun-wrap .cmt-box textarea:focus{border-color:var(--bt-orange);background:#fff;box-shadow:0 0 0 3px rgba(250,81,14,.1);}
+
+/* ── TABELA DE PAUTAS EXIBIDA COMO CARTOES (mantem toda a edicao) ─────── */
+/* Esconde o cabecalho de colunas (cartoes nao tem colunas) */
+.reun-wrap .rt-thead{display:none;}
+/* Lista vertical de cartoes, com respiro */
+.reun-wrap .rt-table{display:flex;flex-direction:column;gap:12px;padding:14px;}
+/* Cada tarefa (container proprio) vira um cartao branco */
+.reun-wrap [id^="tp-card-"]{border:1px solid var(--border);border-radius:var(--r-md);background:#fff;box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .16s;}
+.reun-wrap [id^="tp-card-"]:hover{box-shadow:var(--shadow-md);}
+/* Linha principal vira o cabecalho do cartao: titulo em cima, meta embaixo */
+.reun-wrap .rt-row{display:flex!important;flex-wrap:wrap;align-items:center;column-gap:12px;row-gap:8px;
+  min-width:0!important;border-bottom:none;padding:14px 16px 12px;border-left-width:4px!important;}
+.reun-wrap .rt-row:hover{background:transparent;}
+.reun-wrap .rt-row .rt-cell{padding:0;min-height:0;overflow:visible;}
+.reun-wrap .rt-row .rt-cell-task{flex:1 1 100%;}
+.reun-wrap .rt-row .rt-cell:nth-child(3){margin-right:auto;}  /* status: empurra datas/menu p/ direita */
+.reun-wrap .rt-row .rt-cell:nth-child(4),
+.reun-wrap .rt-row .rt-cell:nth-child(5){font-size:11px;color:var(--text3);}
+/* Adicionar subtarefa e subtarefas (checklist) dentro do cartao */
+.reun-wrap .rt-add-sub-inline{min-width:0!important;background:var(--surface2);border:none;border-top:1px solid var(--border-soft);padding:8px 16px 8px 30px;}
+.reun-wrap .rt-sub-group{background:var(--surface2);}
+.reun-wrap .rt-sub-row{display:flex!important;flex-wrap:wrap;align-items:center;column-gap:12px;row-gap:4px;
+  min-width:0!important;background:transparent;border-bottom:none;border-top:1px solid var(--border-soft);padding:8px 16px 8px 30px;}
+.reun-wrap .rt-sub-row:hover{background:rgba(37,63,79,.03);}
+.reun-wrap .rt-sub-row .rt-cell{padding:0;min-height:0;overflow:visible;}
+.reun-wrap .rt-sub-row .rt-cell-sub-task{flex:1 1 200px;}
+.reun-wrap .rt-sub-row .rt-cell:nth-child(3){margin-right:auto;}
+/* Botao Nova tarefa mais leve */
+.reun-wrap .rt-cat-add-btn{border-top:1px solid var(--border-soft);}
