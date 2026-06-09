@@ -17,7 +17,7 @@ function headerHTML(aba){
   if(perfil==="mestre")tabs+='<button class="tab '+(aba==="eq"?"active":"")+'" onclick="renderEquipes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("group")+' Equipes</button>';
   if(perfil==="mestre")tabs+='<button class="tab '+(aba==="emails"?"active":"")+'" onclick="renderEmails()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("bell")+' E-mails</button>';
   var logoSide='<div style="display:flex;align-items:center;padding:0 14px;border-right:1px solid rgba(255,255,255,.07);flex-shrink:0;background:rgba(0,0,0,.12);"><img src="logo-branco-negativo.png" style="height:68px;object-fit:contain;" onerror="this.style.display=\'none\'"/></div>';
-  var centerBlock='<div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;"><div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:.01em;">BTDesk</div><div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;">Controle o seu dia</div></div>';
+  var centerBlock='<div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;"><div style="font-family:var(--font-titulo);font-size:17px;font-weight:800;color:#fff;letter-spacing:.04em;">BTDesk</div><div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;">Controle o seu dia</div></div>';
   var eqBtnHtml="";
   if(perfil==="mestre"||perfil==="advogado"){
     var eqNome=equipeAtiva?equipeAtiva.nome:(perfil==="mestre"?"Todas":"Equipe");
@@ -38,62 +38,12 @@ function headerHTML(aba){
     +'</div></div>';
 }
 
-// ── AUTH ──
-function checkAuth(){var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email"),i=sessionStorage.getItem("bari_id");if(p){perfil=p;nomeUser=n;emailUser=e;userDbId=i;return true;}return false;}
-function logout(){sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;userDbId=null;renderLogin();}
-async function doLogin(){
-  var email=(document.getElementById("login-email").value||"").trim().toLowerCase();
-  var senha=document.getElementById("login-senha").value;
-  if(!email||!senha){renderLogin("Preencha e-mail e senha.");return;}
-  try{
-    var r=await fetch(SB+"/rest/v1/usuarios?email=eq."+encodeURIComponent(email)+"&senha=eq."+encodeURIComponent(senha)+"&ativo=eq.true&select=*",{headers:H});
-    var rows=await r.json();
-    if(!rows||!rows.length){renderLogin("E-mail ou senha incorretos.");return;}
-    var u=rows[0];perfil=u.perfil;nomeUser=u.nome;emailUser=u.email;userDbId=u.id;
-    sessionStorage.setItem("bari_perfil",u.perfil);sessionStorage.setItem("bari_nome",u.nome);sessionStorage.setItem("bari_email",u.email);sessionStorage.setItem("bari_id",u.id);
-    dbLog("Login","Acesso ao sistema");init();
-  }catch(e){renderLogin("Erro ao conectar.");}
-}
-function renderLogin(erro){
-  var app=document.getElementById("app");app.className="login-mode";
-  app.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:url(BTpapeldeparede.png) center/contain no-repeat,linear-gradient(135deg,#1a2e3a,#253f4f);position:relative;"><div style="position:fixed;inset:0;background:rgba(15,26,35,.55);backdrop-filter:blur(2px);z-index:0;"></div><div style="position:relative;z-index:1;width:min(400px,92vw);"><div style="background:rgba(255,255,255,.94);backdrop-filter:blur(20px);border-radius:20px;padding:40px 44px;box-shadow:0 20px 60px rgba(0,0,0,.3);"><div style="text-align:center;margin-bottom:30px;"><div style="font-size:26px;font-weight:700;color:#1a2e3a;">BTDesk</div><div style="font-size:12px;color:#94a3b8;margin-top:4px;letter-spacing:.06em;text-transform:uppercase;">Barcellos Tucunduva</div></div><div style="height:1px;background:linear-gradient(90deg,transparent,rgba(250,81,14,.3),transparent);margin-bottom:26px;"></div><div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com.br" onkeydown="if(event.key===\'Enter\')document.getElementById(\'login-senha\').focus()" style="padding:11px 14px;"/></div><div class="field"><label>Senha</label><input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key===\'Enter\')doLogin()" style="padding:11px 14px;"/></div>'+(erro?'<div style="font-size:13px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 13px;margin-bottom:14px;">'+erro+'</div>':"")+'<button onclick="doLogin()" style="width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;border-radius:10px;border:none;background:linear-gradient(135deg,#253f4f,#1a2e3a);color:#fff;cursor:pointer;">Entrar</button><p style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:22px;">2026 © Barcellos Tucunduva</p></div></div></div>';
-  setTimeout(function(){var el=document.getElementById("login-email");if(el)el.focus();},100);
-}
-
-// ── PERFIL ──
-function openMyProfile(){
-  var isMestre=perfil==="mestre";
-  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);">Meu perfil</div><button onclick="closeModal()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;">'+ic('close')+'</button></div><div class="field"><label>Nome</label><input id="mp-nome" value="'+nomeUser+'"/></div><div class="field"><label>E-mail</label><input id="mp-email" type="email" value="'+emailUser+'"/></div><div class="field"><label>Nova senha</label><input id="mp-senha" type="password" placeholder="Deixe vazio para manter"/></div>'+(isMestre?'<div class="field"><label>Sigla</label><input id="mp-sigla" style="max-width:120px;text-transform:uppercase;"/></div>':"")+'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveMyProfile()">Salvar</button></div></div></div>';
-  if(isMestre){fetch(SB+"/rest/v1/usuarios?id=eq."+userDbId+"&select=sigla",{headers:H}).then(function(r){return r.json();}).then(function(rows){var el=document.getElementById("mp-sigla");if(el&&rows[0])el.value=rows[0].sigla||"";});}
-}
-async function saveMyProfile(){
-  var nome=(document.getElementById("mp-nome").value||"").trim();var email=(document.getElementById("mp-email").value||"").trim().toLowerCase();var senha=document.getElementById("mp-senha").value;var siglEl=document.getElementById("mp-sigla");var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():undefined;
-  if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
-  var u={id:userDbId,nome,email,perfil,ativo:true};if(senha)u.senha=senha;if(sigla!==undefined)u.sigla=sigla;
-  try{await dbSaveUser(u);nomeUser=nome;emailUser=email;sessionStorage.setItem("bari_nome",nome);sessionStorage.setItem("bari_email",email);await loadResp();toast("Perfil atualizado!");closeModal();}catch(e){toast("Erro",true);}
-}
-
-// ── HELPERS ──
-function cliNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
-function casoDesc(num,cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return "";var ca=casosDB.find(function(c){return c.numero===num&&c.cliente_id===cl.id;});return ca?ca.descricao:"";}
-function casosDoCliente(cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return [];return casosDB.filter(function(c){return c.cliente_id===cl.id;});}
-function getFiltered(){return cards.filter(function(c){return (!filterResp||c.responsavel===filterResp)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus)&&(!filterCliente||String(c.clienteNum)===String(filterCliente))&&(!filterCaso||String(c.casoNum)===String(filterCaso));}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});}
-function coverColor(card){if(card.coverColor)return card.coverColor;var col=COLS.find(function(c){return c.id===card.status;});return col?col.cover:"#e2e8f0";}
-function tipoTagsHTML(tipos){if(!tipos||!tipos.length)return "";return tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("");}
-function ccHTML(card){if(card.clienteNum&&card.casoNum)return '<span class="cc">'+card.clienteNum+'/'+card.casoNum+'</span>';if(card.clienteNum)return '<span class="cc">'+card.clienteNum+'</span>';return "";}
-function buildAcList(q){if(!q||q.length<1)return [];var ql=q.toLowerCase();return clientesDB.filter(function(c){return String(c.numero).startsWith(ql)||(c.nome&&c.nome.toLowerCase().includes(ql));}).slice(0,8);}
-
-// ── TOOLBAR ──
-function toolbarHTML(ce){
-  var th=cards.reduce(function(s,c){return s+(parseFloat(c.horas)||0);},0);
-  var rO=responsaveis.map(function(r){return '<option value="'+r+'"'+(filterResp===r?' selected':'')+'>'+r+'</option>';}).join("");
-  var tO=TIPOS.map(function(t){return '<option value="'+t+'"'+(filterTipo===t?' selected':'')+'>'+t+'</option>';}).join("");
-  var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(filterStatus===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
-  var caList=filterCliente?casosDoCliente(parseInt(filterCliente)):[];
-  var casoField=!filterCliente?'<input placeholder="Caso" disabled value="" style="width:72px;opacity:.4;cursor:not-allowed;"/>':caList.length>0?'<select onchange="filterCaso=this.value;renderView()" style="width:84px;"><option value="">Caso</option>'+caList.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCaso)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("")+'</select>':'<input placeholder="Caso" value="'+filterCaso+'" oninput="filterCaso=this.value;renderView()" style="width:72px;" type="number" min="1"/>';
-  return '<div class="toolbar"><div style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.45);">'+ic('clock')+' <span style="font-weight:700;color:rgba(255,255,255,.8);">'+th.toFixed(1)+'h</span></div><div style="display:flex;gap:5px;align-items:center;padding:4px 0;flex-wrap:wrap;"><select onchange="filterStatus=this.value;renderView()"><option value="">Status</option>'+sO+'</select><select onchange="filterTipo=this.value;renderView()"><option value="">Tipo</option>'+tO+'</select><select onchange="filterResp=this.value;renderView()"><option value="">Resp.</option>'+rO+'</select><input id="fci" placeholder="Cliente" value="'+filterCliente+'" style="width:72px;" type="number" min="1" max="9999"/>'+casoField+'<div style="display:flex;gap:3px;"><button class="view-btn '+(viewMode==="kanban"?"active":"")+'" onclick="viewMode=\'kanban\';renderView()">'+ic("kanban")+'</button><button class="view-btn '+(viewMode==="lista"?"active":"")+'" onclick="viewMode=\'lista\';renderView()">'+ic("list")+'</button></div>'+(ce?'<button class="btn btn-accent" onclick="openNew()" style="display:flex;align-items:center;gap:5px;font-size:12px;padding:5px 13px;border-radius:8px;">'+ic('plus')+' Nova demanda</button>':"")+'</div></div>';
-}
-function bindFCI(){var el=document.getElementById("fci");if(!el)return;el.addEventListener("change",function(){filterCliente=this.value;filterCaso="";renderView();});el.addEventListener("keydown",function(e){if(e.key==="Enter"){filterCliente=this.value;filterCaso="";renderView();}});}
+// ── AUTH / PERFIL / HELPERS / TOOLBAR ──
+// As definicoes destas funcoes (checkAuth, logout, doLogin, renderLogin,
+// openMyProfile, saveMyProfile, cliNome, casoDesc, casosDoCliente, getFiltered,
+// coverColor, tipoTagsHTML, ccHTML, buildAcList, toolbarHTML, bindFCI) ficam em
+// app.js (fonte unica). Foram removidas daqui na Etapa 1 da consolidacao por
+// estarem duplicadas e mortas (app.js carrega por ultimo e prevalecia).
 
 // ── EQUIPE SWITCHER ──
 function toggleEquipeDropdown(){

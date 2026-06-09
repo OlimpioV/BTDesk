@@ -1,2 +1,6 @@
 # Config local do Claude Code (caminhos e permissoes da maquina do usuario)
 .claude/settings.local.json
+.claude/launch.json
+
+# Artefato de proposta de design (mock local, nao publicar no site)
+mock-reunioes.html
