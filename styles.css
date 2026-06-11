@@ -351,7 +351,7 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .mini-cal-day{border-radius:9px;}
 .reun-wrap .mini-cal-day.tem-reun:hover{background:rgba(37,63,79,.06);}
 .reun-wrap .mini-cal-day.hoje{background:var(--surface);color:var(--bt-navy);}
-.reun-wrap .mini-cal-day.hoje.tem-reun::after{background:var(--bt-orange);}
+.reun-wrap .mini-cal-day.hoje.tem-reun::after{background:var(--dot,var(--bt-orange));}
 .reun-wrap .mini-cal-day.sel{background:var(--bt-navy);color:#fff;box-shadow:0 3px 8px rgba(37,63,79,.3);}
 .reun-wrap .mini-cal-day.sel::after{background:#fff;}
 
@@ -361,6 +361,19 @@ button{font-family:inherit;cursor:pointer;}
 
 /* Chip flat (sem bolinha) usado na lista da sidebar */
 .reun-wrap .reun-status-chip.flat::before{display:none;}
+
+/* Grupo "Anteriores" recolhivel (seta gira ao abrir) */
+.reun-wrap .reun-grp-toggle{cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;transition:color .15s;}
+.reun-wrap .reun-grp-toggle:hover{color:var(--text3);}
+.reun-wrap .reun-grp-toggle svg{transition:transform .15s;transform:rotate(-90deg);}
+.reun-wrap .reun-grp-toggle.aberto svg{transform:rotate(0deg);}
+
+/* Eyebrow do detalhe com icone do tipo de reuniao */
+.reun-wrap .reun-eyebrow{display:inline-flex;align-items:center;gap:5px;}
+.reun-wrap .reun-eyebrow svg{width:13px;height:13px;}
+
+/* Bolinha do dia no calendario colore pelo tipo da reuniao */
+.reun-wrap .mini-cal-day.tem-reun::after{background:var(--dot,var(--bt-orange));}
 
 /* Eyebrow de secao (titulos ja em Oxanium via styles.css) */
 .reun-wrap .reun-section-label{font-size:11px;letter-spacing:.08em;color:var(--text-faint);}

@@ -37,6 +37,32 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - **`getFiltered` / `checkAuth`:** a versão ativa (app.js) é a mais nova (com filtro
   de equipes); as antigas dos módulos não tinham.
 
+## Épico — Construtor modular de Reuniões
+
+Visão (decidida em grill-me): o mestre monta a estrutura das reuniões. Decisões:
+- **Modelos de reunião** (templates) reutilizáveis, com opção de **duplicar** outro.
+- Campos modulares em **dois níveis**: cabeçalho da reunião + colunas das tarefas.
+- Tipos de campo **amplos**: texto (curto/longo), data, status (seleção com cores),
+  responsável, comentários, número, checkbox, anexo/link, seleção múltipla.
+- Propagação **ao vivo** (editar o modelo afeta as reuniões), MAS com **auditoria
+  com diff** do que mudou em cada reunião, enriquecendo a aba Histórico (`logs`).
+- Distinção de **tipo** de reunião (evento × cobrança de metas × outros) com
+  destaque visual; separação **Próximas/Anteriores** reforçada.
+
+Faseamento acordado (Fase 0 primeiro, resto planejado):
+
+- [ ] **Fase 0 — visual (em andamento):** coluna `tipo` em `reunioes`; tipos com
+  cor + ícone no calendário, sidebar e detalhe; Próximas/Anteriores reforçadas.
+- [ ] **Fase 1 — modelos básicos:** tabela `reuniao_modelos` (nome, cor, ícone);
+  criar/editar/**duplicar**; `reunioes.modelo_id`. Sem campos custom ainda.
+- [ ] **Fase 2 — campos no cabeçalho:** construtor dos campos da reunião (tipos
+  amplos), valores em `jsonb` na reunião; exibição/edição no detalhe.
+- [ ] **Fase 3 — colunas de tarefa customizáveis:** colunas hoje fixas
+  (responsável/status/datas) passam a ser definidas pelo modelo. Reescreve a
+  tabela de tarefas das pautas.
+- [ ] **Fase 4 — auditoria com diff:** histórico detalhado (de→para) por reunião,
+  exibido na aba Histórico, mais robusto que o `logs` atual.
+
 ## Layout / UI
 
 - [ ] **Botões que saem do lugar ou se sobrepõem ao serem alterados** (em investigação)
