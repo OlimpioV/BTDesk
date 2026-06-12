@@ -62,8 +62,15 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
   modelos" (mestre) com criar/editar/duplicar/excluir; form de reunião com
   seletor de modelo; snapshot copiado na criação/troca de modelo; render
   prioriza snapshot (editar/excluir modelo não afeta reuniões existentes).
-- [ ] **Fase 2 — campos no cabeçalho:** construtor dos campos da reunião (tipos
-  amplos), valores em `jsonb` na reunião; exibição/edição no detalhe.
+- [x] **Fase 2 — campos no cabeçalho** (concluída): construtor de campos no
+  formulário do modelo (9 tipos: texto, texto longo, data, status com cores,
+  responsável, número, checkbox, link, seleção múltipla; opções editáveis,
+  reordenar, remover). Definições em `reuniao_modelos.campos jsonb`; copiadas
+  para `reunioes.modelo_snapshot.campos` na criação/troca (snapshot); valores
+  em `reunioes.campos_valores jsonb` com update parcial. Seção "Informações"
+  no detalhe com edição inline por tipo. Obs.: o tipo "comentários" do
+  levantamento original foi coberto pela seção de comentários que a reunião
+  já possui (não virou tipo de campo).
 - [ ] **Fase 3 — colunas de tarefa customizáveis:** colunas hoje fixas
   (responsável/status/datas) passam a ser definidas pelo modelo. Reescreve a
   tabela de tarefas das pautas.

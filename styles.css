@@ -488,3 +488,18 @@ button{font-family:inherit;cursor:pointer;}
 .mf-ic-btn{background:var(--surface);border:2px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;color:var(--text2);line-height:1;transition:border-color .15s,background .15s;}
 .mf-ic-btn:hover{border-color:var(--text3);background:#fff;}
 .mf-ic-btn.selecionado{border-color:var(--bt-navy);background:#fff;color:var(--bt-navy);}
+/* ── CONSTRUTOR DE CAMPOS DO MODELO ── */
+.mfc-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.mfc-opcoes{padding:8px 10px;background:#f8fafc;border:1px dashed var(--border);border-radius:6px;margin-top:4px;display:flex;flex-direction:column;gap:6px;}
+.mfc-opcao-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.mfc-swatches{display:flex;gap:3px;flex-wrap:wrap;}
+.mfc-mini-swatch{display:inline-block;width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;transition:transform .1s;}
+.mfc-mini-swatch:hover{transform:scale(1.2);}
+.mfc-mini-swatch.sel{border-color:var(--bt-navy);}
+/* ── GRID DE CAMPOS DA REUNIAO ── */
+.rcampos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:4px;}
+.rcampo{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);padding:10px 13px;}
+.rcampo-lbl{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.rcampo-val{font-size:13px;color:var(--text);min-height:20px;}
+.rcampo.editavel:hover{border-color:#cdd6df;box-shadow:var(--shadow);}
+.rcampo.editavel .rcampo-val{cursor:pointer;}

@@ -210,6 +210,16 @@ function _buildReuniaoDetalhe(r){
     +'</div>';
   if(r.observacoes){html+='<div class="reun-obs"><span class="reun-obs-lbl">Observações</span>'+r.observacoes+'</div>';}
   html+='<hr class="reun-detalhe-sep"/>';
+  var hoje=new Date().toISOString().slice(0,10);
+  var ehPassado=!!(r.data&&r.data<hoje);
+  if(r.modelo_snapshot&&r.modelo_snapshot.campos&&r.modelo_snapshot.campos.length){
+    html+='<div class="reun-section">'
+      +'<div class="reun-sechdr">'
+      +'<div class="reun-sectitles"><span class="reun-sec-eye">Dados da reunião</span><span class="reun-sec-ttl">Informações</span></div>'
+      +'</div>'
+      +'<div id="reun-campos-area">'+_buildCamposGrid(r,ce,ehPassado)+'</div>'
+      +'</div>';
+  }
   html+='<div class="reun-section">'
     +'<div class="reun-sechdr">'
     +'<div class="reun-sectitles"><span class="reun-sec-eye">Quem está presente</span><span class="reun-sec-ttl">Participantes</span></div>'
@@ -231,6 +241,238 @@ function _buildReuniaoDetalhe(r){
   html+='</div>';
   setTimeout(function(){_loadParticipantesArea(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
   return html;
+}
+
+// ── CAMPOS CUSTOMIZADOS DA REUNIAO ──
+function _buildCamposGrid(r,ce,ehPassado){
+  var campos=(r.modelo_snapshot&&r.modelo_snapshot.campos)||[];
+  if(!campos.length)return '';
+  var editavel=ce&&!ehPassado;
+  return '<div class="rcampos">'+campos.map(function(c){return _renderCampoCelula(c,r,editavel,false);}).join("")+'</div>';
+}
+
+function _renderCampoCelula(campo,r,editavel,modoEdicao){
+  var vals=r.campos_valores||{};
+  var val=vals[campo.id];
+  var html='<div class="rcampo'+(editavel?' editavel':'')+'">';
+  html+='<div class="rcampo-lbl">'+campo.label+'</div>';
+  html+='<div class="rcampo-val">';
+  if(modoEdicao){
+    html+=_renderCampoEditar(campo,r,val);
+  } else {
+    html+=_renderCampoVisualizacao(campo,val,editavel);
+  }
+  html+='</div></div>';
+  return html;
+}
+
+function _renderCampoVisualizacao(campo,val,editavel){
+  var tipo=campo.tipo;
+  var onclick=editavel?' onclick="_campoAbrir(\''+campo.id+'\')"':'';
+  if(tipo==='texto'||tipo==='numero'){
+    return '<span style="'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>'+(val!==undefined&&val!==null&&val!==''?String(val):'<span style="color:var(--text3);">—</span>')+'</span>';
+  }
+  if(tipo==='texto_longo'){
+    return '<div style="white-space:pre-wrap;'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>'+(val?val:'<span style="color:var(--text3);">—</span>')+'</div>';
+  }
+  if(tipo==='data'){
+    var dfmt=val?_fmtData(val):'<span style="color:var(--text3);">—</span>';
+    return '<span style="'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>'+dfmt+'</span>';
+  }
+  if(tipo==='status'){
+    var opcoes=campo.opcoes||[];
+    var op=val?opcoes.find(function(o){return o.id===val;}):null;
+    if(op){
+      var cor=op.cor||'#94a3b8';
+      return '<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>'+op.label+'</span>';
+    }
+    return '<span class="reun-status-chip" style="background:#e8edf2;color:#94a3b8;'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>—</span>';
+  }
+  if(tipo==='responsavel'){
+    if(val){
+      var u=(usuariosFullDB||[]).find(function(x){return x.sigla===val;})||{};
+      var cor=_avCor(u.id||val);
+      return '<div style="display:inline-flex;align-items:center;gap:5px;'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>'
+        +'<span class="av av-sm" style="background:'+cor+';">'+val.slice(0,2).toUpperCase()+'</span>'
+        +'<span>'+val+'</span>'
+        +'</div>';
+    }
+    return '<span style="color:var(--text3);'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>—</span>';
+  }
+  if(tipo==='checkbox'){
+    var chk=!!val;
+    if(editavel){
+      return '<input type="checkbox"'+(chk?' checked':'')+' onchange="_campoSalvarCheckbox(\''+campo.id+'\',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--bt-navy);"/>';
+    }
+    return '<span style="font-size:16px;color:'+(chk?'#22c55e':'#94a3b8')+';">'+(chk?'✓':'—')+'</span>';
+  }
+  if(tipo==='link'){
+    if(val){
+      return '<div style="display:flex;align-items:center;gap:6px;">'
+        +'<a href="'+val.replace(/"/g,'&quot;')+'" target="_blank" style="color:var(--bt-navy);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;" title="'+val.replace(/"/g,'&quot;')+'">'+trunc(val,30)+'</a>'
+        +(editavel?'<button onclick="_campoAbrir(\''+campo.id+'\')" class="rbtn rbtn-sm" style="padding:2px 5px;flex-shrink:0;">'+ic("edit")+'</button>':'')
+        +'</div>';
+    }
+    return '<span style="color:var(--text3);'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>—</span>';
+  }
+  if(tipo==='multi'){
+    var opcoes=campo.opcoes||[];
+    var selecionados=Array.isArray(val)?val:[];
+    if(selecionados.length){
+      var chips=opcoes.filter(function(o){return selecionados.indexOf(o.id)>=0;}).map(function(o){
+        return '<span class="reun-status-chip" style="background:#e8edf2;color:var(--text2);margin:1px 2px;font-size:11px;">'+o.label+'</span>';
+      }).join("");
+      return '<div style="display:flex;flex-wrap:wrap;'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>'+chips+'</div>';
+    }
+    return '<span style="color:var(--text3);'+(editavel?'cursor:pointer;':'')+'"'+onclick+'>—</span>';
+  }
+  return '<span style="color:var(--text3);">—</span>';
+}
+
+function _renderCampoEditar(campo,r,val){
+  var tipo=campo.tipo;
+  var vid=campo.id.replace(/[^a-zA-Z0-9]/g,'_');
+  if(tipo==='texto'){
+    return '<input id="rcf-'+vid+'" value="'+(val!==undefined&&val!==null?String(val).replace(/"/g,'&quot;'):'')+'" style="width:100%;font-size:13px;" onkeydown="_campokd(event,\''+campo.id+'\')" onblur="_campoSalvarBlur(\''+campo.id+'\')" autofocus/>';
+  }
+  if(tipo==='numero'){
+    return '<input id="rcf-'+vid+'" type="number" value="'+(val!==undefined&&val!==null?val:'')+'" style="width:100%;font-size:13px;" onkeydown="_campokd(event,\''+campo.id+'\')" onblur="_campoSalvarBlur(\''+campo.id+'\')" autofocus/>';
+  }
+  if(tipo==='texto_longo'){
+    return '<textarea id="rcf-'+vid+'" rows="3" style="width:100%;font-size:13px;resize:vertical;" autofocus>'+(val||'')+'</textarea>'
+      +'<div style="display:flex;gap:5px;margin-top:5px;justify-content:flex-end;">'
+      +'<button onclick="_campoFechar(\''+campo.id+'\')" class="rbtn rbtn-sm">Cancelar</button>'
+      +'<button onclick="_campoSalvarExplicito(\''+campo.id+'\')" class="rbtn rbtn-sm rbtn-accent">Salvar</button>'
+      +'</div>';
+  }
+  if(tipo==='data'){
+    return '<input id="rcf-'+vid+'" type="date" value="'+(val||'')+'" style="width:100%;font-size:13px;" onchange="_campoSalvarChange(\''+campo.id+'\')" onblur="_campoFechar(\''+campo.id+'\')" autofocus/>';
+  }
+  if(tipo==='status'){
+    var opcoes=campo.opcoes||[];
+    return '<select id="rcf-'+vid+'" onchange="_campoSalvarChange(\''+campo.id+'\')" style="width:100%;font-size:13px;" autofocus>'
+      +'<option value="">Sem valor</option>'
+      +opcoes.map(function(o){return '<option value="'+o.id+'"'+(val===o.id?' selected':'')+'>'+o.label+'</option>';}).join("")
+      +'</select>';
+  }
+  if(tipo==='responsavel'){
+    var respOpts=(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(val===s?' selected':'')+'>'+s+'</option>';}).join("");
+    return '<select id="rcf-'+vid+'" onchange="_campoSalvarChange(\''+campo.id+'\')" style="width:100%;font-size:13px;" autofocus>'
+      +'<option value="">Sem responsável</option>'+respOpts+'</select>';
+  }
+  if(tipo==='link'){
+    return '<input id="rcf-'+vid+'" type="url" value="'+(val||'')+'" placeholder="https://..." style="width:100%;font-size:13px;" onkeydown="_campokd(event,\''+campo.id+'\')" onblur="_campoSalvarBlur(\''+campo.id+'\')" autofocus/>';
+  }
+  if(tipo==='multi'){
+    var opcoes=campo.opcoes||[];
+    var selecionados=Array.isArray(val)?val:[];
+    var checks=opcoes.map(function(o){
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:4px 0;">'
+        +'<input type="checkbox" value="'+o.id+'"'+(selecionados.indexOf(o.id)>=0?' checked':'')+'/>'
+        +o.label
+        +'</label>';
+    }).join("");
+    return '<div id="rcf-'+vid+'" style="display:flex;flex-direction:column;">'+checks+'</div>'
+      +'<div style="display:flex;gap:5px;margin-top:5px;justify-content:flex-end;">'
+      +'<button onclick="_campoFechar(\''+campo.id+'\')" class="rbtn rbtn-sm">Cancelar</button>'
+      +'<button onclick="_campoSalvarMulti(\''+campo.id+'\')" class="rbtn rbtn-sm rbtn-accent">Aplicar</button>'
+      +'</div>';
+  }
+  return '';
+}
+
+var _campoEditandoId=null;
+var _campoEsc=false;
+
+function _campoAbrir(campoId){
+  _campoEditandoId=campoId;
+  var r=reuniaoAtiva;if(!r)return;
+  var campo=(r.modelo_snapshot&&r.modelo_snapshot.campos||[]).find(function(c){return c.id===campoId;});if(!campo)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var hoje=new Date().toISOString().slice(0,10);
+  var ehPassado=!!(r.data&&r.data<hoje);
+  var el=document.getElementById("reun-campos-area");if(!el)return;
+  el.innerHTML='<div class="rcampos">'
+    +(r.modelo_snapshot.campos||[]).map(function(c){
+      var emEdicao=c.id===campoId;
+      return _renderCampoCelula(c,r,ce&&!ehPassado,emEdicao);
+    }).join("")
+    +'</div>';
+  // Foca no input/select
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  setTimeout(function(){var el2=document.getElementById("rcf-"+vid);if(el2)el2.focus();},30);
+}
+
+function _campoFechar(campoId){
+  _campoEditandoId=null;
+  var r=reuniaoAtiva;if(!r)return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var hoje=new Date().toISOString().slice(0,10);
+  var ehPassado=!!(r.data&&r.data<hoje);
+  var el=document.getElementById("reun-campos-area");if(!el)return;
+  el.innerHTML=_buildCamposGrid(r,ce,ehPassado);
+}
+
+function _campokd(evt,campoId){
+  if(evt.key==='Enter'){evt.preventDefault();_campoEsc=true;_campoSalvarExplicito(campoId);}
+  else if(evt.key==='Escape'){_campoEsc=true;_campoFechar(campoId);}
+}
+
+async function _campoSalvarBlur(campoId){
+  if(_campoEsc){_campoEsc=false;return;}
+  await _campoSalvarExplicito(campoId);
+}
+
+async function _campoSalvarExplicito(campoId){
+  var r=reuniaoAtiva;if(!r)return;
+  var campo=(r.modelo_snapshot&&r.modelo_snapshot.campos||[]).find(function(c){return c.id===campoId;});if(!campo)return;
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  var el=document.getElementById("rcf-"+vid);if(!el)return;
+  var tipo=campo.tipo;
+  var val;
+  if(tipo==='numero'){val=el.value!==''?parseFloat(el.value):null;}
+  else if(tipo==='texto_longo'){val=(el.value||'').trim()||null;}
+  else{val=(el.value||'').trim()||null;}
+  await _campoSalvar(campoId,val);
+}
+
+async function _campoSalvarChange(campoId){
+  var r=reuniaoAtiva;if(!r)return;
+  var campo=(r.modelo_snapshot&&r.modelo_snapshot.campos||[]).find(function(c){return c.id===campoId;});if(!campo)return;
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  var el=document.getElementById("rcf-"+vid);if(!el)return;
+  var val=(el.value||'')||null;
+  await _campoSalvar(campoId,val);
+}
+
+async function _campoSalvarCheckbox(campoId,checked){
+  await _campoSalvar(campoId,checked);
+}
+
+async function _campoSalvarMulti(campoId){
+  var r=reuniaoAtiva;if(!r)return;
+  var campo=(r.modelo_snapshot&&r.modelo_snapshot.campos||[]).find(function(c){return c.id===campoId;});if(!campo)return;
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  var container=document.getElementById("rcf-"+vid);if(!container)return;
+  var checks=container.querySelectorAll("input[type=checkbox]");
+  var selecionados=[];
+  checks.forEach(function(cb){if(cb.checked)selecionados.push(cb.value);});
+  await _campoSalvar(campoId,selecionados.length?selecionados:null);
+}
+
+async function _campoSalvar(campoId,valor){
+  var r=reuniaoAtiva;if(!r){_campoFechar(campoId);return;}
+  _campoEsc=false;
+  var novo=Object.assign({},r.campos_valores||{});
+  if(valor===null||valor===undefined||(Array.isArray(valor)&&valor.length===0)){delete novo[campoId];}
+  else{novo[campoId]=valor;}
+  try{
+    await dbUpsertReuniao({id:r.id,campos_valores:novo});
+    reuniaoAtiva.campos_valores=novo;
+    reunioesDB=reunioesDB.map(function(x){return x.id===r.id?Object.assign({},x,{campos_valores:novo}):x;});
+    toast("Salvo!");
+  }catch(e){toast("Erro ao salvar",true);}
+  _campoFechar(campoId);
 }
 
 async function _loadReuniaoPautas(reuniaoId){
@@ -659,7 +901,7 @@ async function salvarReuniao(id){
   var obj={data,hora:hora+":00",status,observacoes:obs||null,equipe_id,criado_por:userDbId};
   if(titulo)obj.titulo=titulo;
   if(id)obj.id=id;
-  if(m&&modeloMudou){obj.modelo_id=m.id;obj.modelo_snapshot={nome:m.nome,cor:m.cor,icone:m.icone};if(m.slug)obj.tipo=m.slug;}
+  if(m&&modeloMudou){obj.modelo_id=m.id;obj.modelo_snapshot={nome:m.nome,cor:m.cor,icone:m.icone,campos:m.campos||[]};if(m.slug)obj.tipo=m.slug;}
   else if(id&&rAtual&&!modeloMudou){if(rAtual.modelo_id)obj.modelo_id=rAtual.modelo_id;if(rAtual.modelo_snapshot)obj.modelo_snapshot=rAtual.modelo_snapshot;if(rAtual.tipo)obj.tipo=rAtual.tipo;}
   try{
     var criada=await dbUpsertReuniao(obj);
@@ -2338,8 +2580,20 @@ async function sinalizarProjeto(projetoId){
 var _mfCor='#185FA5';
 var _mfIcone='users';
 var _mfEditId=null;
+var _mfCampos=[];
 var _MODELO_CORES=['#185FA5','#fa510e','#7c3aed','#16a34a','#d97706','#dc2626','#0e7490','#475569'];
 var _MODELO_ICONES=['users','spark','cal','briefcase','tag','bell','check','group','meeting'];
+var TIPOS_CAMPO={
+  texto:'Texto',
+  texto_longo:'Texto longo',
+  data:'Data',
+  status:'Status',
+  responsavel:'Responsável',
+  numero:'Número',
+  checkbox:'Caixa de seleção',
+  link:'Link',
+  multi:'Seleção múltipla'
+};
 
 function openGerenciarModelos(){
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,560px);">'
@@ -2377,24 +2631,125 @@ function openFormModelo(idOpcional){
   var m=idOpcional?modelosDB.find(function(x){return x.id===idOpcional;}):null;
   _mfCor=(m&&m.cor)||'#185FA5';
   _mfIcone=(m&&m.icone)||'users';
+  _mfCampos=m?JSON.parse(JSON.stringify(m.campos||[])):[];
   var mc=document.getElementById("modal-container");
-  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,480px);">'
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,540px);max-height:85vh;overflow-y:auto;">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
     +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(m?"Editar modelo":"Novo modelo")+'</div>'
     +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
     +'</div>'
-    +'<div class="field"><label>Nome</label><input id="mf-nome" value="'+(m?m.nome:'')+'"/></div>'
+    +'<div class="field"><label>Nome</label><input id="mf-nome" value="'+(m?m.nome.replace(/"/g,'&quot;'):'')+'"/></div>'
     +'<div class="field"><label>Cor</label><div class="mf-swatch-row" id="mf-cores">'
     +_MODELO_CORES.map(function(c){return '<span class="mf-swatch'+(c===_mfCor?' selecionado':'')+'" style="background:'+c+';" onclick="_mfSelecionarCor(\''+c+'\')"></span>';}).join("")
     +'</div></div>'
     +'<div class="field"><label>Ícone</label><div class="mf-ic-row" id="mf-icones">'
     +_MODELO_ICONES.map(function(i){return '<button type="button" class="mf-ic-btn'+(i===_mfIcone?' selecionado':'')+'" onclick="_mfSelecionarIcone(\''+i+'\')">'+ic(i)+'</button>';}).join("")
     +'</div></div>'
+    +'<div class="field">'
+    +'<label style="margin-bottom:6px;display:block;">Campos da reunião</label>'
+    +'<div id="mf-campos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>'
+    +'<button type="button" onclick="_mfAdicionarCampo()" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar campo</button>'
+    +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">'
     +'<button class="btn" onclick="openGerenciarModelos()">Cancelar</button>'
     +'<button class="btn btn-primary" onclick="salvarModelo()">Salvar</button>'
     +'</div>'
     +'</div></div>';
+  _mfRenderCampos();
+}
+
+function _mfRenderCampos(){
+  var el=document.getElementById("mf-campos-lista");if(!el)return;
+  if(!_mfCampos.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Nenhum campo definido.</div>';return;}
+  el.innerHTML=_mfCampos.map(function(campo,i){
+    var tipoOpts=Object.keys(TIPOS_CAMPO).map(function(t){return '<option value="'+t+'"'+(campo.tipo===t?' selected':'')+'>'+TIPOS_CAMPO[t]+'</option>';}).join("");
+    var temOpcoes=campo.tipo==='status'||campo.tipo==='multi';
+    var html='<div class="mfc-row" data-idx="'+i+'">'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+      +'<input class="mfc-label" data-idx="'+i+'" value="'+campo.label.replace(/"/g,'&quot;')+'" placeholder="Rótulo do campo *" oninput="_mfCampoLabelInput('+i+',this.value)" style="flex:1;min-width:120px;font-size:13px;"/>'
+      +'<select class="mfc-tipo" data-idx="'+i+'" onchange="_mfCampoTipoChange('+i+',this.value)" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text2);">'+tipoOpts+'</select>'
+      +'<button type="button" onclick="_mfMoverCampo('+i+',-1)" '+(i===0?'disabled':'')+' class="rbtn rbtn-sm" style="padding:3px 7px;" title="Mover para cima">&#8593;</button>'
+      +'<button type="button" onclick="_mfMoverCampo('+i+',1)" '+(i===_mfCampos.length-1?'disabled':'')+' class="rbtn rbtn-sm" style="padding:3px 7px;" title="Mover para baixo">&#8595;</button>'
+      +'<button type="button" onclick="_mfRemoverCampo('+i+')" class="rbtn rbtn-sm rbtn-danger" style="padding:3px 7px;" title="Remover campo">'+ic("trash")+'</button>'
+      +'</div>';
+    if(temOpcoes){html+=_mfRenderOpcoes(campo,i);}
+    html+='</div>';
+    return html;
+  }).join("");
+}
+
+function _mfCampoLabelInput(idx,val){if(_mfCampos[idx])_mfCampos[idx].label=val;}
+
+function _mfCampoTipoChange(idx,tipo){
+  if(!_mfCampos[idx])return;
+  _mfCampos[idx].tipo=tipo;
+  var temOpcoes=tipo==='status'||tipo==='multi';
+  if(temOpcoes){if(!_mfCampos[idx].opcoes)_mfCampos[idx].opcoes=[];}
+  else{delete _mfCampos[idx].opcoes;}
+  _mfRenderCampos();
+}
+
+function _mfMoverCampo(idx,delta){
+  var dest=idx+delta;
+  if(dest<0||dest>=_mfCampos.length)return;
+  var tmp=_mfCampos[idx];_mfCampos[idx]=_mfCampos[dest];_mfCampos[dest]=tmp;
+  _mfRenderCampos();
+}
+
+function _mfRemoverCampo(idx){
+  _mfCampos.splice(idx,1);
+  _mfRenderCampos();
+}
+
+function _mfAdicionarCampo(){
+  _mfCampos.push({id:uid(),label:'',tipo:'texto'});
+  _mfRenderCampos();
+  // Foca no novo input
+  setTimeout(function(){
+    var lista=document.getElementById("mf-campos-lista");
+    if(!lista)return;
+    var inputs=lista.querySelectorAll(".mfc-label");
+    if(inputs.length)inputs[inputs.length-1].focus();
+  },30);
+}
+
+function _mfRenderOpcoes(campo,cidx){
+  var opcoes=campo.opcoes||[];
+  var html='<div class="mfc-opcoes">';
+  opcoes.forEach(function(op,oi){
+    var swatches=_MODELO_CORES.map(function(c){
+      return '<span class="mfc-mini-swatch'+(c===(op.cor||'#94a3b8')?' sel':'')+'" style="background:'+c+';" onclick="_mfOpcaoCor('+cidx+','+oi+',\''+c+'\')" title="'+c+'"></span>';
+    }).join("");
+    html+='<div class="mfc-opcao-row">'
+      +(campo.tipo==='status'?'<div class="mfc-swatches">'+swatches+'</div>':'')
+      +'<input value="'+op.label.replace(/"/g,'&quot;')+'" placeholder="Opção..." oninput="_mfOpcaoLabelInput('+cidx+','+oi+',this.value)" style="flex:1;font-size:12px;padding:3px 7px;border:1px solid var(--border);border-radius:5px;min-width:80px;"/>'
+      +'<button type="button" onclick="_mfRemoverOpcao('+cidx+','+oi+')" class="rbtn rbtn-sm rbtn-danger" style="padding:2px 5px;">'+ic("trash")+'</button>'
+      +'</div>';
+  });
+  html+='<button type="button" onclick="_mfAdicionarOpcao('+cidx+')" class="rbtn rbtn-sm" style="margin-top:4px;font-size:11px;">'+ic("plus")+' Opção</button>';
+  html+='</div>';
+  return html;
+}
+
+function _mfOpcaoLabelInput(cidx,oidx,val){if(_mfCampos[cidx]&&_mfCampos[cidx].opcoes&&_mfCampos[cidx].opcoes[oidx])_mfCampos[cidx].opcoes[oidx].label=val;}
+
+function _mfOpcaoCor(cidx,oidx,cor){
+  if(!_mfCampos[cidx]||!_mfCampos[cidx].opcoes||!_mfCampos[cidx].opcoes[oidx])return;
+  _mfCampos[cidx].opcoes[oidx].cor=cor;
+  _mfRenderCampos();
+}
+
+function _mfAdicionarOpcao(cidx){
+  if(!_mfCampos[cidx])return;
+  if(!_mfCampos[cidx].opcoes)_mfCampos[cidx].opcoes=[];
+  _mfCampos[cidx].opcoes.push({id:uid(),label:'',cor:'#94a3b8'});
+  _mfRenderCampos();
+}
+
+function _mfRemoverOpcao(cidx,oidx){
+  if(!_mfCampos[cidx]||!_mfCampos[cidx].opcoes)return;
+  _mfCampos[cidx].opcoes.splice(oidx,1);
+  _mfRenderCampos();
 }
 
 function _mfSelecionarCor(cor){
@@ -2413,7 +2768,11 @@ function _mfSelecionarIcone(icone){
 async function salvarModelo(){
   var nome=(document.getElementById("mf-nome").value||"").trim();
   if(!nome){toast("Informe o nome do modelo",true);return;}
-  var obj={nome:nome,cor:_mfCor,icone:_mfIcone};
+  // Valida labels dos campos
+  for(var ci=0;ci<_mfCampos.length;ci++){
+    if(!(_mfCampos[ci].label||"").trim()){toast("Preencha o rótulo do campo "+(ci+1),true);return;}
+  }
+  var obj={nome:nome,cor:_mfCor,icone:_mfIcone,campos:_mfCampos};
   if(_mfEditId){obj.id=_mfEditId;}else{obj.criado_por=userDbId;}
   try{
     await dbUpsertModelo(obj);
@@ -2425,8 +2784,13 @@ async function salvarModelo(){
 
 async function duplicarModelo(id){
   var m=modelosDB.find(function(x){return x.id===id;});if(!m)return;
+  var camposCopia=(m.campos||[]).map(function(c){
+    var nc=Object.assign({},c,{id:uid()});
+    if(nc.opcoes){nc.opcoes=nc.opcoes.map(function(o){return Object.assign({},o,{id:uid()});});}
+    return nc;
+  });
   try{
-    await dbUpsertModelo({nome:m.nome+' (cópia)',cor:m.cor,icone:m.icone,criado_por:userDbId});
+    await dbUpsertModelo({nome:m.nome+' (cópia)',cor:m.cor,icone:m.icone,campos:camposCopia,criado_por:userDbId});
     modelosDB=await dbFetchModelos();
     toast("Modelo duplicado!");
     _renderModelosLista();
