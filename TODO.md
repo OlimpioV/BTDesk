@@ -37,7 +37,44 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - **`getFiltered` / `checkAuth`:** a versão ativa (app.js) é a mais nova (com filtro
   de equipes); as antigas dos módulos não tinham.
 
-## Épico — Construtor modular de Reuniões
+## Épico — Plataforma modular (visão ampliada, grill-me de 12/06/2026)
+
+Visão do usuário: BTDesk inteiro modular, estilo Monday: adicionar, editar,
+excluir e copiar tarefas, reuniões, projetos; subcategorias e subitens; textos
+e comentários; mestre ajusta o sistema quando necessário. Decisões fechadas:
+
+1. **Arquitetura: motor compartilhado.** Nada de reescrita genérica em
+   "quadros". O motor de modularidade das Fases 1-2 (modelos + campos
+   customizados + snapshot) é levado entidade por entidade.
+2. **Ordem:** tarefas de pauta (Fase 3) → demandas do kanban → projetos.
+3. **Hierarquia: 3 níveis** (categoria → tarefa → subtarefa), como o Monday
+   (grupo → item → subitem). Sem aninhamento mais profundo.
+4. **Permissões:** estrutura (modelos, campos, colunas, categorias) só mestre;
+   conteúdo (criar/editar/duplicar/excluir itens e preencher valores) mestre +
+   advogados; cliente somente leitura.
+5. **Duplicar: diálogo a cada duplicação** perguntando o que incluir
+   (subtarefas? valores de campos? comentários?). Nome ganha sufixo (cópia).
+6. **Vistas: manter as atuais** (demandas kanban+lista; reuniões
+   calendário+detalhe). Vistas novas viram fase futura, depois do motor.
+7. **Projetos: dentro de Reuniões** (reconectar a pauta tipo projeto, já
+   modular). Aba própria fica como evolução futura.
+8. **Migração:** padrão backfill (itens existentes recebem snapshot de um
+   modelo padrão), como feito nas 37 reuniões.
+9. **"Textos"** da visão são cobertos pelos campos texto/texto longo (Fase 2);
+   comentários já existem em reuniões, tarefas, projetos e demandas.
+
+Roadmap consolidado:
+
+- [ ] **Fase 3 — colunas de tarefa pelo modelo** (fecha Reuniões)
+- [ ] **Fase 4 — duplicação universal com diálogo** (tarefas, subtarefas,
+  reuniões; demandas quando chegarem ao motor)
+- [ ] **Fase 5 — modelos de demanda no kanban** (campos custom no card,
+  snapshot, backfill "Demanda padrão"; adapta kanban, lista e modal)
+- [ ] **Fase 6 — projetos reconectados e modulares** (dentro de Reuniões)
+- Futuro: vistas novas (calendário de demandas, tabela de reuniões);
+  auditoria leve de edições estruturais.
+
+## Épico — Construtor modular de Reuniões (origem; Fases 0-2 concluídas)
 
 Visão (decidida em grill-me): o mestre monta a estrutura das reuniões. Decisões:
 - **Modelos de reunião** (templates) reutilizáveis, com opção de **duplicar** outro.
@@ -54,8 +91,9 @@ Visão (decidida em grill-me): o mestre monta a estrutura das reuniões. Decisõ
 
 Faseamento acordado (Fase 0 primeiro, resto planejado):
 
-- [ ] **Fase 0 — visual (em andamento):** coluna `tipo` em `reunioes`; tipos com
-  cor + ícone no calendário, sidebar e detalhe; Próximas/Anteriores reforçadas.
+- [x] **Fase 0 — visual** (concluída, commit 11b7677): coluna `tipo` em
+  `reunioes`; tipos com cor + ícone no calendário, sidebar e detalhe;
+  Próximas/Anteriores com contador e grupo recolhível.
 - [x] **Fase 1 — modelos básicos** (concluída): tabela `reuniao_modelos` (nome,
   cor, ícone, slug) com seed dos 2 tipos; `reunioes.modelo_id` (FK set null) +
   `reunioes.modelo_snapshot jsonb` (backfill nas 37 reuniões); tela "Gerenciar
@@ -71,13 +109,9 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
   no detalhe com edição inline por tipo. Obs.: o tipo "comentários" do
   levantamento original foi coberto pela seção de comentários que a reunião
   já possui (não virou tipo de campo).
-- [ ] **Fase 3 — colunas de tarefa customizáveis:** colunas hoje fixas
-  (responsável/status/datas) passam a ser definidas pelo modelo. Reescreve a
-  tabela de tarefas das pautas.
-- [ ] **Fase 4 — auditoria (opcional/leve):** com snapshot, a auditoria de
-  propagação deixou de ser necessária. Resta, se desejado, registrar edições
-  manuais relevantes na estrutura de uma reunião, na aba Histórico. Pode ser
-  adiada sem prejuízo.
+- As fases seguintes deste épico foram absorvidas pelo roadmap consolidado da
+  "Plataforma modular" acima (Fase 3 = colunas de tarefa; auditoria leve foi
+  para "Futuro").
 
 ## Layout / UI
 
