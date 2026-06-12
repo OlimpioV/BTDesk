@@ -77,14 +77,11 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
   principal cinza, pautas exibidas como cartões via CSS, sistema `.rbtn`, chips
   de status em pílula, acentos corrigidos. (commit 014a1ec)
 
-- [ ] **Reescrever `_buildTarefaCard` para os cards idênticos ao mock** (pendente)
-  A seção de pautas usa a tabela editável (`_loadPautasSection` + `_buildTarefaCard`),
-  hoje exibida como cartões via CSS. Para ficar idêntica aos cards do mock falta
-  reescrever a marcação de cada tarefa: status no topo direito, rótulos
-  "CHECKLIST" e "COMENTÁRIOS", barra de progresso segmentada, checklist limpo
-  (dot + texto + responsável). Mexe na parte de edição inline (status/subtarefas/
-  comentários), então fazer com validação visual (idealmente em branch/worktree).
-  Existe também o sistema de cards alternativo (`_loadReuniaoPautas`) que está
+- [x] **Reescrever `_buildTarefaCard` para os cards idênticos ao mock** (commit 61eedd2)
+  Feito: marcação de tabela virou cartão .tcard (barra lateral por status, chip
+  no topo, barra de progresso segmentada, checklist .cl, comentários .cmts),
+  com toda a edição inline preservada e verificada (dev=sonnet, qa=haiku).
+  Nota: o sistema de cards alternativo (`_loadReuniaoPautas`) continua
   desconectado dos dados reais (ver Etapa 2 da consolidação).
 
 - [ ] **Acentuar títulos de reuniões existentes** (dados do banco)
