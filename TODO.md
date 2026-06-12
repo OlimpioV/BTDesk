@@ -44,8 +44,11 @@ Visão (decidida em grill-me): o mestre monta a estrutura das reuniões. Decisõ
 - Campos modulares em **dois níveis**: cabeçalho da reunião + colunas das tarefas.
 - Tipos de campo **amplos**: texto (curto/longo), data, status (seleção com cores),
   responsável, comentários, número, checkbox, anexo/link, seleção múltipla.
-- Propagação **ao vivo** (editar o modelo afeta as reuniões), MAS com **auditoria
-  com diff** do que mudou em cada reunião, enriquecendo a aba Histórico (`logs`).
+- Propagação por **SNAPSHOT** (decisão revisada pelo usuário em 09/06/2026): o
+  modelo age só na criação. Cada reunião carrega uma cópia própria da estrutura
+  (campos/colunas como estavam no modelo naquele momento) e vira independente,
+  editável individualmente. Editar o modelo NÃO altera reuniões já criadas; só
+  as próximas criadas a partir dele nascem com a estrutura nova.
 - Distinção de **tipo** de reunião (evento × cobrança de metas × outros) com
   destaque visual; separação **Próximas/Anteriores** reforçada.
 
@@ -60,8 +63,10 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
 - [ ] **Fase 3 — colunas de tarefa customizáveis:** colunas hoje fixas
   (responsável/status/datas) passam a ser definidas pelo modelo. Reescreve a
   tabela de tarefas das pautas.
-- [ ] **Fase 4 — auditoria com diff:** histórico detalhado (de→para) por reunião,
-  exibido na aba Histórico, mais robusto que o `logs` atual.
+- [ ] **Fase 4 — auditoria (opcional/leve):** com snapshot, a auditoria de
+  propagação deixou de ser necessária. Resta, se desejado, registrar edições
+  manuais relevantes na estrutura de uma reunião, na aba Histórico. Pode ser
+  adiada sem prejuízo.
 
 ## Layout / UI
 
