@@ -25,7 +25,7 @@ Gerenciar todas as alterações no banco de dados Supabase do BTDesk de forma se
 
 ## Tabelas existentes
 - demandas(id, data jsonb): cards do kanban, row especial id="__cols__" guarda colunas
-- tarefas(id, card_id, texto, responsavel, data_inicio, data_fim, status, criado_em, reuniao_id, pauta_categoria_id, parent_id, descricao): tarefas de cards e de reuniões
+- tarefas(id, card_id, texto, responsavel, data_inicio, data_fim, status, criado_em, reuniao_id, pauta_categoria_id, parent_id, descricao, campos_valores jsonb): tarefas de cards e de reuniões
 - usuarios(id, nome, email, senha, perfil, sigla, ativo)
 - clientes(id, numero, nome)
 - casos(id, numero, cliente_id, descricao, nome_consulta, objeto, situacao)

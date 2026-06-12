@@ -901,7 +901,7 @@ async function salvarReuniao(id){
   var obj={data,hora:hora+":00",status,observacoes:obs||null,equipe_id,criado_por:userDbId};
   if(titulo)obj.titulo=titulo;
   if(id)obj.id=id;
-  if(m&&modeloMudou){obj.modelo_id=m.id;obj.modelo_snapshot={nome:m.nome,cor:m.cor,icone:m.icone,campos:m.campos||[]};if(m.slug)obj.tipo=m.slug;}
+  if(m&&modeloMudou){obj.modelo_id=m.id;obj.modelo_snapshot={nome:m.nome,cor:m.cor,icone:m.icone,campos:m.campos||[],colunas_tarefa:m.colunas_tarefa||[]};if(m.slug)obj.tipo=m.slug;}
   else if(id&&rAtual&&!modeloMudou){if(rAtual.modelo_id)obj.modelo_id=rAtual.modelo_id;if(rAtual.modelo_snapshot)obj.modelo_snapshot=rAtual.modelo_snapshot;if(rAtual.tipo)obj.tipo=rAtual.tipo;}
   try{
     var criada=await dbUpsertReuniao(obj);
@@ -1814,6 +1814,169 @@ var _subEditando=null;
 function _fmtDateBr(d){if(!d)return '';var p=d.split('-');if(p.length<3)return d;return p[2]+'/'+p[1]+'/'+p[0];}
 function _fmtDateBrShort(d){if(!d)return '';var p=d.split('-');if(p.length<3)return d;return p[2]+'/'+p[1]+'/'+p[0];}
 function _isAtrasado(dataFim,status){if(!dataFim||status==='concluido')return false;var hoje=new Date().toISOString().slice(0,10);return dataFim<hoje;}
+
+// Retorna as colunas customizadas de tarefa do snapshot da reuniao ativa
+function _colunasTarefaSnapshot(){
+  return (reuniaoAtiva&&reuniaoAtiva.modelo_snapshot&&reuniaoAtiva.modelo_snapshot.colunas_tarefa)||[];
+}
+
+// Renderiza o valor de uma coluna customizada para visualizacao no card
+function _tcolRenderVal(col,val){
+  var tipo=col.tipo;
+  if(val===undefined||val===null||val==='')return '<span style="color:var(--text-faint,#94a3b8);">&#8212;</span>';
+  if(tipo==='texto'||tipo==='numero'){return String(val);}
+  if(tipo==='texto_longo'){return '<span title="'+String(val).replace(/"/g,'&quot;')+'">'+trunc(String(val),40)+'</span>';}
+  if(tipo==='data'){return _fmtDateBrShort(val);}
+  if(tipo==='status'){
+    var op=(col.opcoes||[]).find(function(o){return o.id===val;});
+    if(op){var cor=op.cor||'#94a3b8';return '<span class="reun-status-chip" style="background:'+cor+'22;color:'+cor+';font-size:10px;">'+op.label+'</span>';}
+    return '<span style="color:var(--text-faint,#94a3b8);">&#8212;</span>';
+  }
+  if(tipo==='responsavel'){
+    var u=(usuariosFullDB||[]).find(function(x){return x.sigla===val;})||{};
+    var cor=_avCor(u.id||val);
+    return '<div style="display:inline-flex;align-items:center;gap:4px;">'
+      +'<span class="av av-sm" style="background:'+cor+';font-size:9px;width:18px;height:18px;min-width:18px;">'+String(val).slice(0,2).toUpperCase()+'</span>'
+      +'<span>'+val+'</span></div>';
+  }
+  if(tipo==='checkbox'){return val?'<span style="color:#22c55e;font-size:13px;">&#10003;</span>':'<span style="color:#94a3b8;font-size:13px;">&#8212;</span>';}
+  if(tipo==='link'){return '<a href="'+String(val).replace(/"/g,'&quot;')+'" target="_blank" style="color:var(--bt-navy);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;display:inline-block;" title="'+String(val).replace(/"/g,'&quot;')+'">'+trunc(val,24)+'</a>';}
+  if(tipo==='multi'){
+    var sel=Array.isArray(val)?val:[];
+    if(!sel.length)return '<span style="color:var(--text-faint,#94a3b8);">&#8212;</span>';
+    return (col.opcoes||[]).filter(function(o){return sel.indexOf(o.id)>=0;}).map(function(o){
+      return '<span class="reun-status-chip" style="background:#e8edf2;color:var(--text2);font-size:10px;margin:1px 2px;">'+o.label+'</span>';
+    }).join('');
+  }
+  return String(val);
+}
+
+// Renderiza o editor inline de uma celula de coluna customizada
+function _tcolRenderEditor(col,val,tarefaId){
+  var tipo=col.tipo;
+  var vid=col.id.replace(/[^a-zA-Z0-9]/g,'_');
+  var salvar='_tcolSalvar(\''+tarefaId+'\',\''+col.id+'\')';
+  var fechar='_tcolFechar(\''+tarefaId+'\',\''+col.id+'\')';
+  if(tipo==='texto'){
+    return '<input id="tcol-inp-'+vid+'" value="'+(val!==undefined&&val!==null?String(val).replace(/"/g,'&quot;'):'')+'" style="width:100%;font-size:12px;" onkeydown="_tcolKd(event,\''+tarefaId+'\',\''+col.id+'\')" onblur="_tcolBlur(\''+tarefaId+'\',\''+col.id+'\')" autofocus/>';
+  }
+  if(tipo==='numero'){
+    return '<input id="tcol-inp-'+vid+'" type="number" value="'+(val!==undefined&&val!==null?val:'')+'" style="width:100%;font-size:12px;" onkeydown="_tcolKd(event,\''+tarefaId+'\',\''+col.id+'\')" onblur="_tcolBlur(\''+tarefaId+'\',\''+col.id+'\')" autofocus/>';
+  }
+  if(tipo==='texto_longo'){
+    return '<textarea id="tcol-inp-'+vid+'" rows="3" style="width:100%;font-size:12px;resize:vertical;" autofocus>'+(val||'')+'</textarea>'
+      +'<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;">'
+      +'<button onclick="'+fechar+'" class="rbtn rbtn-sm">Cancelar</button>'
+      +'<button onclick="'+salvar+'" class="rbtn rbtn-sm rbtn-accent">Salvar</button>'
+      +'</div>';
+  }
+  if(tipo==='data'){
+    return '<input id="tcol-inp-'+vid+'" type="date" value="'+(val||'')+'" style="width:100%;font-size:12px;" onchange="'+salvar+'" onblur="'+fechar+'" autofocus/>';
+  }
+  if(tipo==='status'){
+    return '<select id="tcol-inp-'+vid+'" onchange="'+salvar+'" style="width:100%;font-size:12px;" autofocus>'
+      +'<option value="">Sem valor</option>'
+      +(col.opcoes||[]).map(function(o){return '<option value="'+o.id+'"'+(val===o.id?' selected':'')+'>'+o.label+'</option>';}).join("")
+      +'</select>';
+  }
+  if(tipo==='responsavel'){
+    return '<select id="tcol-inp-'+vid+'" onchange="'+salvar+'" style="width:100%;font-size:12px;" autofocus>'
+      +'<option value="">Sem responsável</option>'
+      +(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(val===s?' selected':'')+'>'+s+'</option>';}).join("")
+      +'</select>';
+  }
+  if(tipo==='checkbox'){
+    return '<input id="tcol-inp-'+vid+'" type="checkbox"'+(val?' checked':'')+' onchange="_tcolSalvarCheckbox(\''+tarefaId+'\',\''+col.id+'\',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--bt-navy);" autofocus/>';
+  }
+  if(tipo==='link'){
+    return '<input id="tcol-inp-'+vid+'" type="url" value="'+(val||'')+'" placeholder="https://..." style="width:100%;font-size:12px;" onkeydown="_tcolKd(event,\''+tarefaId+'\',\''+col.id+'\')" onblur="_tcolBlur(\''+tarefaId+'\',\''+col.id+'\')" autofocus/>';
+  }
+  if(tipo==='multi'){
+    var sel=Array.isArray(val)?val:[];
+    var checks=(col.opcoes||[]).map(function(o){
+      return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0;">'
+        +'<input type="checkbox" value="'+o.id+'"'+(sel.indexOf(o.id)>=0?' checked':'')+'/>'
+        +o.label+'</label>';
+    }).join("");
+    return '<div id="tcol-inp-'+vid+'" style="display:flex;flex-direction:column;">'+checks+'</div>'
+      +'<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;">'
+      +'<button onclick="'+fechar+'" class="rbtn rbtn-sm">Cancelar</button>'
+      +'<button onclick="_tcolSalvarMulti(\''+tarefaId+'\',\''+col.id+'\')" class="rbtn rbtn-sm rbtn-accent">Aplicar</button>'
+      +'</div>';
+  }
+  return '';
+}
+
+var _tcolEditando={};// {tarefaId: colId}
+var _tcolEsc=false;
+
+function _tcolAbrir(tarefaId,colId){
+  _tcolEditando[tarefaId]=colId;
+  _reloadTarefaCard(tarefaId,false);
+  var col=_colunasTarefaSnapshot().find(function(c){return c.id===colId;});
+  if(!col)return;
+  var vid=colId.replace(/[^a-zA-Z0-9]/g,'_');
+  setTimeout(function(){var el=document.getElementById("tcol-inp-"+vid);if(el)el.focus();},30);
+}
+
+function _tcolFechar(tarefaId,colId){
+  if(_tcolEsc){_tcolEsc=false;return;}
+  delete _tcolEditando[tarefaId];
+  _reloadTarefaCard(tarefaId,false);
+}
+
+function _tcolKd(evt,tarefaId,colId){
+  if(evt.key==='Enter'){evt.preventDefault();_tcolEsc=true;_tcolSalvar(tarefaId,colId);}
+  else if(evt.key==='Escape'){_tcolEsc=true;delete _tcolEditando[tarefaId];_reloadTarefaCard(tarefaId,false);}
+}
+
+function _tcolBlur(tarefaId,colId){
+  if(_tcolEsc){_tcolEsc=false;return;}
+  _tcolSalvar(tarefaId,colId);
+}
+
+async function _tcolSalvar(tarefaId,colId){
+  _tcolEsc=false;
+  var col=_colunasTarefaSnapshot().find(function(c){return c.id===colId;});if(!col)return;
+  var vid=colId.replace(/[^a-zA-Z0-9]/g,'_');
+  var el=document.getElementById("tcol-inp-"+vid);if(!el)return;
+  var tipo=col.tipo;
+  var val;
+  if(tipo==='numero'){val=el.value!==''?parseFloat(el.value):null;}
+  else if(tipo==='texto_longo'){val=(el.value||'').trim()||null;}
+  else{val=(el.value||'').trim()||null;}
+  await _tcolPersistir(tarefaId,colId,val);
+}
+
+async function _tcolSalvarCheckbox(tarefaId,colId,checked){
+  await _tcolPersistir(tarefaId,colId,checked?true:null);
+}
+
+async function _tcolSalvarMulti(tarefaId,colId){
+  var col=_colunasTarefaSnapshot().find(function(c){return c.id===colId;});if(!col)return;
+  var vid=colId.replace(/[^a-zA-Z0-9]/g,'_');
+  var container=document.getElementById("tcol-inp-"+vid);if(!container)return;
+  var checks=container.querySelectorAll("input[type=checkbox]");
+  var sel=[];checks.forEach(function(cb){if(cb.checked)sel.push(cb.value);});
+  await _tcolPersistir(tarefaId,colId,sel.length?sel:null);
+}
+
+async function _tcolPersistir(tarefaId,colId,valor){
+  var rId=reuniaoAtiva?reuniaoAtiva.id:'';
+  var cache=_tarefasPautaCache[rId]||[];
+  var t=cache.find(function(x){return x.id===tarefaId;});
+  var novo=Object.assign({},t?t.campos_valores||{}:{});
+  if(valor===null||valor===undefined||(Array.isArray(valor)&&valor.length===0)){delete novo[colId];}
+  else{novo[colId]=valor;}
+  try{
+    await dbUpsertTarefa({id:tarefaId,campos_valores:novo});
+    if(t)t.campos_valores=novo;
+    delete _tcolEditando[tarefaId];
+    _reloadTarefaCard(tarefaId,false);
+    toast("Salvo!");
+  }catch(e){toast("Erro ao salvar",true);}
+}
+
 function _buildTarefaCard(t,ce,ehPassado){
   var corBar={'pendente':'#E24B4A','em_andamento':'#185FA5','pausado':'#EF9F27','concluido':'#639922'};
   var corBg={'pendente':'#FCEBEB','em_andamento':'#E6F1FB','pausado':'#FAEEDA','concluido':'#EAF3DE'};
@@ -1866,6 +2029,26 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='<span style="color:'+(atrasado?'#dc2626':'inherit')+';font-weight:'+(atrasado?'700':'400')+';">'+_fmtDateBrShort(t.data_fim)+(atrasado?' <span title="Atrasado">&#128336;</span>':'')+'</span>';
   }
   html+='</div>';
+
+  // colunas customizadas do modelo (so em tarefas principais)
+  var _snapCols=_colunasTarefaSnapshot();
+  if(_snapCols.length){
+    var _editandoCol=_tcolEditando[t.id]||null;
+    html+='<div class="tcols">';
+    _snapCols.forEach(function(col){
+      var vals=t.campos_valores||{};
+      var val=vals[col.id];
+      var emEdicao=_editandoCol===col.id;
+      var podeEditar=ce&&!ehPassado;
+      html+='<div class="tcol'+(podeEditar?' editavel':'')+'"'+(podeEditar&&!emEdicao?' onclick="_tcolAbrir(\''+t.id+'\',\''+col.id+'\')"':'')+' style="position:relative;">';
+      html+='<div class="tcol-lbl">'+col.label+'</div>';
+      html+='<div class="tcol-val">';
+      if(emEdicao){html+=_tcolRenderEditor(col,val,t.id);}
+      else{html+=_tcolRenderVal(col,val);}
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
 
   // descricao (exibida so quando expandido)
   if(subExp){
@@ -2581,8 +2764,14 @@ var _mfCor='#185FA5';
 var _mfIcone='users';
 var _mfEditId=null;
 var _mfCampos=[];
+var _mfColunas=[];
 var _MODELO_CORES=['#185FA5','#fa510e','#7c3aed','#16a34a','#d97706','#dc2626','#0e7490','#475569'];
 var _MODELO_ICONES=['users','spark','cal','briefcase','tag','bell','check','group','meeting'];
+// Retorna o array e o container-id corretos para o contexto ('campos' ou 'colunas')
+function _mfCtx(ctx){
+  if(ctx==='colunas')return {arr:_mfColunas,listId:'mf-colunas-lista'};
+  return {arr:_mfCampos,listId:'mf-campos-lista'};
+}
 var TIPOS_CAMPO={
   texto:'Texto',
   texto_longo:'Texto longo',
@@ -2632,6 +2821,7 @@ function openFormModelo(idOpcional){
   _mfCor=(m&&m.cor)||'#185FA5';
   _mfIcone=(m&&m.icone)||'users';
   _mfCampos=m?JSON.parse(JSON.stringify(m.campos||[])):[];
+  _mfColunas=m?JSON.parse(JSON.stringify(m.colunas_tarefa||[])):[];
   var mc=document.getElementById("modal-container");
   mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,540px);max-height:85vh;overflow-y:auto;">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
@@ -2648,108 +2838,127 @@ function openFormModelo(idOpcional){
     +'<div class="field">'
     +'<label style="margin-bottom:6px;display:block;">Campos da reunião</label>'
     +'<div id="mf-campos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>'
-    +'<button type="button" onclick="_mfAdicionarCampo()" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar campo</button>'
+    +'<button type="button" onclick="_mfAdicionarCampo(\'campos\')" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar campo</button>'
+    +'</div>'
+    +'<hr style="border:none;border-top:1px solid var(--border);margin:8px 0 14px;"/>'
+    +'<div class="field">'
+    +'<label style="margin-bottom:4px;display:block;">Colunas das tarefas</label>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Campos extras exibidos em cada card de tarefa desta reunião.</div>'
+    +'<div id="mf-colunas-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>'
+    +'<button type="button" onclick="_mfAdicionarCampo(\'colunas\')" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar coluna</button>'
     +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">'
     +'<button class="btn" onclick="openGerenciarModelos()">Cancelar</button>'
     +'<button class="btn btn-primary" onclick="salvarModelo()">Salvar</button>'
     +'</div>'
     +'</div></div>';
-  _mfRenderCampos();
+  _mfRenderCampos('campos');
+  _mfRenderCampos('colunas');
 }
 
-function _mfRenderCampos(){
-  var el=document.getElementById("mf-campos-lista");if(!el)return;
-  if(!_mfCampos.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Nenhum campo definido.</div>';return;}
-  el.innerHTML=_mfCampos.map(function(campo,i){
+function _mfRenderCampos(ctx){
+  ctx=ctx||'campos';
+  var x=_mfCtx(ctx);
+  var arr=x.arr;
+  var el=document.getElementById(x.listId);if(!el)return;
+  var vazio=ctx==='colunas'?'Nenhuma coluna definida.':'Nenhum campo definido.';
+  if(!arr.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">'+vazio+'</div>';return;}
+  el.innerHTML=arr.map(function(campo,i){
     var tipoOpts=Object.keys(TIPOS_CAMPO).map(function(t){return '<option value="'+t+'"'+(campo.tipo===t?' selected':'')+'>'+TIPOS_CAMPO[t]+'</option>';}).join("");
     var temOpcoes=campo.tipo==='status'||campo.tipo==='multi';
     var html='<div class="mfc-row" data-idx="'+i+'">'
       +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
-      +'<input class="mfc-label" data-idx="'+i+'" value="'+campo.label.replace(/"/g,'&quot;')+'" placeholder="Rótulo do campo *" oninput="_mfCampoLabelInput('+i+',this.value)" style="flex:1;min-width:120px;font-size:13px;"/>'
-      +'<select class="mfc-tipo" data-idx="'+i+'" onchange="_mfCampoTipoChange('+i+',this.value)" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text2);">'+tipoOpts+'</select>'
-      +'<button type="button" onclick="_mfMoverCampo('+i+',-1)" '+(i===0?'disabled':'')+' class="rbtn rbtn-sm" style="padding:3px 7px;" title="Mover para cima">&#8593;</button>'
-      +'<button type="button" onclick="_mfMoverCampo('+i+',1)" '+(i===_mfCampos.length-1?'disabled':'')+' class="rbtn rbtn-sm" style="padding:3px 7px;" title="Mover para baixo">&#8595;</button>'
-      +'<button type="button" onclick="_mfRemoverCampo('+i+')" class="rbtn rbtn-sm rbtn-danger" style="padding:3px 7px;" title="Remover campo">'+ic("trash")+'</button>'
+      +'<input class="mfc-label" data-idx="'+i+'" value="'+campo.label.replace(/"/g,'&quot;')+'" placeholder="Rótulo *" oninput="_mfCampoLabelInput('+i+',this.value,\''+ctx+'\')" style="flex:1;min-width:120px;font-size:13px;"/>'
+      +'<select class="mfc-tipo" data-idx="'+i+'" onchange="_mfCampoTipoChange('+i+',this.value,\''+ctx+'\')" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text2);">'+tipoOpts+'</select>'
+      +'<button type="button" onclick="_mfMoverCampo('+i+',-1,\''+ctx+'\')" '+(i===0?'disabled':'')+' class="rbtn rbtn-sm" style="padding:3px 7px;" title="Mover para cima">&#8593;</button>'
+      +'<button type="button" onclick="_mfMoverCampo('+i+',1,\''+ctx+'\')" '+(i===arr.length-1?'disabled':'')+' class="rbtn rbtn-sm" style="padding:3px 7px;" title="Mover para baixo">&#8595;</button>'
+      +'<button type="button" onclick="_mfRemoverCampo('+i+',\''+ctx+'\')" class="rbtn rbtn-sm rbtn-danger" style="padding:3px 7px;" title="Remover">'+ic("trash")+'</button>'
       +'</div>';
-    if(temOpcoes){html+=_mfRenderOpcoes(campo,i);}
+    if(temOpcoes){html+=_mfRenderOpcoes(campo,i,ctx);}
     html+='</div>';
     return html;
   }).join("");
 }
 
-function _mfCampoLabelInput(idx,val){if(_mfCampos[idx])_mfCampos[idx].label=val;}
+function _mfCampoLabelInput(idx,val,ctx){ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;if(arr[idx])arr[idx].label=val;}
 
-function _mfCampoTipoChange(idx,tipo){
-  if(!_mfCampos[idx])return;
-  _mfCampos[idx].tipo=tipo;
+function _mfCampoTipoChange(idx,tipo,ctx){
+  ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;
+  if(!arr[idx])return;
+  arr[idx].tipo=tipo;
   var temOpcoes=tipo==='status'||tipo==='multi';
-  if(temOpcoes){if(!_mfCampos[idx].opcoes)_mfCampos[idx].opcoes=[];}
-  else{delete _mfCampos[idx].opcoes;}
-  _mfRenderCampos();
+  if(temOpcoes){if(!arr[idx].opcoes)arr[idx].opcoes=[];}
+  else{delete arr[idx].opcoes;}
+  _mfRenderCampos(ctx);
 }
 
-function _mfMoverCampo(idx,delta){
+function _mfMoverCampo(idx,delta,ctx){
+  ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;
   var dest=idx+delta;
-  if(dest<0||dest>=_mfCampos.length)return;
-  var tmp=_mfCampos[idx];_mfCampos[idx]=_mfCampos[dest];_mfCampos[dest]=tmp;
-  _mfRenderCampos();
+  if(dest<0||dest>=arr.length)return;
+  var tmp=arr[idx];arr[idx]=arr[dest];arr[dest]=tmp;
+  _mfRenderCampos(ctx);
 }
 
-function _mfRemoverCampo(idx){
-  _mfCampos.splice(idx,1);
-  _mfRenderCampos();
+function _mfRemoverCampo(idx,ctx){
+  ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;
+  arr.splice(idx,1);
+  _mfRenderCampos(ctx);
 }
 
-function _mfAdicionarCampo(){
-  _mfCampos.push({id:uid(),label:'',tipo:'texto'});
-  _mfRenderCampos();
-  // Foca no novo input
+function _mfAdicionarCampo(ctx){
+  ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;var listId=_mfCtx(ctx).listId;
+  arr.push({id:uid(),label:'',tipo:'texto'});
+  _mfRenderCampos(ctx);
   setTimeout(function(){
-    var lista=document.getElementById("mf-campos-lista");
+    var lista=document.getElementById(listId);
     if(!lista)return;
     var inputs=lista.querySelectorAll(".mfc-label");
     if(inputs.length)inputs[inputs.length-1].focus();
   },30);
 }
 
-function _mfRenderOpcoes(campo,cidx){
+function _mfRenderOpcoes(campo,cidx,ctx){
+  ctx=ctx||'campos';
   var opcoes=campo.opcoes||[];
   var html='<div class="mfc-opcoes">';
   opcoes.forEach(function(op,oi){
     var swatches=_MODELO_CORES.map(function(c){
-      return '<span class="mfc-mini-swatch'+(c===(op.cor||'#94a3b8')?' sel':'')+'" style="background:'+c+';" onclick="_mfOpcaoCor('+cidx+','+oi+',\''+c+'\')" title="'+c+'"></span>';
+      return '<span class="mfc-mini-swatch'+(c===(op.cor||'#94a3b8')?' sel':'')+'" style="background:'+c+';" onclick="_mfOpcaoCor('+cidx+','+oi+',\''+c+'\',\''+ctx+'\')" title="'+c+'"></span>';
     }).join("");
     html+='<div class="mfc-opcao-row">'
       +(campo.tipo==='status'?'<div class="mfc-swatches">'+swatches+'</div>':'')
-      +'<input value="'+op.label.replace(/"/g,'&quot;')+'" placeholder="Opção..." oninput="_mfOpcaoLabelInput('+cidx+','+oi+',this.value)" style="flex:1;font-size:12px;padding:3px 7px;border:1px solid var(--border);border-radius:5px;min-width:80px;"/>'
-      +'<button type="button" onclick="_mfRemoverOpcao('+cidx+','+oi+')" class="rbtn rbtn-sm rbtn-danger" style="padding:2px 5px;">'+ic("trash")+'</button>'
+      +'<input value="'+op.label.replace(/"/g,'&quot;')+'" placeholder="Opção..." oninput="_mfOpcaoLabelInput('+cidx+','+oi+',this.value,\''+ctx+'\')" style="flex:1;font-size:12px;padding:3px 7px;border:1px solid var(--border);border-radius:5px;min-width:80px;"/>'
+      +'<button type="button" onclick="_mfRemoverOpcao('+cidx+','+oi+',\''+ctx+'\')" class="rbtn rbtn-sm rbtn-danger" style="padding:2px 5px;">'+ic("trash")+'</button>'
       +'</div>';
   });
-  html+='<button type="button" onclick="_mfAdicionarOpcao('+cidx+')" class="rbtn rbtn-sm" style="margin-top:4px;font-size:11px;">'+ic("plus")+' Opção</button>';
+  html+='<button type="button" onclick="_mfAdicionarOpcao('+cidx+',\''+ctx+'\')" class="rbtn rbtn-sm" style="margin-top:4px;font-size:11px;">'+ic("plus")+' Opção</button>';
   html+='</div>';
   return html;
 }
 
-function _mfOpcaoLabelInput(cidx,oidx,val){if(_mfCampos[cidx]&&_mfCampos[cidx].opcoes&&_mfCampos[cidx].opcoes[oidx])_mfCampos[cidx].opcoes[oidx].label=val;}
+function _mfOpcaoLabelInput(cidx,oidx,val,ctx){ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;if(arr[cidx]&&arr[cidx].opcoes&&arr[cidx].opcoes[oidx])arr[cidx].opcoes[oidx].label=val;}
 
-function _mfOpcaoCor(cidx,oidx,cor){
-  if(!_mfCampos[cidx]||!_mfCampos[cidx].opcoes||!_mfCampos[cidx].opcoes[oidx])return;
-  _mfCampos[cidx].opcoes[oidx].cor=cor;
-  _mfRenderCampos();
+function _mfOpcaoCor(cidx,oidx,cor,ctx){
+  ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;
+  if(!arr[cidx]||!arr[cidx].opcoes||!arr[cidx].opcoes[oidx])return;
+  arr[cidx].opcoes[oidx].cor=cor;
+  _mfRenderCampos(ctx);
 }
 
-function _mfAdicionarOpcao(cidx){
-  if(!_mfCampos[cidx])return;
-  if(!_mfCampos[cidx].opcoes)_mfCampos[cidx].opcoes=[];
-  _mfCampos[cidx].opcoes.push({id:uid(),label:'',cor:'#94a3b8'});
-  _mfRenderCampos();
+function _mfAdicionarOpcao(cidx,ctx){
+  ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;
+  if(!arr[cidx])return;
+  if(!arr[cidx].opcoes)arr[cidx].opcoes=[];
+  arr[cidx].opcoes.push({id:uid(),label:'',cor:'#94a3b8'});
+  _mfRenderCampos(ctx);
 }
 
-function _mfRemoverOpcao(cidx,oidx){
-  if(!_mfCampos[cidx]||!_mfCampos[cidx].opcoes)return;
-  _mfCampos[cidx].opcoes.splice(oidx,1);
-  _mfRenderCampos();
+function _mfRemoverOpcao(cidx,oidx,ctx){
+  ctx=ctx||'campos';var arr=_mfCtx(ctx).arr;
+  if(!arr[cidx]||!arr[cidx].opcoes)return;
+  arr[cidx].opcoes.splice(oidx,1);
+  _mfRenderCampos(ctx);
 }
 
 function _mfSelecionarCor(cor){
@@ -2772,7 +2981,11 @@ async function salvarModelo(){
   for(var ci=0;ci<_mfCampos.length;ci++){
     if(!(_mfCampos[ci].label||"").trim()){toast("Preencha o rótulo do campo "+(ci+1),true);return;}
   }
-  var obj={nome:nome,cor:_mfCor,icone:_mfIcone,campos:_mfCampos};
+  // Valida labels das colunas
+  for(var ki=0;ki<_mfColunas.length;ki++){
+    if(!(_mfColunas[ki].label||"").trim()){toast("Preencha o rótulo da coluna "+(ki+1),true);return;}
+  }
+  var obj={nome:nome,cor:_mfCor,icone:_mfIcone,campos:_mfCampos,colunas_tarefa:_mfColunas};
   if(_mfEditId){obj.id=_mfEditId;}else{obj.criado_por=userDbId;}
   try{
     await dbUpsertModelo(obj);
@@ -2784,13 +2997,15 @@ async function salvarModelo(){
 
 async function duplicarModelo(id){
   var m=modelosDB.find(function(x){return x.id===id;});if(!m)return;
-  var camposCopia=(m.campos||[]).map(function(c){
-    var nc=Object.assign({},c,{id:uid()});
-    if(nc.opcoes){nc.opcoes=nc.opcoes.map(function(o){return Object.assign({},o,{id:uid()});});}
-    return nc;
-  });
+  function _clonarArr(arr){
+    return (arr||[]).map(function(c){
+      var nc=Object.assign({},c,{id:uid()});
+      if(nc.opcoes){nc.opcoes=nc.opcoes.map(function(o){return Object.assign({},o,{id:uid()});});}
+      return nc;
+    });
+  }
   try{
-    await dbUpsertModelo({nome:m.nome+' (cópia)',cor:m.cor,icone:m.icone,campos:camposCopia,criado_por:userDbId});
+    await dbUpsertModelo({nome:m.nome+' (cópia)',cor:m.cor,icone:m.icone,campos:_clonarArr(m.campos),colunas_tarefa:_clonarArr(m.colunas_tarefa),criado_por:userDbId});
     modelosDB=await dbFetchModelos();
     toast("Modelo duplicado!");
     _renderModelosLista();

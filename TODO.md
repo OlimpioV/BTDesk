@@ -65,7 +65,14 @@ e comentários; mestre ajusta o sistema quando necessário. Decisões fechadas:
 
 Roadmap consolidado:
 
-- [ ] **Fase 3 — colunas de tarefa pelo modelo** (fecha Reuniões)
+- [x] **Fase 3 — colunas de tarefa pelo modelo** (concluída): o modelo define
+  colunas adicionais de tarefa (`reuniao_modelos.colunas_tarefa jsonb`, mesmos
+  9 tipos, construtor com seção própria "Colunas das tarefas"); copiadas para
+  `modelo_snapshot.colunas_tarefa` na criação/troca; valores por tarefa em
+  `tarefas.campos_valores jsonb` (PATCH parcial); células `.tcol` no card com
+  edição inline por tipo. As colunas intrínsecas (título, status, responsável,
+  datas) permanecem, pois movem progresso/atraso/avatars (mesmo desenho do
+  Monday). Subtarefas não recebem colunas custom nesta fase.
 - [ ] **Fase 4 — duplicação universal com diálogo** (tarefas, subtarefas,
   reuniões; demandas quando chegarem ao motor)
 - [ ] **Fase 5 — modelos de demanda no kanban** (campos custom no card,
