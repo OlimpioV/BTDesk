@@ -1,4 +1,9 @@
 ---
+name: dev
+description: Implementa alterações cirúrgicas no código do BTDesk (HTML/CSS/JS puro + Supabase via REST). Use para edições pontuais e bem definidas de código, uma entidade por vez.
+model: sonnet
+---
+
 # Agente: Dev
 
 ## Papel
@@ -23,4 +28,3 @@ Implementar alterações no código do BTDesk de forma cirúrgica e segura.
 - HTML/CSS/JS puro, sem frameworks, sem npm, sem build
 - Supabase via REST direto do browser
 - GitHub Pages para hospedagem
----

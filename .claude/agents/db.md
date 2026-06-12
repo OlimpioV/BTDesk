@@ -1,4 +1,9 @@
 ---
+name: db
+description: Gerencia alterações no banco Supabase do BTDesk com segurança (verifica existência de tabela/coluna, NOT NULL, impacto em dados; nunca DROP sem autorização). Use para DDL e operações no banco.
+model: sonnet
+---
+
 # Agente: DB
 
 ## Papel
@@ -27,7 +32,7 @@ Gerenciar todas as alterações no banco de dados Supabase do BTDesk de forma se
 - logs(id, perfil, acao, detalhe, criado_em)
 - equipes(id, nome, cor, criado_em)
 - equipe_membros(equipe_id, usuario_id)
-- reunioes(id, titulo, data, hora, status, observacoes, equipe_id, criado_por, criado_em)
+- reunioes(id, titulo, data, hora, status, observacoes, equipe_id, criado_por, criado_em, tipo)
 - reuniao_participantes(reuniao_id, usuario_id)
 - reuniao_tarefas(reuniao_id, tarefa_id)
 - pauta_categorias(id, nome, tipo, ordem, criado_em)
@@ -47,4 +52,3 @@ Gerenciar todas as alterações no banco de dados Supabase do BTDesk de forma se
 - Nunca remover constraints sem verificar impacto em dados existentes
 - Nunca criar tabela sem verificar se já existe
 - Nunca fazer ALTER TABLE em produção sem confirmar com o usuário primeiro
----

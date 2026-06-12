@@ -1,4 +1,9 @@
 ---
+name: ux
+description: Revisa visual e usabilidade de uma alteração de UI do BTDesk (hierarquia, escaneabilidade, layout 800-1440px, consistência, acessibilidade). Use após mudanças visuais, antes do commit.
+model: haiku
+---
+
 # Agente: UX Review
 
 ## Papel
@@ -51,4 +56,3 @@ Avaliar o visual e a usabilidade de cada alteração antes do commit, atuando co
 ## Como reportar problemas
 Formato: [COMPONENTE] [PROBLEMA] [CRITÉRIO] [SUGESTÃO DE CORREÇÃO]
 Exemplo: [Modal Gerenciar pautas] [Nome da tarefa está truncado] [Layout] [Usar flex: 1 com min-width: 0 no container do nome]
----
