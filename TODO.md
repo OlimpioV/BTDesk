@@ -56,8 +56,12 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
 
 - [ ] **Fase 0 — visual (em andamento):** coluna `tipo` em `reunioes`; tipos com
   cor + ícone no calendário, sidebar e detalhe; Próximas/Anteriores reforçadas.
-- [ ] **Fase 1 — modelos básicos:** tabela `reuniao_modelos` (nome, cor, ícone);
-  criar/editar/**duplicar**; `reunioes.modelo_id`. Sem campos custom ainda.
+- [x] **Fase 1 — modelos básicos** (concluída): tabela `reuniao_modelos` (nome,
+  cor, ícone, slug) com seed dos 2 tipos; `reunioes.modelo_id` (FK set null) +
+  `reunioes.modelo_snapshot jsonb` (backfill nas 37 reuniões); tela "Gerenciar
+  modelos" (mestre) com criar/editar/duplicar/excluir; form de reunião com
+  seletor de modelo; snapshot copiado na criação/troca de modelo; render
+  prioriza snapshot (editar/excluir modelo não afeta reuniões existentes).
 - [ ] **Fase 2 — campos no cabeçalho:** construtor dos campos da reunião (tipos
   amplos), valores em `jsonb` na reunião; exibição/edição no detalhe.
 - [ ] **Fase 3 — colunas de tarefa customizáveis:** colunas hoje fixas

@@ -108,6 +108,14 @@ async function criarNotifParaParticipantes(reuniaoId,tipo,referencia_id,mensagem
   }catch(_){}
 }
 async function dbDelReuniao(id){await fetch(SB+"/rest/v1/reunioes?id=eq."+id,{method:"DELETE",headers:H});}
+
+// ── MODELOS DE REUNIAO DB ──
+async function dbFetchModelos(){var r=await fetch(SB+"/rest/v1/reuniao_modelos?select=*&order=criado_em.asc",{headers:H});if(!r.ok)throw new Error();return r.json();}
+async function dbUpsertModelo(m){
+  if(m.id){var body=Object.assign({},m);delete body.id;var r=await fetch(SB+"/rest/v1/reuniao_modelos?id=eq."+encodeURIComponent(m.id),{method:"PATCH",headers:Object.assign({"Prefer":"return=representation"},H),body:JSON.stringify(body)});if(!r.ok)throw new Error();var rows=await r.json();return Array.isArray(rows)?rows[0]:rows;}
+  var r=await fetch(SB+"/rest/v1/reuniao_modelos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(m)});if(!r.ok)throw new Error();var rows=await r.json();return Array.isArray(rows)?rows[0]:rows;
+}
+async function dbDelModelo(id){await fetch(SB+"/rest/v1/reuniao_modelos?id=eq."+id,{method:"DELETE",headers:H});}
 async function dbFetchReuniaoParticipantes(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_participantes?reuniao_id=eq."+reuniaoId+"&select=usuario_id,usuarios(id,nome,sigla,email)",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertReuniaoParticipante(p){var r=await fetch(SB+"/rest/v1/reuniao_participantes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();}
 async function dbDelReuniaoParticipante(reuniaoId,userId){await fetch(SB+"/rest/v1/reuniao_participantes?reuniao_id=eq."+reuniaoId+"&usuario_id=eq."+userId,{method:"DELETE",headers:H});}

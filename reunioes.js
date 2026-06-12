@@ -1,6 +1,7 @@
 // ── REUNIOES ──
 var _calMes=(new Date()).getMonth();
 var _calAno=(new Date()).getFullYear();
+var modelosDB=[];
 var _projExpanded={};
 var _checklistCache={};
 var _commentsCache={};
@@ -18,7 +19,11 @@ var REUNIAO_TIPOS={
   acompanhamento:{label:'Reunião de equipe',cor:'#185FA5',ic:'users'},
   evento:{label:'Evento',cor:'#fa510e',ic:'spark'}
 };
-function _reunTipo(r){return (r&&REUNIAO_TIPOS[r.tipo])||REUNIAO_TIPOS.acompanhamento;}
+function _reunTipo(r){
+  if(r&&r.modelo_snapshot&&r.modelo_snapshot.cor)return {label:r.modelo_snapshot.nome,cor:r.modelo_snapshot.cor,ic:r.modelo_snapshot.icone||'users'};
+  if(r&&r.modelo_id){var m=modelosDB.find(function(x){return x.id===r.modelo_id;});if(m)return {label:m.nome,cor:m.cor,ic:m.icone||'users'};}
+  return (r&&REUNIAO_TIPOS[r.tipo])||REUNIAO_TIPOS.acompanhamento;
+}
 function toggleAnteriores(){
   _anterioresAberto=!_anterioresAberto;
   var el=document.getElementById("reun-anteriores");if(el)el.style.display=_anterioresAberto?'block':'none';
@@ -33,6 +38,7 @@ async function renderReunioes(){
     reunioesDB=await dbFetchReunioes(eqId);
     pautasDB=await dbFetchPautas(eqId);
     projetosDB=await dbFetchProjetos(eqId);
+    try{modelosDB=await dbFetchModelos();}catch(_){modelosDB=[];}
   }catch(e){toast("Erro ao carregar reunioes",true);}
   _renderReunioesPagina();
 }
@@ -86,6 +92,7 @@ function _renderReunioesPagina(){
     +'<div id="mini-cal-area"></div>'
     +'<div class="reun-sidebar-list">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
     +'<div class="reun-sidebar-footer">'
+    +(perfil==="mestre"?'<button onclick="openGerenciarModelos()" class="rbtn rbtn-sm rbtn-ghost" style="width:100%;justify-content:center;">'+ic("palette")+' Gerenciar modelos</button>':"")
     +'</div>'
     +'</div>'
     +'<div class="reun-main">'
@@ -617,6 +624,8 @@ async function openEditReuniao(id){
 function _abrirFormReuniao(r){
   var isEdit=!!r.id;
   var eqOptions=equipesDB.map(function(e){return '<option value="'+e.id+'"'+(r.equipe_id===e.id?' selected':'')+'>'+e.nome+'</option>';}).join("");
+  var modeloField='';
+  if(modelosDB.length){var defId=r.modelo_id||(modelosDB.find(function(m){return m.slug==='acompanhamento';})||modelosDB[0]||{}).id||'';modeloField='<div class="field"><label>Modelo</label><select id="rf-modelo">'+modelosDB.map(function(m){return '<option value="'+m.id+'"'+(m.id===defId?' selected':'')+'>'+m.nome+'</option>';}).join("")+'</select></div>';}
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,520px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isEdit?"Editar reuniao":"Nova reuniao")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo</label><input id="rf-titulo" value="'+(r.titulo||"")+'"/></div>'
@@ -625,7 +634,7 @@ function _abrirFormReuniao(r){
     +'<div><label>Hora</label><input type="time" id="rf-hora" value="'+(r.hora?r.hora.slice(0,5):"09:30")+'"/></div>'
     +'</div>'
     +'<div class="field"><label>Status</label><select id="rf-status"><option value="agendada"'+(r.status==="agendada"?" selected":"")+'>Agendada</option><option value="realizada"'+(r.status==="realizada"?" selected":"")+'>Realizada</option><option value="cancelada"'+(r.status==="cancelada"?" selected":"")+'>Cancelada</option></select></div>'
-    +'<div class="field"><label>Tipo</label><select id="rf-tipo">'+Object.keys(REUNIAO_TIPOS).map(function(k){return '<option value="'+k+'"'+((r.tipo||'acompanhamento')===k?' selected':'')+'>'+REUNIAO_TIPOS[k].label+'</option>';}).join("")+'</select></div>'
+    +modeloField
     +(equipesDB.length?'<div class="field"><label>Equipe</label><select id="rf-equipe"><option value="">Selecione...</option>'+eqOptions+'</select></div>':"")
     +'<div class="field"><label>Observacoes</label><textarea id="rf-obs" rows="3" style="resize:vertical;">'+(r.observacoes||"")+'</textarea></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
@@ -643,10 +652,15 @@ async function salvarReuniao(id){
   var eqEl=document.getElementById("rf-equipe");var equipe_id=eqEl?eqEl.value||null:null;
   var obs=(document.getElementById("rf-obs").value||"").trim();
   if(!data){toast("Informe a data",true);return;}
-  var tipoEl=document.getElementById("rf-tipo");var tipo=tipoEl?tipoEl.value:'acompanhamento';
-  var obj={data,hora:hora+":00",status,tipo,observacoes:obs||null,equipe_id,criado_por:userDbId};
+  var modeloEl=document.getElementById("rf-modelo");var modeloId=modeloEl?modeloEl.value||null:null;
+  var m=modeloId?modelosDB.find(function(x){return x.id===modeloId;}):null;
+  var rAtual=id?reunioesDB.find(function(x){return x.id===id;}):null;
+  var modeloMudou=!id||(rAtual&&rAtual.modelo_id!==modeloId);
+  var obj={data,hora:hora+":00",status,observacoes:obs||null,equipe_id,criado_por:userDbId};
   if(titulo)obj.titulo=titulo;
   if(id)obj.id=id;
+  if(m&&modeloMudou){obj.modelo_id=m.id;obj.modelo_snapshot={nome:m.nome,cor:m.cor,icone:m.icone};if(m.slug)obj.tipo=m.slug;}
+  else if(id&&rAtual&&!modeloMudou){if(rAtual.modelo_id)obj.modelo_id=rAtual.modelo_id;if(rAtual.modelo_snapshot)obj.modelo_snapshot=rAtual.modelo_snapshot;if(rAtual.tipo)obj.tipo=rAtual.tipo;}
   try{
     var criada=await dbUpsertReuniao(obj);
     var eqId=equipeAtiva?equipeAtiva.id:null;
@@ -2318,4 +2332,114 @@ async function sinalizarProjeto(projetoId){
     var btn2=document.querySelector("[onclick=\"sinalizarProjeto('"+projetoId+"')\"]");
     if(btn2){btn2.textContent="! Sinalizar";btn2.disabled=false;}
   }
+}
+
+// ── GESTAO DE MODELOS DE REUNIAO ──
+var _mfCor='#185FA5';
+var _mfIcone='users';
+var _mfEditId=null;
+var _MODELO_CORES=['#185FA5','#fa510e','#7c3aed','#16a34a','#d97706','#dc2626','#0e7490','#475569'];
+var _MODELO_ICONES=['users','spark','cal','briefcase','tag','bell','check','group','meeting'];
+
+function openGerenciarModelos(){
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,560px);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelos de reunião</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'</div>'
+    +'<div id="modelos-lista" style="margin-bottom:14px;"></div>'
+    +'<div style="display:flex;justify-content:flex-end;">'
+    +'<button onclick="openFormModelo()" class="rbtn rbtn-accent rbtn-sm">'+ic("plus")+' Novo modelo</button>'
+    +'</div>'
+    +'</div></div>';
+  _renderModelosLista();
+}
+
+function _renderModelosLista(){
+  var el=document.getElementById("modelos-lista");if(!el)return;
+  if(!modelosDB.length){el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nenhum modelo cadastrado.</div>';return;}
+  el.innerHTML=modelosDB.map(function(m){
+    return '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding:8px 4px;">'
+      +'<span style="width:10px;height:10px;border-radius:50%;background:'+m.cor+';flex-shrink:0;display:inline-block;"></span>'
+      +'<span style="color:var(--text3);display:flex;align-items:center;">'+ic(m.icone||'users')+'</span>'
+      +'<span style="font-size:13px;font-weight:700;color:var(--bt-navy);flex:1;min-width:0;">'+m.nome+'</span>'
+      +'<div style="display:flex;gap:4px;flex-shrink:0;">'
+      +'<button onclick="openFormModelo(\''+m.id+'\')" class="rbtn rbtn-sm">'+ic("edit")+' Editar</button>'
+      +'<button onclick="duplicarModelo(\''+m.id+'\')" class="rbtn rbtn-sm">'+ic("tag")+' Duplicar</button>'
+      +'<button onclick="delModelo(\''+m.id+'\')" class="rbtn rbtn-sm rbtn-danger">'+ic("trash")+' Excluir</button>'
+      +'</div>'
+      +'</div>';
+  }).join("");
+}
+
+function openFormModelo(idOpcional){
+  _mfEditId=idOpcional||null;
+  var m=idOpcional?modelosDB.find(function(x){return x.id===idOpcional;}):null;
+  _mfCor=(m&&m.cor)||'#185FA5';
+  _mfIcone=(m&&m.icone)||'users';
+  var mc=document.getElementById("modal-container");
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,480px);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(m?"Editar modelo":"Novo modelo")+'</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Nome</label><input id="mf-nome" value="'+(m?m.nome:'')+'"/></div>'
+    +'<div class="field"><label>Cor</label><div class="mf-swatch-row" id="mf-cores">'
+    +_MODELO_CORES.map(function(c){return '<span class="mf-swatch'+(c===_mfCor?' selecionado':'')+'" style="background:'+c+';" onclick="_mfSelecionarCor(\''+c+'\')"></span>';}).join("")
+    +'</div></div>'
+    +'<div class="field"><label>Ícone</label><div class="mf-ic-row" id="mf-icones">'
+    +_MODELO_ICONES.map(function(i){return '<button type="button" class="mf-ic-btn'+(i===_mfIcone?' selecionado':'')+'" onclick="_mfSelecionarIcone(\''+i+'\')">'+ic(i)+'</button>';}).join("")
+    +'</div></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">'
+    +'<button class="btn" onclick="openGerenciarModelos()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="salvarModelo()">Salvar</button>'
+    +'</div>'
+    +'</div></div>';
+}
+
+function _mfSelecionarCor(cor){
+  _mfCor=cor;
+  var row=document.getElementById("mf-cores");if(!row)return;
+  row.querySelectorAll(".mf-swatch").forEach(function(s){s.classList.toggle("selecionado",s.style.background===cor||s.style.backgroundColor===cor);});
+}
+
+function _mfSelecionarIcone(icone){
+  _mfIcone=icone;
+  var row=document.getElementById("mf-icones");if(!row)return;
+  row.querySelectorAll(".mf-ic-btn").forEach(function(b){b.classList.remove("selecionado");});
+  var btn=row.querySelector("[onclick=\"_mfSelecionarIcone('"+icone+"')\"]");if(btn)btn.classList.add("selecionado");
+}
+
+async function salvarModelo(){
+  var nome=(document.getElementById("mf-nome").value||"").trim();
+  if(!nome){toast("Informe o nome do modelo",true);return;}
+  var obj={nome:nome,cor:_mfCor,icone:_mfIcone};
+  if(_mfEditId){obj.id=_mfEditId;}else{obj.criado_por=userDbId;}
+  try{
+    await dbUpsertModelo(obj);
+    modelosDB=await dbFetchModelos();
+    toast("Modelo salvo!");
+    openGerenciarModelos();
+  }catch(e){toast("Erro ao salvar modelo",true);}
+}
+
+async function duplicarModelo(id){
+  var m=modelosDB.find(function(x){return x.id===id;});if(!m)return;
+  try{
+    await dbUpsertModelo({nome:m.nome+' (cópia)',cor:m.cor,icone:m.icone,criado_por:userDbId});
+    modelosDB=await dbFetchModelos();
+    toast("Modelo duplicado!");
+    _renderModelosLista();
+  }catch(e){toast("Erro ao duplicar",true);}
+}
+
+async function delModelo(id){
+  modalConfirm("Excluir este modelo? Reuniões já criadas não serão afetadas.",async function(){
+    try{
+      await dbDelModelo(id);
+      modelosDB=await dbFetchModelos();
+      toast("Modelo excluído!");
+      _renderModelosLista();
+    }catch(e){toast("Erro ao excluir",true);}
+  });
 }

@@ -478,3 +478,13 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .tcard-chev.aberto{transform:rotate(90deg);color:var(--bt-navy);}
 .reun-wrap .cl-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-soft);flex-wrap:wrap;}
 .reun-wrap .cl-item:last-of-type{border-bottom:none;}
+
+/* ── FORM DE MODELOS DE REUNIAO ─────────────────────────────────────── */
+.mf-swatch-row{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;}
+.mf-swatch{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .15s,transform .12s;}
+.mf-swatch:hover{transform:scale(1.15);}
+.mf-swatch.selecionado{border-color:var(--bt-navy);}
+.mf-ic-row{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0;}
+.mf-ic-btn{background:var(--surface);border:2px solid var(--border);border-radius:7px;padding:5px 8px;cursor:pointer;color:var(--text2);line-height:1;transition:border-color .15s,background .15s;}
+.mf-ic-btn:hover{border-color:var(--text3);background:#fff;}
+.mf-ic-btn.selecionado{border-color:var(--bt-navy);background:#fff;color:var(--bt-navy);}
