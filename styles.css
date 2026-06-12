@@ -461,31 +461,20 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .cmt-box input,.reun-wrap .cmt-box textarea{flex:1;font-family:var(--font-corpo);font-size:13px;padding:9px 13px;border:1.5px solid var(--border);border-radius:999px;outline:none;transition:.16s;background:var(--surface2);resize:none;min-width:0;}
 .reun-wrap .cmt-box input:focus,.reun-wrap .cmt-box textarea:focus{border-color:var(--bt-orange);background:#fff;box-shadow:0 0 0 3px rgba(250,81,14,.1);}
 
-/* ── TABELA DE PAUTAS EXIBIDA COMO CARTOES (mantem toda a edicao) ─────── */
-/* Esconde o cabecalho de colunas (cartoes nao tem colunas) */
-.reun-wrap .rt-thead{display:none;}
-/* Lista vertical de cartoes, com respiro */
-.reun-wrap .rt-table{display:flex;flex-direction:column;gap:12px;padding:14px;}
-/* Cada tarefa (container proprio) vira um cartao branco */
-.reun-wrap [id^="tp-card-"]{border:1px solid var(--border);border-radius:var(--r-md);background:#fff;box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .16s;}
-.reun-wrap [id^="tp-card-"]:hover{box-shadow:var(--shadow-md);}
-/* Linha principal vira o cabecalho do cartao: titulo em cima, meta embaixo */
-.reun-wrap .rt-row{display:flex!important;flex-wrap:wrap;align-items:center;column-gap:12px;row-gap:8px;
-  min-width:0!important;border-bottom:none;padding:14px 16px 12px;border-left-width:4px!important;}
-.reun-wrap .rt-row:hover{background:transparent;}
-.reun-wrap .rt-row .rt-cell{padding:0;min-height:0;overflow:visible;}
-.reun-wrap .rt-row .rt-cell-task{flex:1 1 100%;}
-.reun-wrap .rt-row .rt-cell:nth-child(3){margin-right:auto;}  /* status: empurra datas/menu p/ direita */
-.reun-wrap .rt-row .rt-cell:nth-child(4),
-.reun-wrap .rt-row .rt-cell:nth-child(5){font-size:11px;color:var(--text3);}
-/* Adicionar subtarefa e subtarefas (checklist) dentro do cartao */
-.reun-wrap .rt-add-sub-inline{min-width:0!important;background:var(--surface2);border:none;border-top:1px solid var(--border-soft);padding:8px 16px 8px 30px;}
-.reun-wrap .rt-sub-group{background:var(--surface2);}
-.reun-wrap .rt-sub-row{display:flex!important;flex-wrap:wrap;align-items:center;column-gap:12px;row-gap:4px;
-  min-width:0!important;background:transparent;border-bottom:none;border-top:1px solid var(--border-soft);padding:8px 16px 8px 30px;}
-.reun-wrap .rt-sub-row:hover{background:rgba(37,63,79,.03);}
-.reun-wrap .rt-sub-row .rt-cell{padding:0;min-height:0;overflow:visible;}
-.reun-wrap .rt-sub-row .rt-cell-sub-task{flex:1 1 200px;}
-.reun-wrap .rt-sub-row .rt-cell:nth-child(3){margin-right:auto;}
-/* Botao Nova tarefa mais leve */
-.reun-wrap .rt-cat-add-btn{border-top:1px solid var(--border-soft);}
+/* ── CARTOES DE TAREFA DE PAUTA ─────────────────────────────────────── */
+.reun-wrap .tcard-list{display:flex;flex-direction:column;gap:12px;}
+.reun-wrap .tcard{display:flex;border:1px solid var(--border);border-radius:var(--r-md);background:#fff;
+  box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .16s,transform .16s;}
+.reun-wrap .tcard:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.reun-wrap .tcard-bar{width:4px;flex-shrink:0;}
+.reun-wrap .tcard-main{flex:1;min-width:0;padding:14px 16px;}
+.reun-wrap .tcard-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.reun-wrap .tcard-title{font-size:14px;font-weight:700;color:var(--bt-navy);line-height:1.35;flex:1;min-width:0;}
+.reun-wrap .tcard-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);margin-top:6px;flex-wrap:wrap;}
+.reun-wrap .tcard-chev{background:none;border:none;padding:0;width:20px;height:20px;display:inline-flex;align-items:center;
+  justify-content:center;color:var(--text3);font-size:14px;flex-shrink:0;cursor:pointer;
+  transition:transform .15s,color .15s;}
+.reun-wrap .tcard-chev:hover{color:var(--bt-navy);}
+.reun-wrap .tcard-chev.aberto{transform:rotate(90deg);color:var(--bt-navy);}
+.reun-wrap .cl-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-soft);flex-wrap:wrap;}
+.reun-wrap .cl-item:last-of-type{border-bottom:none;}
