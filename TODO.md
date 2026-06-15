@@ -82,7 +82,15 @@ Roadmap consolidado:
   demandas quando elas chegarem ao motor (Fase 5).
 - [ ] **Fase 5 — modelos de demanda no kanban** (campos custom no card,
   snapshot, backfill "Demanda padrão"; adapta kanban, lista e modal)
-- [ ] **Fase 6 — projetos reconectados e modulares** (dentro de Reuniões)
+- [x] **Fase 6 — projetos reconectados** (concluída): seção "Projetos internos"
+  no detalhe da reunião (entre Pautas e Comentários), listando projetos da
+  equipe ativa em cartões com checklist, comentários, sinalizar, novo/editar/
+  arquivar. Tudo já existia em `_buildProjetosSection` e nas funções db; faltava
+  plugar no `_buildReuniaoDetalhe` e corrigir o id de `_loadProjetosArea`
+  (reuniao-projetos-area → reun-projetos-area). `sinalizarProjeto` robustecido
+  (registra comentário sinalizado + notificação; e-mail via Edge Function fica
+  em try/catch, sem quebrar). Pendente/opcional: campos customizados por
+  projeto (modularização plena) e aba "Projetos" própria.
 - Futuro: vistas novas (calendário de demandas, tabela de reuniões);
   auditoria leve de edições estruturais.
 

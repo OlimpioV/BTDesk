@@ -236,11 +236,17 @@ function _buildReuniaoDetalhe(r){
     +'<div id="reun-pautas-area">Carregando...</div>'
     +'</div>';
   html+='<div class="reun-section">'
+    +'<div class="reun-sechdr">'
+    +'<div class="reun-sectitles"><span class="reun-sec-eye">Gestão da equipe</span><span class="reun-sec-ttl">Projetos internos</span></div>'
+    +'</div>'
+    +'<div id="reun-projetos-area">Carregando...</div>'
+    +'</div>';
+  html+='<div class="reun-section">'
     +'<div class="reun-sechdr"><div class="reun-sectitles"><span class="reun-sec-eye">Discussão geral</span><span class="reun-sec-ttl">Comentários</span></div></div>'
     +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadPautasSection(r.id);_loadProjetosArea(r.id);_loadReuniaoComentários(r.id);},0);
   return html;
 }
 
@@ -841,7 +847,7 @@ async function _saveProjetoInline(projetoId,ehPassado){
   }catch(e){toast("Erro ao salvar",true);}
 }
 function _loadProjetosArea(reuniaoId){
-  var el=document.getElementById("reuniao-projetos-area");if(!el)return;
+  var el=document.getElementById("reun-projetos-area");if(!el)return;
   var ce=perfil==="mestre"||perfil==="advogado";
   var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
   var hoje=new Date().toISOString().slice(0,10);
@@ -1605,7 +1611,7 @@ async function salvarProjeto(id){
     projetosDB=await dbFetchProjetos(eqId);
     if(id&&_checklistCache[id])delete _checklistCache[id];
     closeModal();
-    if(reuniaoAtiva)_loadPautasSection(reuniaoAtiva.id);
+    if(reuniaoAtiva)_loadProjetosArea(reuniaoAtiva.id);
     toast("Projeto salvo!");
   }catch(e){toast("Erro ao salvar",true);}
 }
@@ -1616,7 +1622,7 @@ async function delProjeto(id){
       await dbDelProjeto(id);
       projetosDB=projetosDB.filter(function(p){return p.id!==id;});
       delete _projExpanded[id];delete _checklistCache[id];
-      if(reuniaoAtiva)_loadPautasSection(reuniaoAtiva.id);
+      if(reuniaoAtiva)_loadProjetosArea(reuniaoAtiva.id);
       toast("Projeto excluido!");
     }catch(e){toast("Erro",true);}
   });
@@ -2744,27 +2750,33 @@ async function sinalizarProjeto(projetoId){
     }catch(_){}
   }
 
-  if(!destinatarios.length&&!p.responsavel_id){
-    toast("Nenhum destinatario encontrado. Configure participantes da reuniao ou e-mails extras em E-mails > Configuracoes.",true);
-    return;
-  }
+  var btn=document.querySelector("[onclick=\"sinalizarProjeto('"+projetoId+"')\"]");
+  if(btn){btn.textContent="Sinalizando...";btn.disabled=true;}
 
+  // Registrar comentario de sinalizacao no banco (sempre, independente de e-mail)
   try{
-    var btn=document.querySelector("[onclick=\"sinalizarProjeto('"+projetoId+"')\"]");
-    if(btn){btn.textContent="Enviando...";btn.disabled=true;}
-    await enviarEmail({destinatarios,assunto,corpo_html,tipo:"projeto_sinalizado",referencia_id:projetoId});
-    // Notificacao interna para participantes da reuniao ativa
-    if(reuniaoAtiva){
+    await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:"Projeto sinalizado por "+nomeUser+".",tipo:"sinalizado"});
+    _commentsCache[projetoId]=await dbFetchProjetoComentários(projetoId);
+    _reloadProjetoCard(projetoId,false);
+  }catch(_){}
+
+  // Notificacao interna para participantes da reuniao ativa
+  if(reuniaoAtiva){
+    try{
       await criarNotifParaParticipantes(reuniaoAtiva.id,"projeto_sinalizado",projetoId,"Projeto sinalizado: "+p.titulo);
       notificacoesDB=await dbFetchNotificacoes();
-    }
-    toast("Sinalizacao enviada!");
-    if(btn){btn.textContent="! Sinalizar";btn.disabled=false;}
-  }catch(e){
-    toast("Erro ao enviar: "+e.message,true);
-    var btn2=document.querySelector("[onclick=\"sinalizarProjeto('"+projetoId+"')\"]");
-    if(btn2){btn2.textContent="! Sinalizar";btn2.disabled=false;}
+    }catch(_){}
   }
+
+  // Tentar enviar e-mail (opcional, nao quebra se a Edge Function nao existir)
+  if(destinatarios.length){
+    try{
+      await enviarEmail({destinatarios:destinatarios,assunto:assunto,corpo_html:corpo_html,tipo:"projeto_sinalizado",referencia_id:projetoId});
+    }catch(_){}
+  }
+
+  toast("Sinalizado!");
+  if(btn){btn.textContent="! Sinalizar";btn.disabled=false;}
 }
 
 // ── GESTAO DE MODELOS DE REUNIAO ──
