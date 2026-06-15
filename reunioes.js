@@ -205,6 +205,7 @@ function _buildReuniaoDetalhe(r){
     +'</div>'
     +(ce?'<div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px;">'
       +'<button onclick="openEditReuniao(\''+r.id+'\')" class="rbtn rbtn-sm">'+ic("edit")+' Editar</button>'
+      +'<button onclick="openDuplicarReuniao(\''+r.id+'\')" class="rbtn rbtn-sm">Duplicar</button>'
       +'<button onclick="gerarAta(\''+r.id+'\')" class="rbtn rbtn-primary rbtn-sm">Gerar ata</button>'
       +'</div>':"")
     +'</div>';
@@ -2511,13 +2512,20 @@ function _abrirMenuTarefa(evt,tarefaId,isSub,parentId,ehPassado){
   var top=Math.round(rect.bottom+4);
   var left=Math.round(rect.right-160);
   if(left<4)left=4;
+  var ce=perfil==="mestre"||perfil==="advogado";
   var html='<div id="rt-menu-dd" style="position:fixed;inset:0;z-index:2000;" onclick="document.getElementById(\'rt-menu-dd\').remove();">';
   html+='<div style="position:fixed;top:'+top+'px;left:'+left+'px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:4px;min-width:160px;z-index:2001;" onclick="event.stopPropagation();">';
   if(isSub){
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_editarSubtarefaPauta(\''+tarefaId+'\',\''+parentId+'\','+!!ehPassado+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Editar</div>';
+    if(ce&&!ehPassado){
+      html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();openDuplicarSubtarefa(\''+tarefaId+'\',\''+parentId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Duplicar</div>';
+    }
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_excluirSubtarefaPauta(\''+tarefaId+'\',\''+parentId+'\','+!!ehPassado+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:#dc2626;" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'">Excluir</div>';
   } else {
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_editarTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Editar</div>';
+    if(ce&&!ehPassado){
+      html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();openDuplicarTarefa(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Duplicar</div>';
+    }
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_excluirTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:#dc2626;" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'">Excluir</div>';
   }
   html+='</div></div>';
@@ -3021,4 +3029,318 @@ async function delModelo(id){
       _renderModelosLista();
     }catch(e){toast("Erro ao excluir",true);}
   });
+}
+
+// ── DUPLICACAO ──
+
+// Diálogo genérico de duplicação renderizado no modal-container2.
+// cfg = {titulo, descricao?, campos?:[{tipo:'date',id,label,valor}], opcoes:[{id,label,marcado}], onConfirm({opcoes:{id:bool},campos:{id:valor}})}
+function _abrirDialogoDuplicar(cfg){
+  var mc=_mc2();mc.innerHTML="";
+  var ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;";
+  ov.onclick=function(e){if(e.target===ov)_mc2Close();};
+  var box=document.createElement("div");
+  box.style.cssText="background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);width:min(95vw,400px);padding:22px 22px 18px;";
+  box.onclick=function(e){e.stopPropagation();};
+  var titulo=document.createElement("div");
+  titulo.style.cssText="font-size:15px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);margin-bottom:4px;";
+  titulo.textContent=cfg.titulo;
+  box.appendChild(titulo);
+  if(cfg.descricao){
+    var desc=document.createElement("div");
+    desc.style.cssText="font-size:12px;color:var(--text3);margin-bottom:14px;";
+    desc.textContent=cfg.descricao;
+    box.appendChild(desc);
+  } else {
+    var sep=document.createElement("div");sep.style.height="14px";box.appendChild(sep);
+  }
+  // Campos extras (ex.: data)
+  var camposIds={};
+  if(cfg.campos&&cfg.campos.length){
+    cfg.campos.forEach(function(f){
+      var wrap=document.createElement("div");
+      wrap.className="field";
+      wrap.style.marginBottom="12px";
+      var lbl=document.createElement("label");
+      lbl.style.cssText="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;";
+      lbl.textContent=f.label;
+      var inp=document.createElement("input");
+      inp.id="dup-campo-"+f.id;
+      inp.type=f.tipo||"text";
+      if(f.valor)inp.value=f.valor;
+      inp.style.cssText="width:100%;font-size:13px;";
+      wrap.appendChild(lbl);wrap.appendChild(inp);
+      box.appendChild(wrap);
+      camposIds[f.id]=true;
+    });
+  }
+  // Checkboxes de opções
+  var opcoesWrap=document.createElement("div");
+  opcoesWrap.style.cssText="margin-bottom:16px;";
+  cfg.opcoes.forEach(function(op){
+    var row=document.createElement("label");
+    row.className="dup-opcao";
+    row.style.cssText="display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:13px;color:var(--text2);cursor:pointer;";
+    var cb=document.createElement("input");
+    cb.type="checkbox";
+    cb.id="dup-op-"+op.id;
+    cb.checked=!!op.marcado;
+    cb.style.cssText="width:15px;height:15px;accent-color:var(--bt-navy);cursor:pointer;flex-shrink:0;";
+    row.appendChild(cb);
+    var span=document.createElement("span");span.textContent=op.label;
+    row.appendChild(span);
+    opcoesWrap.appendChild(row);
+  });
+  box.appendChild(opcoesWrap);
+  // Botões
+  var btnRow=document.createElement("div");
+  btnRow.style.cssText="display:flex;gap:8px;justify-content:flex-end;";
+  var btnCancel=document.createElement("button");
+  btnCancel.className="rbtn rbtn-sm";
+  btnCancel.textContent="Cancelar";
+  btnCancel.onclick=function(){_mc2Close();};
+  var btnOk=document.createElement("button");
+  btnOk.className="rbtn rbtn-sm rbtn-primary";
+  btnOk.textContent="Duplicar";
+  btnOk.onclick=function(){
+    var vals={opcoes:{},campos:{}};
+    cfg.opcoes.forEach(function(op){
+      var el=document.getElementById("dup-op-"+op.id);
+      vals.opcoes[op.id]=el?el.checked:op.marcado;
+    });
+    if(cfg.campos){
+      cfg.campos.forEach(function(f){
+        var el=document.getElementById("dup-campo-"+f.id);
+        vals.campos[f.id]=el?el.value:"";
+      });
+    }
+    _mc2Close();
+    cfg.onConfirm(vals);
+  };
+  btnRow.appendChild(btnCancel);btnRow.appendChild(btnOk);
+  box.appendChild(btnRow);
+  ov.appendChild(box);
+  mc.appendChild(ov);
+}
+
+// Duplicar tarefa principal de pauta
+function openDuplicarTarefa(tarefaId){
+  var rId=reuniaoAtiva?reuniaoAtiva.id:"";
+  var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
+  if(!t){toast("Tarefa nao encontrada",true);return;}
+  _abrirDialogoDuplicar({
+    titulo:"Duplicar tarefa",
+    opcoes:[
+      {id:"subtarefas",label:"Subtarefas",marcado:true},
+      {id:"valores",label:"Valores das colunas",marcado:true},
+      {id:"comentarios",label:"Comentários",marcado:false}
+    ],
+    onConfirm:function(vals){_confirmarDuplicarTarefa(t,vals);}
+  });
+}
+
+async function _confirmarDuplicarTarefa(t,vals){
+  var rId=reuniaoAtiva?reuniaoAtiva.id:"";
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  try{
+    var novoId=uid();
+    var nova={id:novoId,texto:t.texto+" (cópia)",status:t.status,criado_em:new Date().toISOString()};
+    if(t.descricao)nova.descricao=t.descricao;
+    if(t.responsavel)nova.responsavel=t.responsavel;
+    if(t.data_inicio)nova.data_inicio=t.data_inicio;
+    if(t.data_fim)nova.data_fim=t.data_fim;
+    if(rId)nova.reuniao_id=rId;
+    if(t.pauta_categoria_id)nova.pauta_categoria_id=t.pauta_categoria_id;
+    if(eqId)nova.equipe_id=eqId;
+    if(vals.opcoes.valores&&t.campos_valores&&Object.keys(t.campos_valores).length){
+      nova.campos_valores=JSON.parse(JSON.stringify(t.campos_valores));
+    }
+    await dbUpsertTarefa(nova);
+    if(rId)await dbUpsertReuniaoTarefa({reuniao_id:rId,tarefa_id:novoId});
+    // Subtarefas
+    if(vals.opcoes.subtarefas){
+      var subs=_subtarefasCache[t.id]||null;
+      if(subs===null){
+        try{subs=await dbFetchSubtarefas(t.id);}catch(_){subs=[];}
+      }
+      for(var i=0;i<subs.length;i++){
+        var s=subs[i];
+        var nsId=uid();
+        var ns={id:nsId,parent_id:novoId,texto:s.texto,status:s.status,criado_em:new Date().toISOString()};
+        if(s.descricao)ns.descricao=s.descricao;
+        if(s.responsavel)ns.responsavel=s.responsavel;
+        if(s.data_inicio)ns.data_inicio=s.data_inicio;
+        if(s.data_fim)ns.data_fim=s.data_fim;
+        if(rId)ns.reuniao_id=rId;
+        if(eqId)ns.equipe_id=eqId;
+        await dbUpsertTarefa(ns);
+      }
+    }
+    // Comentários
+    if(vals.opcoes.comentarios){
+      var cmts=_tarefaCmtsCache[t.id]||null;
+      if(cmts===null){
+        try{cmts=await dbFetchTarefaComentários(t.id);}catch(_){cmts=[];}
+      }
+      for(var ci=0;ci<cmts.length;ci++){
+        var c=cmts[ci];
+        await dbUpsertTarefaComentario({tarefa_id:novoId,usuario_id:c.usuario_id,texto:c.texto});
+      }
+    }
+    // Atualiza cache e re-renderiza
+    if(rId){
+      var tarefasAtualizadas=await dbFetchTarefasReuniao(rId);
+      _tarefasPautaCache[rId]=tarefasAtualizadas;
+    }
+    await _loadPautasSection(rId);
+    toast("Tarefa duplicada!");
+  }catch(e){toast("Erro ao duplicar",true);}
+}
+
+// Duplicar subtarefa
+function openDuplicarSubtarefa(subId,parentId){
+  var sub=(_subtarefasCache[parentId]||[]).find(function(x){return x.id===subId;});
+  if(!sub){toast("Subtarefa nao encontrada",true);return;}
+  _abrirDialogoDuplicar({
+    titulo:"Duplicar subtarefa",
+    opcoes:[
+      {id:"comentarios",label:"Comentários",marcado:false}
+    ],
+    onConfirm:function(vals){_confirmarDuplicarSubtarefa(sub,parentId,vals);}
+  });
+}
+
+async function _confirmarDuplicarSubtarefa(sub,parentId,vals){
+  var rId=reuniaoAtiva?reuniaoAtiva.id:"";
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var hoje=new Date().toISOString().slice(0,10);
+  var reuniao=reunioesDB.find(function(r){return r.id===rId;})||{};
+  var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
+  try{
+    var novoId=uid();
+    var nova={id:novoId,parent_id:parentId,texto:sub.texto+" (cópia)",status:sub.status,criado_em:new Date().toISOString()};
+    if(sub.descricao)nova.descricao=sub.descricao;
+    if(sub.responsavel)nova.responsavel=sub.responsavel;
+    if(sub.data_inicio)nova.data_inicio=sub.data_inicio;
+    if(sub.data_fim)nova.data_fim=sub.data_fim;
+    if(rId)nova.reuniao_id=rId;
+    if(eqId)nova.equipe_id=eqId;
+    await dbUpsertTarefa(nova);
+    // Comentários
+    if(vals.opcoes.comentarios){
+      var cmts=_tarefaCmtsCache[sub.id]||null;
+      if(cmts===null){
+        try{cmts=await dbFetchTarefaComentários(sub.id);}catch(_){cmts=[];}
+      }
+      for(var ci=0;ci<cmts.length;ci++){
+        var c=cmts[ci];
+        await dbUpsertTarefaComentario({tarefa_id:novoId,usuario_id:c.usuario_id,texto:c.texto});
+      }
+    }
+    // Atualiza cache e re-renderiza
+    _subtarefasCache[parentId]=await dbFetchSubtarefas(parentId);
+    _reloadTarefaCard(parentId,ehPassado);
+    toast("Subtarefa duplicada!");
+  }catch(e){toast("Erro ao duplicar",true);}
+}
+
+// Duplicar reunião
+function openDuplicarReuniao(reuniaoId){
+  var r=reunioesDB.find(function(x){return x.id===reuniaoId;});
+  if(!r){toast("Reuniao nao encontrada",true);return;}
+  _abrirDialogoDuplicar({
+    titulo:"Duplicar reunião",
+    campos:[
+      {tipo:"date",id:"data",label:"Data da nova reunião",valor:""}
+    ],
+    opcoes:[
+      {id:"participantes",label:"Participantes",marcado:true},
+      {id:"pautas",label:"Pautas e tarefas",marcado:true},
+      {id:"valores",label:"Valores preenchidos",marcado:false},
+      {id:"comentarios",label:"Comentários da reunião",marcado:false}
+    ],
+    onConfirm:function(vals){_confirmarDuplicarReuniao(r,vals);}
+  });
+}
+
+async function _confirmarDuplicarReuniao(r,vals){
+  var dataEscolhida=(vals.campos&&vals.campos.data)||"";
+  if(!dataEscolhida){toast("Informe a data da nova reunião",true);openDuplicarReuniao(r.id);return;}
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  try{
+    // 1. Criar nova reunião
+    var objNova={data:dataEscolhida,hora:r.hora,status:"agendada",criado_por:userDbId};
+    if(r.titulo)objNova.titulo=r.titulo+" (cópia)";
+    if(r.observacoes)objNova.observacoes=r.observacoes;
+    if(r.tipo)objNova.tipo=r.tipo;
+    if(r.equipe_id)objNova.equipe_id=r.equipe_id;
+    if(r.modelo_id)objNova.modelo_id=r.modelo_id;
+    if(r.modelo_snapshot)objNova.modelo_snapshot=r.modelo_snapshot;
+    if(vals.opcoes.valores&&r.campos_valores&&Object.keys(r.campos_valores).length){
+      objNova.campos_valores=JSON.parse(JSON.stringify(r.campos_valores));
+    }
+    var nova=await dbUpsertReuniao(objNova);
+    if(!nova||!nova.id){toast("Erro ao criar reunião duplicada",true);return;}
+    // 2. Participantes
+    if(vals.opcoes.participantes){
+      var parts=[];
+      try{parts=await dbFetchReuniaoParticipantes(r.id);}catch(_){}
+      await Promise.all(parts.map(function(p){
+        return dbUpsertReuniaoParticipante({reuniao_id:nova.id,usuario_id:p.usuario_id});
+      }));
+    }
+    // 3. Pautas e tarefas
+    if(vals.opcoes.pautas){
+      var tarefasOrig=[];
+      try{tarefasOrig=await dbFetchTarefasReuniao(r.id);}catch(_){}
+      // mapa oldId -> newId para recriar subtarefas
+      var mapa={};
+      // processar apenas tarefas principais (parent_id nulo)
+      var principais=tarefasOrig.filter(function(t){return !t.parent_id;});
+      for(var i=0;i<principais.length;i++){
+        var t=principais[i];
+        var novoId=uid();
+        mapa[t.id]=novoId;
+        var nt={id:novoId,texto:t.texto,status:t.status,reuniao_id:nova.id,criado_em:new Date().toISOString()};
+        if(t.descricao)nt.descricao=t.descricao;
+        if(t.responsavel)nt.responsavel=t.responsavel;
+        if(t.data_inicio)nt.data_inicio=t.data_inicio;
+        if(t.data_fim)nt.data_fim=t.data_fim;
+        if(t.pauta_categoria_id)nt.pauta_categoria_id=t.pauta_categoria_id;
+        if(t.equipe_id)nt.equipe_id=t.equipe_id;
+        if(vals.opcoes.valores&&t.campos_valores&&Object.keys(t.campos_valores).length){
+          nt.campos_valores=JSON.parse(JSON.stringify(t.campos_valores));
+        }
+        await dbUpsertTarefa(nt);
+        await dbUpsertReuniaoTarefa({reuniao_id:nova.id,tarefa_id:novoId});
+      }
+      // subtarefas
+      var subs=tarefasOrig.filter(function(t){return !!t.parent_id&&mapa[t.parent_id];});
+      for(var si=0;si<subs.length;si++){
+        var s=subs[si];
+        var nsId=uid();
+        var ns={id:nsId,parent_id:mapa[s.parent_id],texto:s.texto,status:s.status,reuniao_id:nova.id,criado_em:new Date().toISOString()};
+        if(s.descricao)ns.descricao=s.descricao;
+        if(s.responsavel)ns.responsavel=s.responsavel;
+        if(s.data_inicio)ns.data_inicio=s.data_inicio;
+        if(s.data_fim)ns.data_fim=s.data_fim;
+        if(s.equipe_id)ns.equipe_id=s.equipe_id;
+        await dbUpsertTarefa(ns);
+      }
+    }
+    // 4. Comentários da reunião
+    if(vals.opcoes.comentarios){
+      var rcmts=[];
+      try{rcmts=await dbFetchReuniaoComentários(r.id);}catch(_){}
+      for(var ri=0;ri<rcmts.length;ri++){
+        var rc=rcmts[ri];
+        await dbUpsertReuniaoComentario({reuniao_id:nova.id,usuario_id:rc.usuario_id,texto:rc.texto});
+      }
+    }
+    // 5. Atualiza lista e navega para a nova
+    reunioesDB=await dbFetchReunioes(eqId);
+    selecionarReuniao(nova.id);
+    toast("Reunião duplicada!");
+  }catch(e){toast("Erro ao duplicar reunião",true);}
 }

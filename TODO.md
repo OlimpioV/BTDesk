@@ -73,8 +73,13 @@ Roadmap consolidado:
   edição inline por tipo. As colunas intrínsecas (título, status, responsável,
   datas) permanecem, pois movem progresso/atraso/avatars (mesmo desenho do
   Monday). Subtarefas não recebem colunas custom nesta fase.
-- [ ] **Fase 4 — duplicação universal com diálogo** (tarefas, subtarefas,
-  reuniões; demandas quando chegarem ao motor)
+- [x] **Fase 4 — duplicação universal com diálogo** (concluída): diálogo
+  genérico (`_abrirDialogoDuplicar`) no modal-container2. Tarefa: opções
+  Subtarefas / Valores das colunas / Comentários. Subtarefa: opção Comentários.
+  Reunião: campo data obrigatório + Participantes / Pautas e tarefas / Valores
+  preenchidos / Comentários da reunião. Nome ganha sufixo " (cópia)";
+  permissão mestre+advogado; subtarefas remapeiam parent_id. Falta estender a
+  demandas quando elas chegarem ao motor (Fase 5).
 - [ ] **Fase 5 — modelos de demanda no kanban** (campos custom no card,
   snapshot, backfill "Demanda padrão"; adapta kanban, lista e modal)
 - [ ] **Fase 6 — projetos reconectados e modulares** (dentro de Reuniões)
