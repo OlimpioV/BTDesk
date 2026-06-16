@@ -154,6 +154,19 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
   Nota: o sistema de cards alternativo (`_loadReuniaoPautas`) continua
   desconectado dos dados reais (ver Etapa 2 da consolidação).
 
+- [x] **Board de pautas estilo Monday** (commits d480170, d3c7eed)
+  Feito: `_loadPautasSection` e `_buildTarefaCard` reescritos de cartões para um
+  board de tabela (`.board`/`.bcols`/`.brow`) com colunas alinhadas (Tarefa,
+  Responsável, Status, Prazo, Progresso), faixa de cor por status, **status
+  sólido colorido** (paleta vibrante #e2445c/#2b76e5/#fdab3d/#00c875, texto
+  branco), barra de progresso segmentada e cabeçalho de grupo com contador +
+  linha "Nova tarefa". Edição inline 100% preservada. Bloco expandido
+  (descrição, form, checklist, comentários) vira `.brow-exp` abaixo da linha.
+  Validado via `node --check` + probe de grid no preview. Referência:
+  `mock-reuniao-v2.html`. Limpeza pendente: remover funções mortas do construtor
+  de modelos (openGerenciarModelos, openFormModelo, _mf*, _campo*, _tcol*) e o
+  bloco CSS `.tcard*`/`.tcols` agora sem uso.
+
 - [ ] **Acentuar títulos de reuniões existentes** (dados do banco)
   Títulos como "Reuniao semanal" estão sem acento na tabela `reunioes` (campo
   `titulo`). Corrigir via UPDATE no Supabase ou deixar o usuário editar pela UI.
