@@ -20,8 +20,6 @@ var REUNIAO_TIPOS={
   evento:{label:'Evento',cor:'#fa510e',ic:'spark'}
 };
 function _reunTipo(r){
-  if(r&&r.modelo_snapshot&&r.modelo_snapshot.cor)return {label:r.modelo_snapshot.nome,cor:r.modelo_snapshot.cor,ic:r.modelo_snapshot.icone||'users'};
-  if(r&&r.modelo_id){var m=modelosDB.find(function(x){return x.id===r.modelo_id;});if(m)return {label:m.nome,cor:m.cor,ic:m.icone||'users'};}
   return (r&&REUNIAO_TIPOS[r.tipo])||REUNIAO_TIPOS.acompanhamento;
 }
 function toggleAnteriores(){
@@ -92,7 +90,6 @@ function _renderReunioesPagina(){
     +'<div id="mini-cal-area"></div>'
     +'<div class="reun-sidebar-list">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
     +'<div class="reun-sidebar-footer">'
-    +(perfil==="mestre"?'<button onclick="openGerenciarModelos()" class="rbtn rbtn-sm rbtn-ghost" style="width:100%;justify-content:center;">'+ic("palette")+' Gerenciar modelos</button>':"")
     +'</div>'
     +'</div>'
     +'<div class="reun-main">'
@@ -213,14 +210,7 @@ function _buildReuniaoDetalhe(r){
   html+='<hr class="reun-detalhe-sep"/>';
   var hoje=new Date().toISOString().slice(0,10);
   var ehPassado=!!(r.data&&r.data<hoje);
-  if(r.modelo_snapshot&&r.modelo_snapshot.campos&&r.modelo_snapshot.campos.length){
-    html+='<div class="reun-section">'
-      +'<div class="reun-sechdr">'
-      +'<div class="reun-sectitles"><span class="reun-sec-eye">Dados da reunião</span><span class="reun-sec-ttl">Informações</span></div>'
-      +'</div>'
-      +'<div id="reun-campos-area">'+_buildCamposGrid(r,ce,ehPassado)+'</div>'
-      +'</div>';
-  }
+  // Secao de campos customizados removida (sistema de modelos descontinuado).
   html+='<div class="reun-section">'
     +'<div class="reun-sechdr">'
     +'<div class="reun-sectitles"><span class="reun-sec-eye">Quem está presente</span><span class="reun-sec-ttl">Participantes</span></div>'
@@ -873,8 +863,8 @@ async function openEditReuniao(id){
 function _abrirFormReuniao(r){
   var isEdit=!!r.id;
   var eqOptions=equipesDB.map(function(e){return '<option value="'+e.id+'"'+(r.equipe_id===e.id?' selected':'')+'>'+e.nome+'</option>';}).join("");
-  var modeloField='';
-  if(modelosDB.length){var defId=r.modelo_id||(modelosDB.find(function(m){return m.slug==='acompanhamento';})||modelosDB[0]||{}).id||'';modeloField='<div class="field"><label>Modelo</label><select id="rf-modelo">'+modelosDB.map(function(m){return '<option value="'+m.id+'"'+(m.id===defId?' selected':'')+'>'+m.nome+'</option>';}).join("")+'</select></div>';}
+  var tipoSel=r.tipo||'acompanhamento';
+  var modeloField='<div class="field"><label>Tipo</label><select id="rf-tipo">'+Object.keys(REUNIAO_TIPOS).map(function(k){return '<option value="'+k+'"'+(tipoSel===k?' selected':'')+'>'+REUNIAO_TIPOS[k].label+'</option>';}).join("")+'</select></div>';
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,520px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isEdit?"Editar reuniao":"Nova reuniao")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo</label><input id="rf-titulo" value="'+(r.titulo||"")+'"/></div>'
@@ -901,15 +891,10 @@ async function salvarReuniao(id){
   var eqEl=document.getElementById("rf-equipe");var equipe_id=eqEl?eqEl.value||null:null;
   var obs=(document.getElementById("rf-obs").value||"").trim();
   if(!data){toast("Informe a data",true);return;}
-  var modeloEl=document.getElementById("rf-modelo");var modeloId=modeloEl?modeloEl.value||null:null;
-  var m=modeloId?modelosDB.find(function(x){return x.id===modeloId;}):null;
-  var rAtual=id?reunioesDB.find(function(x){return x.id===id;}):null;
-  var modeloMudou=!id||(rAtual&&rAtual.modelo_id!==modeloId);
-  var obj={data,hora:hora+":00",status,observacoes:obs||null,equipe_id,criado_por:userDbId};
+  var tipoEl=document.getElementById("rf-tipo");var tipo=tipoEl?tipoEl.value:'acompanhamento';
+  var obj={data,hora:hora+":00",status,tipo,observacoes:obs||null,equipe_id,criado_por:userDbId};
   if(titulo)obj.titulo=titulo;
   if(id)obj.id=id;
-  if(m&&modeloMudou){obj.modelo_id=m.id;obj.modelo_snapshot={nome:m.nome,cor:m.cor,icone:m.icone,campos:m.campos||[],colunas_tarefa:m.colunas_tarefa||[]};if(m.slug)obj.tipo=m.slug;}
-  else if(id&&rAtual&&!modeloMudou){if(rAtual.modelo_id)obj.modelo_id=rAtual.modelo_id;if(rAtual.modelo_snapshot)obj.modelo_snapshot=rAtual.modelo_snapshot;if(rAtual.tipo)obj.tipo=rAtual.tipo;}
   try{
     var criada=await dbUpsertReuniao(obj);
     var eqId=equipeAtiva?equipeAtiva.id:null;
