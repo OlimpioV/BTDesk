@@ -182,7 +182,7 @@ function _buildReuniaoDetalhe(r){
   var ce=perfil==="mestre"||perfil==="advogado";
   var tp=_reunTipo(r);
   var dataFmt=_fmtData(r.data);
-  var statusCor={'agendada':'#3b82f6','realizada':'#22c55e','cancelada':'#ef4444'}[r.status]||'#94a3b8';
+  var statusCor={'agendada':'#2b76e5','realizada':'#00c875','cancelada':'#e2445c'}[r.status]||'#94a3b8';
   var statusLabel={'agendada':'Agendada','realizada':'Realizada','cancelada':'Cancelada'}[r.status]||r.status;
   var diasSemLong=['Domingo','Segunda-feira','Terca-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sabado'];
   var mesesLong=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -190,34 +190,36 @@ function _buildReuniaoDetalhe(r){
   var dObj=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
   var dataLong=diasSemLong[dObj.getDay()]+', '+parseInt(p[2])+' de '+mesesLong[parseInt(p[1])-1]+' de '+p[0];
   var html='<div class="reun-detalhe">'
-    +'<div class="reun-detalhe-hdr">'
-    +'<div style="min-width:0;">'
-    +'<div class="reun-eyebrow" style="color:'+tp.cor+';">'+ic(tp.ic)+' '+tp.label.toUpperCase()+'</div>'
-    +'<div class="reun-detalhe-titulo">'+(r.titulo||('Reuniao de '+dataFmt))+'</div>'
-    +'<div class="reun-detalhe-sub">'
-    +'<span style="font-size:12px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;">'+ic("cal")+' '+dataLong+'</span>'
-    +'<span style="font-size:12px;color:var(--text3);">'+r.hora.slice(0,5)+'</span>'
-    +'<span class="reun-status-chip" style="background:'+statusCor+'22;color:'+statusCor+';">'+statusLabel+'</span>'
+    +'<div class="reun-hero">'
+    +'<div class="reun-hero-band" style="background:'+tp.cor+';"></div>'
+    +'<div class="reun-hero-bd">'
+    +'<div class="reun-hero-top">'
+    +'<div style="min-width:0;flex:1;">'
+    +'<div class="reun-hero-eye" style="color:'+tp.cor+';">'+ic(tp.ic)+' '+tp.label.toUpperCase()+'</div>'
+    +'<div class="reun-hero-title">'+(r.titulo||('Reunião de '+dataFmt))+'</div>'
+    +'<div class="reun-hero-meta">'
+    +'<span class="reun-hmeta">'+ic("cal")+' '+dataLong+'</span>'
+    +'<span class="reun-hmeta">'+ic("clock")+' '+r.hora.slice(0,5)+'</span>'
+    +'<span class="reun-statuspill" style="background:'+statusCor+';">'+statusLabel+'</span>'
     +'</div>'
+    +(r.observacoes?'<div class="reun-hero-obs">'+r.observacoes+'</div>':'')
     +'</div>'
-    +(ce?'<div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px;">'
-      +'<button onclick="openEditReuniao(\''+r.id+'\')" class="rbtn rbtn-sm">'+ic("edit")+' Editar</button>'
-      +'<button onclick="openDuplicarReuniao(\''+r.id+'\')" class="rbtn rbtn-sm">Duplicar</button>'
-      +'<button onclick="gerarAta(\''+r.id+'\')" class="rbtn rbtn-primary rbtn-sm">Gerar ata</button>'
+    +(ce?'<div class="reun-hero-actions">'
+      +'<button onclick="openEditReuniao(\''+r.id+'\')" class="reun-abtn">'+ic("edit")+' Editar</button>'
+      +'<button onclick="openDuplicarReuniao(\''+r.id+'\')" class="reun-abtn">Duplicar</button>'
+      +'<button onclick="gerarAta(\''+r.id+'\')" class="reun-abtn dark">Gerar ata</button>'
       +'</div>':"")
-    +'</div>';
-  if(r.observacoes){html+='<div class="reun-obs"><span class="reun-obs-lbl">Observações</span>'+r.observacoes+'</div>';}
-  html+='<hr class="reun-detalhe-sep"/>';
+    +'</div>'
+    +'<div class="reun-hero-foot">'
+    +'<span class="reun-foot-lbl">Participantes</span>'
+    +'<div id="reuniao-part-area" class="reun-parts-stack">Carregando...</div>'
+    +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" class="rbtn rbtn-sm rbtn-ghost" style="margin-left:auto;">'+ic("users")+' Gerenciar</button>':"")
+    +'</div>'
+    +'</div></div>';
   var hoje=new Date().toISOString().slice(0,10);
   var ehPassado=!!(r.data&&r.data<hoje);
   // Secao de campos customizados removida (sistema de modelos descontinuado).
-  html+='<div class="reun-section">'
-    +'<div class="reun-sechdr">'
-    +'<div class="reun-sectitles"><span class="reun-sec-eye">Quem está presente</span><span class="reun-sec-ttl">Participantes</span></div>'
-    +(ce?'<button onclick="openGerenciarParticipantes(\''+r.id+'\')" class="rbtn rbtn-sm rbtn-ghost">'+ic("users")+' Gerenciar</button>':"")
-    +'</div>'
-    +'<div id="reuniao-part-area" style="min-height:24px;">Carregando...</div>'
-    +'</div>';
+  // Participantes agora ficam no rodape do hero (cabecalho da reuniao).
   html+='<div class="reun-section">'
     +'<div class="reun-sechdr">'
     +'<div class="reun-sectitles"><span class="reun-sec-eye">O que será discutido</span><span class="reun-sec-ttl">Pautas</span></div>'
@@ -948,15 +950,16 @@ async function _loadParticipantesArea(reuniaoId){
   try{
     var parts=await dbFetchReuniaoParticipantes(reuniaoId);
     var users=parts.map(function(p){return p.usuarios;}).filter(Boolean);
-    if(!users.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">Nenhum participante.</span>';return;}
-    var chips=users.map(function(u){
+    if(!users.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">Ninguém ainda</span>';return;}
+    var max=6;var extra=users.length-max;
+    var avs=users.slice(0,max).map(function(u){
       var nome=u.nome||u.email||'?';
       var ini=u.sigla||(nome.replace(/\s+/g,' ').trim().split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase());
       var cor=_avCor(u.id||nome);
-      var primeiro=nome.split(' ')[0];
-      return '<div class="reun-part" title="'+nome+'"><span class="av av-sm" style="background:'+cor+';">'+ini+'</span><span class="reun-part-nm">'+primeiro+'</span></div>';
+      return '<div class="av" style="background:'+cor+';" title="'+nome+'">'+ini+'</div>';
     }).join("");
-    el.innerHTML='<div class="reun-parts">'+chips+'</div>';
+    if(extra>0)avs+='<div class="av reun-av-more" title="mais '+extra+'">+'+extra+'</div>';
+    el.innerHTML=avs;
   }catch(_){if(el)el.innerHTML='';}
 }
 async function openGerenciarParticipantes(reuniaoId){

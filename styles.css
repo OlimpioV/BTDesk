@@ -400,6 +400,36 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .reun-part .av{width:26px;height:26px;font-size:10px;border-width:0;box-shadow:none;}
 .reun-wrap .reun-part-nm{font-size:12.5px;font-weight:600;color:var(--text2);}
 
+/* ── HERO do detalhe da reuniao (redesign v2, estilo Monday) ── */
+.reun-wrap .reun-hero{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-md);overflow:hidden;}
+.reun-wrap .reun-hero-band{height:6px;}
+.reun-wrap .reun-hero-bd{padding:22px 26px;}
+.reun-wrap .reun-hero-top{display:flex;align-items:flex-start;gap:16px;}
+.reun-wrap .reun-hero-eye{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;display:inline-flex;align-items:center;gap:6px;}
+.reun-wrap .reun-hero-eye svg{width:14px;height:14px;}
+.reun-wrap .reun-hero-title{font-family:var(--font-titulo);font-size:28px;font-weight:700;color:var(--bt-navy);line-height:1.06;margin-top:7px;letter-spacing:-.01em;}
+.reun-wrap .reun-hero-meta{display:flex;align-items:center;gap:16px;margin-top:13px;flex-wrap:wrap;}
+.reun-wrap .reun-hmeta{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text3);font-weight:500;}
+.reun-wrap .reun-hmeta svg{width:15px;height:15px;}
+.reun-wrap .reun-statuspill{font-size:11px;font-weight:700;color:#fff;padding:4px 12px;border-radius:999px;}
+.reun-wrap .reun-hero-obs{margin-top:13px;font-size:13.5px;color:var(--text2);line-height:1.6;border-left:3px solid var(--border);padding-left:12px;}
+.reun-wrap .reun-hero-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+.reun-wrap .reun-abtn{font-family:var(--font-corpo);font-size:13px;font-weight:600;border-radius:10px;padding:8px 14px;border:1.5px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s;}
+.reun-wrap .reun-abtn:hover{background:var(--surface);border-color:#cdd6df;}
+.reun-wrap .reun-abtn.dark{background:var(--bt-navy);border-color:var(--bt-navy);color:#fff;}
+.reun-wrap .reun-abtn.dark:hover{background:var(--bt-navy-dark);}
+.reun-wrap .reun-abtn svg{width:15px;height:15px;}
+.reun-wrap .reun-hero-foot{display:flex;align-items:center;gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid var(--surface);flex-wrap:wrap;}
+.reun-wrap .reun-foot-lbl{font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;}
+.reun-wrap .reun-parts-stack{display:flex;align-items:center;}
+.reun-wrap .reun-parts-stack .av{width:32px;height:32px;border:2.5px solid #fff;margin-left:-9px;box-shadow:var(--shadow);font-size:11px;}
+.reun-wrap .reun-parts-stack .av:first-child{margin-left:0;}
+.reun-wrap .reun-av-more{background:#e2e8f0 !important;color:var(--text2) !important;font-weight:700;}
+@media(max-width:760px){
+  .reun-wrap .reun-hero-top{flex-direction:column;}
+  .reun-wrap .reun-hero-actions{justify-content:flex-start;}
+}
+
 /* ── PAUTAS COMO CARDS (identico ao mock) ────────────────────────── */
 .reun-wrap .pauta{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;}
 .reun-wrap .pauta-hdr{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--border-soft);}
