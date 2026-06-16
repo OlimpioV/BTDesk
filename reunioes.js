@@ -1973,10 +1973,10 @@ async function _tcolPersistir(tarefaId,colId,valor){
 }
 
 function _buildTarefaCard(t,ce,ehPassado){
-  var corBar={'pendente':'#E24B4A','em_andamento':'#185FA5','pausado':'#EF9F27','concluido':'#639922'};
-  var corBg={'pendente':'#FCEBEB','em_andamento':'#E6F1FB','pausado':'#FAEEDA','concluido':'#EAF3DE'};
-  var corTxt={'pendente':'#A32D2D','em_andamento':'#0C447C','pausado':'#854F0B','concluido':'#27500A'};
-  var corSeg={'pendente':'#e8edf2','em_andamento':'#185FA5','pausado':'#EF9F27','concluido':'#639922'};
+  var corBar={'pendente':'#e2445c','em_andamento':'#2b76e5','pausado':'#fdab3d','concluido':'#00c875'};
+  var corBg={'pendente':'#e2445c','em_andamento':'#2b76e5','pausado':'#fdab3d','concluido':'#00c875'};
+  var corTxt={'pendente':'#fff','em_andamento':'#fff','pausado':'#fff','concluido':'#fff'};
+  var corSeg={'pendente':'#e8edf2','em_andamento':'#2b76e5','pausado':'#fdab3d','concluido':'#00c875'};
   var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
   var bar=corBar[t.status]||'#E24B4A';
   var bg=corBg[t.status]||'#FCEBEB';
