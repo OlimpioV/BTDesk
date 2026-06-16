@@ -1782,23 +1782,22 @@ async function _loadPautasSection(reuniaoId){
     });
     var eqId=equipeAtiva?equipeAtiva.id:null;
     try{var catsDB=await dbFetchPautaCategorias(eqId);catsDB.forEach(function(c){if(cats[c.id])cats[c.id].nome=c.nome;});}catch(_){}
-    var html='<div style="display:flex;flex-direction:column;gap:20px;">';
+    var html='<div style="display:flex;flex-direction:column;gap:18px;">';
     catOrder.forEach(function(catId){
       var cat=cats[catId];
-      html+='<div>';
-      html+='<div class="reun-grp-lbl" style="padding:0 2px 8px;">'+cat.nome+'</div>';
-      html+='<div class="tcard-list">';
+      var nItens=cat.itens.length;
+      html+='<div class="bgroup">';
+      html+='<div class="bgroup-hd"><span class="bgroup-nm">'+cat.nome+'</span><span class="bgroup-ct">'+nItens+' '+(nItens===1?'tarefa':'tarefas')+'</span></div>';
+      html+='<div class="board">';
+      html+='<div class="bcols"><span></span><span>Tarefa</span><span>Responsável</span><span>Status</span><span>Prazo</span><span>Progresso</span></div>';
       cat.itens.forEach(function(t){
-        html+='<div id="tp-card-'+t.id+'">'+_buildTarefaCard(t,ce,ehPassado)+'</div>';
+        html+='<div id="tp-card-'+t.id+'" class="brow-wrap">'+_buildTarefaCard(t,ce,ehPassado)+'</div>';
       });
-      html+='</div>';
       if(ce&&!ehPassado){
-        html+='<div style="margin-top:8px;">'
-          +'<button class="rbtn rbtn-sm" onclick="openAdicionarPauta(\''+reuniaoId+'\')">'
-          +ic("plus")+' Nova tarefa'
-          +'</button></div>';
+        html+='<button class="brow-add" onclick="openAdicionarPauta(\''+reuniaoId+'\')">'+ic("plus")+' Nova tarefa</button>';
       }
-      html+='</div>';
+      html+='</div>';// fecha board
+      html+='</div>';// fecha bgroup
     });
     html+='</div>';
     el.innerHTML=html;
@@ -1988,82 +1987,53 @@ function _buildTarefaCard(t,ce,ehPassado){
   var canEdit=ce&&!ehPassado&&_itemEditando!==t.id;
   var html='';
 
-  // ── estrutura cartao ──
-  html+='<div class="tcard">';
-  html+='<div class="tcard-bar" style="background:'+bar+';"></div>';
-  html+='<div class="tcard-main">';
-
-  // cabecalho do cartao
-  html+='<div class="tcard-hdr">';
-  html+='<div style="display:flex;align-items:flex-start;gap:6px;flex:1;min-width:0;">';
-  html+='<button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Expandir">&#9658;</button>';
-  html+='<span id="tp-txt-'+t.id+'" class="tcard-title" style="'+(t.status==='concluido'?'text-decoration:line-through;color:var(--text3);':'')+(canEdit?'cursor:pointer;':'')+'"'
-    +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>';
+  // ── LINHA DO BOARD (estilo Monday) ──
+  html+='<div class="brow">';
+  html+='<div class="brow-strip" style="background:'+bar+';"></div>';
+  // coluna 1: expandir
+  html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Expandir">&#9658;</button></div>';
+  // coluna 2: tarefa (titulo editavel)
+  html+='<div class="bc bc-task"><span id="tp-txt-'+t.id+'" class="btask'+(t.status==='concluido'?' done':'')+'"'
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span></div>';
+  // coluna 3: responsavel
+  html+='<div class="bc bc-resp">';
+  if(t.responsavel){
+    var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
+    html+='<span class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';font-size:9px;width:24px;height:24px;min-width:24px;flex-shrink:0;">'+t.responsavel.slice(0,2).toUpperCase()+'</span><span class="bresp-nm">'+t.responsavel+'</span>';
+  } else { html+='<span class="bdash">&#8212;</span>'; }
   html+='</div>';
-  html+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">';
-  html+='<span id="sc-'+t.id+'" class="reun-status-chip flat" style="background:'+bg+';color:'+txt+';border:1px solid '+txt+'44;font-size:11px;'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
+  // coluna 4: status solido
+  html+='<div class="bc bc-status"><span id="sc-'+t.id+'" class="statcell" style="background:'+bar+';'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
     +(ce&&!ehPassado?' onclick="_abrirStatusDropdown(event,\''+t.id+'\',false,null,'+!!ehPassado+')"':'')
-    +'>'+lbl+(ce&&!ehPassado?' <span style="font-size:8px;opacity:.6;">&#9660;</span>':'')+'</span>';
+    +'>'+lbl+(ce&&!ehPassado?' <span class="cv">&#9660;</span>':'')+'</span></div>';
+  // coluna 5: prazo
+  var atrasado=t.data_fim&&_isAtrasado(t.data_fim,t.status);
+  html+='<div class="bc bc-date'+(atrasado?' late':'')+'">'+(t.data_fim?_fmtDateBrShort(t.data_fim)+(atrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>')+'</div>';
+  // coluna 6: progresso + menu de acoes
+  html+='<div class="bc bc-prog">';
+  if(subtarefas&&subtarefas.length>0){
+    var _conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
+    html+='<div class="btrack">';
+    subtarefas.forEach(function(s){html+='<div class="bseg" style="background:'+(corSeg[s.status]||'#e8edf2')+';"></div>';});
+    html+='</div><span class="bpct">'+_conc+'/'+subtarefas.length+'</span>';
+  } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   if(ce&&!ehPassado){
     html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>';
   }
   html+='</div>';
-  html+='</div>';
+  html+='</div>';// fecha brow
+  // ── BLOCO EXPANDIDO (descricao, edicao, checklist, comentarios) ──
+  var _temExp=(_itemEditando===t.id)||subExp;
+  if(_temExp){html+='<div class="brow-exp">';}
 
-  // linha meta: responsavel + datas
-  html+='<div class="tcard-meta">';
-  if(t.responsavel){
-    var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
-    var ini=t.responsavel.slice(0,2).toUpperCase();
-    html+='<div class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';font-size:9px;width:22px;height:22px;min-width:22px;flex-shrink:0;">'+ini+'</div>';
-    html+='<span>'+t.responsavel+'</span>';
-  }
-  if(t.data_inicio){html+='<span style="margin-left:'+(t.responsavel?'4px':'0')+';">'+_fmtDateBrShort(t.data_inicio)+'</span>';}
-  if(t.data_fim){
-    var atrasado=_isAtrasado(t.data_fim,t.status);
-    html+='<span style="color:'+(atrasado?'#dc2626':'inherit')+';font-weight:'+(atrasado?'700':'400')+';">'+_fmtDateBrShort(t.data_fim)+(atrasado?' <span title="Atrasado">&#128336;</span>':'')+'</span>';
-  }
-  html+='</div>';
-
-  // colunas customizadas do modelo (so em tarefas principais)
-  var _snapCols=_colunasTarefaSnapshot();
-  if(_snapCols.length){
-    var _editandoCol=_tcolEditando[t.id]||null;
-    html+='<div class="tcols">';
-    _snapCols.forEach(function(col){
-      var vals=t.campos_valores||{};
-      var val=vals[col.id];
-      var emEdicao=_editandoCol===col.id;
-      var podeEditar=ce&&!ehPassado;
-      html+='<div class="tcol'+(podeEditar?' editavel':'')+'"'+(podeEditar&&!emEdicao?' onclick="_tcolAbrir(\''+t.id+'\',\''+col.id+'\')"':'')+' style="position:relative;">';
-      html+='<div class="tcol-lbl">'+col.label+'</div>';
-      html+='<div class="tcol-val">';
-      if(emEdicao){html+=_tcolRenderEditor(col,val,t.id);}
-      else{html+=_tcolRenderVal(col,val);}
-      html+='</div></div>';
-    });
-    html+='</div>';
-  }
-
-  // descricao (exibida so quando expandido)
+  // descricao (exibida so quando expandido, dentro do bloco expandido)
   if(subExp){
     if(t.descricao){
-      html+='<div id="tp-desc-'+t.id+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;margin-top:8px;'+(canEdit?'cursor:text;':'')+'"'
+      html+='<div id="tp-desc-'+t.id+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
         +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
     } else if(canEdit){
-      html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;margin-top:8px;">Adicionar descricao...</div>';
+      html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
     }
-  }
-
-  // barra de progresso (sempre visivel quando ha subtarefas no cache)
-  if(subtarefas&&subtarefas.length>0){
-    var conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
-    html+='<div class="prog" style="margin-top:10px;">';
-    subtarefas.forEach(function(s){
-      html+='<div class="prog-seg" style="background:'+(corSeg[s.status]||'#e8edf2')+';"></div>';
-    });
-    html+='</div>';
-    html+='<div class="prog-info">'+conc+' de '+subtarefas.length+' itens concluídos</div>';
   }
 
   // form de edicao da tarefa principal
@@ -2168,8 +2138,7 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='</div>';
   }
 
-  html+='</div>';// fecha tcard-main
-  html+='</div>';// fecha tcard
+  if(_temExp){html+='</div>';}// fecha brow-exp
   return html;
 }
 function _editarTarefaPauta(tarefaId){
