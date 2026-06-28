@@ -420,7 +420,9 @@ button{font-family:inherit;cursor:pointer;}
 /* Conter overflow de texto nas celulas do board e no hero */
 .reun-wrap .bc-resp{overflow:hidden;}
 .reun-wrap .reun-hero-obs{word-break:break-word;overflow-wrap:break-word;}
-.reun-wrap .cl-t{overflow-wrap:anywhere;}
+.reun-wrap .cl-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.reun-wrap .cl-main .cl-t{flex:none;overflow-wrap:break-word;}
+.reun-wrap .cl-desc{font-size:11px;color:var(--text3);line-height:1.45;overflow-wrap:break-word;word-break:break-word;}
 @media(max-width:1024px){
   .reun-wrap .board{overflow-x:auto;}
   .reun-wrap .bcols,.reun-wrap .brow{grid-template-columns:26px minmax(0,1fr) 118px 132px 84px 118px;gap:8px;}

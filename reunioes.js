@@ -2111,14 +2111,16 @@ function _buildTarefaCard(t,ce,ehPassado){
         } else {
           html+='<div class="cl-item">';
           html+='<span class="cl-dot" style="background:'+sBar+';"></span>';
+          html+='<div class="cl-main">';
           html+='<span id="tp-stxt-'+s.id+'" class="cl-t" style="'+(s.status==='concluido'?'color:#94a3b8;text-decoration:line-through;':'')+(canEdit&&_subEditando!==s.id?'cursor:pointer;':'')+'"'
             +(canEdit&&_subEditando!==s.id?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
           if(s.descricao){
-            html+='<span id="tp-sdesc-'+s.id+'" style="font-size:11px;color:var(--text3);'+((canEdit)?'cursor:text;':'')+'"'
+            html+='<span id="tp-sdesc-'+s.id+'" class="cl-desc" style="'+((canEdit)?'cursor:text;':'')+'"'
               +((canEdit)?' onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
           } else if(canEdit){
-            html+='<span id="tp-sdesc-'+s.id+'" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-size:11px;color:var(--text3);font-style:italic;cursor:text;"></span>';
+            html+='<span id="tp-sdesc-'+s.id+'" class="cl-desc" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-style:italic;cursor:text;"></span>';
           }
+          html+='</div>';
           if(s.responsavel){html+='<span class="cl-resp">'+s.responsavel+'</span>';}
           html+='<span class="reun-status-chip flat" style="background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;font-size:10px;'+(canEdit?'cursor:pointer;':'')+'"'
             +(canEdit?' onclick="_abrirStatusDropdown(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')+'>'+sLbl+(canEdit?' <span style="font-size:8px;opacity:.6;">&#9660;</span>':'')+'</span>';
