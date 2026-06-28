@@ -378,7 +378,7 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .bgroup-ct{font-size:11px;font-weight:600;color:var(--text-faint);}
 .reun-wrap .board{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow);}
 .reun-wrap .bcols,
-.reun-wrap .brow{display:grid;grid-template-columns:30px minmax(120px,1fr) 138px 150px 98px 140px;gap:10px;align-items:center;}
+.reun-wrap .brow{display:grid;grid-template-columns:30px minmax(0,1fr) 138px 150px 98px 140px;gap:10px;align-items:center;}
 .reun-wrap .bcols{padding:9px 16px;background:var(--surface2);border-bottom:1px solid var(--border);
   font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);}
 .reun-wrap .brow{position:relative;padding:9px 16px;border-bottom:1px solid var(--border-soft);transition:background .12s;}
@@ -392,7 +392,7 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .bresp-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .reun-wrap .bdash{color:var(--text-faint);}
 .reun-wrap .bc-status{overflow:visible;}
-.reun-wrap .statcell{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;height:33px;
+.reun-wrap .statcell{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;height:33px;white-space:nowrap;overflow:hidden;padding:0 6px;
   border-radius:7px;color:#fff;font-weight:700;font-size:11.5px;letter-spacing:.005em;
   box-shadow:0 1px 2px rgba(16,24,40,.12);transition:filter .12s,transform .12s;}
 .reun-wrap .statcell:hover{filter:brightness(1.07);}
@@ -411,6 +411,20 @@ button{font-family:inherit;cursor:pointer;}
   font-size:12.5px;font-weight:600;color:var(--text3);cursor:pointer;background:none;border:none;text-align:left;transition:background .12s,color .12s;}
 .reun-wrap .brow-add:hover{background:#f7f9fb;color:var(--bt-navy);}
 .reun-wrap .brow-add svg{width:14px;height:14px;}
+.reun-wrap .btask-wrap{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;}
+.reun-wrap .bsub{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.35;}
+.reun-wrap .bprogwrap{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:pointer;}
+.reun-wrap .baddsub{display:inline-flex;align-items:center;gap:4px;flex:1;min-width:0;background:none;border:none;color:var(--text3);font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer;padding:0;transition:color .12s;}
+.reun-wrap .baddsub:hover{color:var(--bt-navy);}
+.reun-wrap .baddsub svg{width:13px;height:13px;flex-shrink:0;}
+/* Conter overflow de texto nas celulas do board e no hero */
+.reun-wrap .bc-resp{overflow:hidden;}
+.reun-wrap .reun-hero-obs{word-break:break-word;overflow-wrap:break-word;}
+.reun-wrap .cl-t{overflow-wrap:anywhere;}
+@media(max-width:1024px){
+  .reun-wrap .board{overflow-x:auto;}
+  .reun-wrap .bcols,.reun-wrap .brow{grid-template-columns:26px minmax(0,1fr) 118px 132px 84px 118px;gap:8px;}
+}
 
 /* Grupo "Anteriores" recolhivel (seta gira ao abrir) */
 .reun-wrap .reun-grp-toggle{cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;transition:color .15s;}

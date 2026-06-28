@@ -640,7 +640,7 @@ async function _toggleProjeto(projetoId,ehPassado){
   _projExpanded[projetoId]=!_projExpanded[projetoId];
   if(_projExpanded[projetoId]){
     try{_checklistCache[projetoId]=await dbFetchChecklist(projetoId);}catch(_){_checklistCache[projetoId]=[];}
-    try{_commentsCache[projetoId]=await dbFetchProjetoComentários(projetoId);}catch(_){_commentsCache[projetoId]=[];}
+    try{_commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);}catch(_){_commentsCache[projetoId]=[];}
   }
   _reloadProjetoCard(projetoId,ehPassado);
 }
@@ -795,7 +795,7 @@ async function _addProjetoComentarioInline(projetoId){
   if(!txt){toast("Escreva um comentário",true);return;}
   try{
     await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:txt,tipo:"comentario"});
-    _commentsCache[projetoId]=await dbFetchProjetoComentários(projetoId);
+    _commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);
     _reloadProjetoCard(projetoId,false);toast("Comentario adicionado!");
   }catch(e){toast("Erro",true);}
 }
@@ -1635,7 +1635,7 @@ async function _loadProjetoComentários(projetoId){
   var el=document.getElementById("proj-cmts");if(!el)return;
   var ce=perfil==="mestre"||perfil==="advogado";
   try{
-    var cmts=await dbFetchProjetoComentários(projetoId);
+    var cmts=await dbFetchProjetoComentarios(projetoId);
     if(!cmts.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhum comentário ainda.</div>';return;}
     el.innerHTML=cmts.map(function(c){
       var u=c.usuarios||{};
@@ -1674,7 +1674,7 @@ async function addProjetoComentario(projetoId){
 async function editarComentarioProjeto(cId,projetoId){
   var el=document.getElementById("proj-cmt-"+cId);if(!el)return;
   var cmts;
-  try{cmts=await dbFetchProjetoComentários(projetoId);}catch(e){toast("Erro",true);return;}
+  try{cmts=await dbFetchProjetoComentarios(projetoId);}catch(e){toast("Erro",true);return;}
   var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
   var isSinal=c.tipo==='sinalizado';
   var bgStyle=isSinal?'background:#fff5f5;border-left:3px solid #ef4444;padding:8px 12px;margin:0 -4px;border-radius:0 6px 6px 0;':'';
@@ -1993,8 +1993,10 @@ function _buildTarefaCard(t,ce,ehPassado){
   // coluna 1: expandir
   html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Expandir">&#9658;</button></div>';
   // coluna 2: tarefa (titulo editavel)
-  html+='<div class="bc bc-task"><span id="tp-txt-'+t.id+'" class="btask'+(t.status==='concluido'?' done':'')+'"'
-    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span></div>';
+  html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(t.status==='concluido'?' done':'')+'"'
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>'
+    +((t.descricao&&!subExp)?'<span class="bsub">'+trunc(t.descricao,64)+'</span>':'')
+    +'</div></div>';
   // coluna 3: responsavel
   html+='<div class="bc bc-resp">';
   if(t.responsavel){
@@ -2013,9 +2015,12 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div class="bc bc-prog">';
   if(subtarefas&&subtarefas.length>0){
     var _conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
+    html+='<div class="bprogwrap" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Ver subtarefas">';
     html+='<div class="btrack">';
     subtarefas.forEach(function(s){html+='<div class="bseg" style="background:'+(corSeg[s.status]||'#e8edf2')+';"></div>';});
-    html+='</div><span class="bpct">'+_conc+'/'+subtarefas.length+'</span>';
+    html+='</div><span class="bpct">'+_conc+'/'+subtarefas.length+'</span></div>';
+  } else if(ce&&!ehPassado){
+    html+='<button class="baddsub" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Adicionar subtarefa">'+ic("plus")+'<span>subtarefa</span></button>';
   } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   if(ce&&!ehPassado){
     html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>';
@@ -2507,7 +2512,7 @@ async function _toggleTarefaCmts(tarefaId,ehPassado){
   el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
   if(_tarefaCmtsExpanded[tarefaId]&&_tarefaCmtsCache[tarefaId]===undefined){
     try{
-      _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentários(tarefaId);
+      _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
       el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
     }catch(_){}
   }
@@ -2553,7 +2558,7 @@ async function _addTarefaComentario(tarefaId,ehPassado){
   var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentário",true);return;}
   try{
     await dbUpsertTarefaComentario({tarefa_id:tarefaId,usuario_id:userDbId,texto:txt});
-    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentários(tarefaId);
+    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
     var rId=reuniaoAtiva?reuniaoAtiva.id:'';
     var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
     var ce=perfil==="mestre"||perfil==="advogado";
@@ -2565,7 +2570,7 @@ async function _addTarefaComentario(tarefaId,ehPassado){
 async function _editTarefaComentarioInline(cId,tarefaId,ehPassado){
   var el=document.getElementById("tcmt-"+cId);if(!el)return;
   try{
-    var cmts=await dbFetchTarefaComentários(tarefaId);
+    var cmts=await dbFetchTarefaComentarios(tarefaId);
     var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
     el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
       +'<textarea id="tcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+c.texto+'</textarea>'
@@ -2595,7 +2600,7 @@ function _delTarefaComentario(cId,tarefaId,ehPassado){
 }
 async function _reloadTarefaCmts(tarefaId,ehPassado){
   try{
-    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentários(tarefaId);
+    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
     var rId=reuniaoAtiva?reuniaoAtiva.id:'';
     var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
     var ce=perfil==="mestre"||perfil==="advogado";
@@ -2612,7 +2617,7 @@ async function _loadReuniaoComentários(reuniaoId){
   var hoje=new Date().toISOString().slice(0,10);
   var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
   try{
-    var cmts=await dbFetchReuniaoComentários(reuniaoId);
+    var cmts=await dbFetchReuniaoComentarios(reuniaoId);
     el.innerHTML=_buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado);
   }catch(_){if(el)el.innerHTML='';}
 }
@@ -2662,7 +2667,7 @@ async function _addReuniaoComentario(reuniaoId){
 async function _editReuniaoComentarioInline(cId,reuniaoId){
   var el=document.getElementById("rcmt-"+cId);if(!el)return;
   try{
-    var cmts=await dbFetchReuniaoComentários(reuniaoId);
+    var cmts=await dbFetchReuniaoComentarios(reuniaoId);
     var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
     el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
       +'<textarea id="rcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+c.texto+'</textarea>'
@@ -2714,7 +2719,7 @@ async function sinalizarProjeto(projetoId){
   // Registrar comentario de sinalizacao no banco (sempre, independente de e-mail)
   try{
     await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:"Projeto sinalizado por "+nomeUser+".",tipo:"sinalizado"});
-    _commentsCache[projetoId]=await dbFetchProjetoComentários(projetoId);
+    _commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);
     _reloadProjetoCard(projetoId,false);
   }catch(_){}
 
@@ -3151,7 +3156,7 @@ async function _confirmarDuplicarTarefa(t,vals){
     if(vals.opcoes.comentarios){
       var cmts=_tarefaCmtsCache[t.id]||null;
       if(cmts===null){
-        try{cmts=await dbFetchTarefaComentários(t.id);}catch(_){cmts=[];}
+        try{cmts=await dbFetchTarefaComentarios(t.id);}catch(_){cmts=[];}
       }
       for(var ci=0;ci<cmts.length;ci++){
         var c=cmts[ci];
@@ -3201,7 +3206,7 @@ async function _confirmarDuplicarSubtarefa(sub,parentId,vals){
     if(vals.opcoes.comentarios){
       var cmts=_tarefaCmtsCache[sub.id]||null;
       if(cmts===null){
-        try{cmts=await dbFetchTarefaComentários(sub.id);}catch(_){cmts=[];}
+        try{cmts=await dbFetchTarefaComentarios(sub.id);}catch(_){cmts=[];}
       }
       for(var ci=0;ci<cmts.length;ci++){
         var c=cmts[ci];
@@ -3302,7 +3307,7 @@ async function _confirmarDuplicarReuniao(r,vals){
     // 4. Comentários da reunião
     if(vals.opcoes.comentarios){
       var rcmts=[];
-      try{rcmts=await dbFetchReuniaoComentários(r.id);}catch(_){}
+      try{rcmts=await dbFetchReuniaoComentarios(r.id);}catch(_){}
       for(var ri=0;ri<rcmts.length;ri++){
         var rc=rcmts[ri];
         await dbUpsertReuniaoComentario({reuniao_id:nova.id,usuario_id:rc.usuario_id,texto:rc.texto});
