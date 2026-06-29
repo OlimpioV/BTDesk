@@ -2071,20 +2071,13 @@ function _buildTarefaCard(t,ce,ehPassado){
   // bloco expandido: checklist + campo de adicionar subtarefa + comentarios
   if(subExp){
     html+='<div class="cl">';
-    html+='<div class="cl-lbl">Checklist</div>';
-
-    // campo de adicionar subtarefa (no topo do checklist)
-    if(ce&&!ehPassado){
-      var respOptsQuick='<option value="">Responsavel...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
-      html+='<div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-soft);">'
-        +'<span class="cl-dot" style="background:#cbd5e1;"></span>'
-        +'<input id="tp-sub-quick-txt-'+t.id+'" placeholder="+ Adicionar subtarefa..." onkeydown="_quickSubKeydown(event,\''+t.id+'\','+!!ehPassado+')" style="flex:1;font-size:12px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);">'
-        +'<select id="tp-sub-quick-resp-'+t.id+'" style="font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:6px;color:var(--text2);background:#fff;">'+respOptsQuick+'</select>'
-        +'</div>';
+    html+='<div class="cl-lbl">Subtarefas</div>';
+    html+='<div class="subboard">';
+    var _temSubs=subtarefas&&subtarefas.length>0;
+    if(_temSubs){
+      html+='<div class="subcols"><span>Subtarefa</span><span>Resp.</span><span>Status</span><span>Prazo</span><span></span></div>';
     }
-
-    // itens do checklist (subtarefas)
-    if(subtarefas&&subtarefas.length>0){
+    if(_temSubs){
       subtarefas.forEach(function(s){
         var sBg=corBg[s.status]||'#FCEBEB';
         var sTxt=corTxt[s.status]||'#A32D2D';
@@ -2109,32 +2102,36 @@ function _buildTarefaCard(t,ce,ehPassado){
             +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
             +'</div></div>';
         } else {
-          html+='<div class="cl-item">';
-          html+='<span class="cl-dot" style="background:'+sBar+';"></span>';
-          html+='<div class="cl-main">';
-          html+='<span id="tp-stxt-'+s.id+'" class="cl-t" style="'+(s.status==='concluido'?'color:#94a3b8;text-decoration:line-through;':'')+(canEdit&&_subEditando!==s.id?'cursor:pointer;':'')+'"'
-            +(canEdit&&_subEditando!==s.id?' onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
+          html+='<div class="subrow">';
+          html+='<div class="subcell subcell-name"><span class="subdot" style="background:'+sBar+';"></span><div class="subname-wrap">';
+          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(s.status==='concluido'?' done':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
           if(s.descricao){
-            html+='<span id="tp-sdesc-'+s.id+'" class="cl-desc" style="'+((canEdit)?'cursor:text;':'')+'"'
-              +((canEdit)?' onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
+            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc"'+(canEdit?' style="cursor:text;" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
           } else if(canEdit){
-            html+='<span id="tp-sdesc-'+s.id+'" class="cl-desc" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" style="font-style:italic;cursor:text;"></span>';
+            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descricao</span>';
           }
+          html+='</div></div>';
+          html+='<div class="subcell subcell-resp">';
+          if(s.responsavel){
+            var su=(usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{};
+            html+='<span class="av av-sm" style="background:'+_avCor(su.id||s.responsavel)+';font-size:9px;width:22px;height:22px;min-width:22px;flex-shrink:0;">'+s.responsavel.slice(0,2).toUpperCase()+'</span><span class="subresp-nm">'+s.responsavel+'</span>';
+          } else { html+='<span class="bdash">&#8212;</span>'; }
           html+='</div>';
-          if(s.responsavel){html+='<span class="cl-resp">'+s.responsavel+'</span>';}
-          html+='<span class="reun-status-chip flat" style="background:'+sBg+';color:'+sTxt+';border:1px solid '+sTxt+'44;font-size:10px;'+(canEdit?'cursor:pointer;':'')+'"'
-            +(canEdit?' onclick="_abrirStatusDropdown(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')+'>'+sLbl+(canEdit?' <span style="font-size:8px;opacity:.6;">&#9660;</span>':'')+'</span>';
-          if(canEdit){
-            html+='<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="Acoes" style="flex-shrink:0;">&#8943;</button>';
-          }
-          if(s.data_fim){
-            var sAtrasado=_isAtrasado(s.data_fim,s.status);
-            html+='<span style="font-size:10px;color:'+(sAtrasado?'#dc2626':'var(--text3)')+';font-weight:'+(sAtrasado?'700':'400')+';flex-shrink:0;">'+_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':'')+'</span>';
-          }
+          html+='<div class="subcell subcell-status"><span class="substat" style="background:'+sBar+';'+(canEdit?'cursor:pointer;':'')+'"'+(canEdit?' onclick="_abrirStatusDropdown(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')+'>'+sLbl+(canEdit?' <span class="cv">&#9660;</span>':'')+'</span></div>';
+          var sAtrasado=s.data_fim&&_isAtrasado(s.data_fim,s.status);
+          html+='<div class="subcell subcell-date'+(sAtrasado?' late':'')+'">'+(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>')+'</div>';
+          html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>':'')+'</div>';
           html+='</div>';
         }
       });
     }
+    if(ce&&!ehPassado){
+      var respOptsQuick='<option value="">Resp...</option>'+(responsaveis||[]).map(function(sg){return '<option value="'+sg+'">'+sg+'</option>';}).join("");
+      html+='<div class="subadd"><input id="tp-sub-quick-txt-'+t.id+'" placeholder="+ Adicionar subtarefa..." onkeydown="_quickSubKeydown(event,\''+t.id+'\','+!!ehPassado+')"><select id="tp-sub-quick-resp-'+t.id+'">'+respOptsQuick+'</select></div>';
+    } else if(!_temSubs){
+      html+='<div class="subempty">Nenhuma subtarefa.</div>';
+    }
+    html+='</div>';
     html+='</div>';
 
     // comentarios da tarefa
