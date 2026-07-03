@@ -1819,6 +1819,23 @@ function _buildPendenciaItem(t,cor){
     +'</div>'
     +'</div>';
 }
+function _buildPendenciaPoolItem(item,marcado){
+  var statusLbl={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida','nao_iniciada':'Nao iniciada','bloqueada':'Bloqueada','concluida':'Concluida'};
+  var cor=item.origem==="projeto"?'#7c3aed':'#2b76e5';
+  var meta=[];
+  if(item.contexto)meta.push(item.contexto);
+  if(item.responsavel)meta.push("Resp.: "+item.responsavel);
+  if(item.prazo)meta.push("Prazo: "+_fmtDateBrShort(item.prazo));
+  if(item.status)meta.push(statusLbl[item.status]||item.status);
+  return '<label class="pend-pool-item" style="display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid '+cor+';border-radius:7px;background:#fff;padding:9px 10px;margin-bottom:7px;cursor:pointer;">'
+    +'<input type="checkbox" '+(marcado?'checked disabled':'')+' onchange="_marcarPendenciaPool(\''+item.key+'\')" style="margin-top:2px;accent-color:var(--bt-orange);">'
+    +'<span style="min-width:0;display:flex;flex-direction:column;gap:4px;">'
+    +'<span style="font-size:13px;font-weight:650;color:var(--bt-navy);line-height:1.25;">'+trunc(item.texto||"Tarefa sem titulo",100)+'</span>'
+    +'<span style="font-size:11px;color:var(--text3);line-height:1.35;">'+meta.join(" · ")+'</span>'
+    +(marcado?'<span style="font-size:11px;color:#16a34a;font-weight:700;">Marcada nesta reuniao</span>':'')
+    +'</span>'
+    +'</label>';
+}
 function _buildPendenciaGrupo(titulo,itens,cor){
   return '<div style="min-width:0;">'
     +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
@@ -1829,28 +1846,62 @@ function _buildPendenciaGrupo(titulo,itens,cor){
     +(itens.length?itens.map(function(t){return _buildPendenciaItem(t,cor);}).join(""):'<div style="font-size:12px;color:var(--text3);padding:10px;border:1px dashed var(--border);border-radius:7px;background:#fff;">Nenhuma.</div>')
     +'</div>';
 }
+var _pendenciasPoolCache={};
+async function _coletarPendenciasPool(reuniaoId,anterior,tarefasAnterior){
+  var pool=[];
+  (tarefasAnterior||[]).filter(function(t){return t.status!=="concluido";}).forEach(function(t){
+    pool.push({key:"tarefa:"+t.id,origem:"reuniao",id:t.id,texto:t.texto,status:t.status,responsavel:t.responsavel,prazo:t.data_fim,campos_valores:t.campos_valores||{},contexto:anterior?(anterior.titulo||("Reuniao de "+_fmtData(anterior.data))):"Reuniao anterior"});
+  });
+  var projetos=(projetosDB||[]).filter(function(p){return !p.arquivado&&(!equipeAtiva||!p.equipe_id||p.equipe_id===equipeAtiva.id);});
+  for(var i=0;i<projetos.length;i++){
+    var p=projetos[i];
+    var checklist=[];
+    try{
+      checklist=_checklistCache[p.id]||await dbFetchChecklist(p.id);
+      _checklistCache[p.id]=checklist;
+    }catch(_){checklist=[];}
+    checklist.filter(function(it){return it.status!=="concluido"&&it.status!=="concluida";}).forEach(function(it){
+      var resp=(it.usuarios&&(it.usuarios.sigla||it.usuarios.nome))||"";
+      pool.push({key:"projeto:"+p.id+":"+it.id,origem:"projeto",projeto_id:p.id,checklist_id:it.id,texto:it.titulo,status:it.status,responsavel:resp,prazo:null,contexto:"Projeto: "+(p.titulo||"Projeto")});
+    });
+  }
+  _pendenciasPoolCache[reuniaoId]=pool;
+  return pool;
+}
+async function _pendenciasMarcadasReuniao(reuniaoId){
+  var marcadas={};
+  try{
+    var tarefas=await dbFetchTarefasReuniao(reuniaoId);
+    tarefas.forEach(function(t){
+      if(t.campos_valores&&t.campos_valores.pendencia_origem_key)marcadas[t.campos_valores.pendencia_origem_key]=true;
+      marcadas["tarefa:"+t.id]=true;
+    });
+  }catch(_){}
+  return marcadas;
+}
 async function _loadPendenciasAnteriores(reuniaoId){
   var el=document.getElementById("reun-pendencias-area");if(!el)return;
   var atual=(reunioesDB||[]).find(function(r){return r.id===reuniaoId;})||reuniaoAtiva;
   var anterior=_getReuniaoAnterior(atual);
-  if(!anterior){
-    el.innerHTML='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhuma reuniao anterior encontrada para acompanhamento.</div>';
-    return;
-  }
   try{
-    var tarefas=await dbFetchTarefasReuniao(anterior.id);
+    var tarefas=anterior?await dbFetchTarefasReuniao(anterior.id):[];
     var refData=(atual&&atual.data)||new Date().toISOString().slice(0,10);
     var abertas=tarefas.filter(function(t){return t.status!=="concluido";});
     var atrasadas=abertas.filter(function(t){return t.data_fim&&t.data_fim<refData;});
     var abertasNoPrazo=abertas.filter(function(t){return !(t.data_fim&&t.data_fim<refData);});
     var concluidas=tarefas.filter(function(t){return t.status==="concluido";});
+    var pool=await _coletarPendenciasPool(reuniaoId,anterior,tarefas);
+    var marcadas=await _pendenciasMarcadasReuniao(reuniaoId);
     var html='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
-      +'<div style="font-size:12px;color:var(--text3);">Base: '+(anterior.titulo||("Reuniao de "+_fmtData(anterior.data)))+' em '+_fmtData(anterior.data)+'</div>'
-      +'<button onclick="selecionarReuniao(\''+anterior.id+'\')" class="rbtn rbtn-sm">Abrir anterior</button>'
+      +'<div style="font-size:12px;color:var(--text3);">Pool de tarefas abertas para marcar nesta reuniao</div>'
+      +(anterior?'<button onclick="selecionarReuniao(\''+anterior.id+'\')" class="rbtn rbtn-sm">Abrir anterior</button>':'')
       +'</div>';
-    if(!tarefas.length){
-      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">A reuniao anterior nao tem tarefas vinculadas.</div>';
+    if(pool.length){
+      html+='<div style="margin-bottom:14px;">'+pool.map(function(item){return _buildPendenciaPoolItem(item,!!marcadas[item.key]);}).join("")+'</div>';
     } else {
+      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:14px;">Nenhuma tarefa aberta encontrada em reunioes anteriores ou projetos.</div>';
+    }
+    if(tarefas.length){
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">'
         +_buildPendenciaGrupo("Atrasadas",atrasadas,"#dc2626")
         +_buildPendenciaGrupo("Abertas",abertasNoPrazo,"#2b76e5")
@@ -1864,6 +1915,64 @@ async function _loadPendenciasAnteriores(reuniaoId){
 }
 
 // ── GERAR ATA ──
+async function _garantirPautaProjetosNaReuniao(reuniaoId){
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var pauta=null;
+  try{
+    var pautas=await dbFetchPautas(eqId);
+    pauta=(pautas||[]).find(function(p){return p.tipo==="projeto";})||null;
+  }catch(_){}
+  if(!pauta){
+    pauta=await dbUpsertPauta({titulo:"Projetos",tipo:"projeto",descricao:"Acompanhamento de projetos internos",recorrente:true,equipe_id:eqId,criado_por:userDbId||null});
+  }
+  if(!pauta||!pauta.id)return null;
+  var rps=[];
+  try{rps=await dbFetchReuniaoPautas(reuniaoId);}catch(_){rps=[];}
+  var existente=(rps||[]).find(function(rp){return rp.pauta_id===pauta.id;});
+  if(!existente){
+    await dbUpsertReuniaoPauta({reuniao_id:reuniaoId,pauta_id:pauta.id,ordem:(rps||[]).length,snapshot_json:{notas:null}});
+  }
+  return pauta;
+}
+
+async function _marcarPendenciaPool(key){
+  var reuniaoId=reuniaoAtiva?reuniaoAtiva.id:null;
+  if(!reuniaoId)return;
+  var pool=_pendenciasPoolCache[reuniaoId]||[];
+  var item=pool.find(function(x){return x.key===key;});
+  if(!item)return;
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  try{
+    if(item.origem==="reuniao"){
+      var cache=(_tarefasPautaCache[reuniaoId]||[]).find(function(t){return t.id===item.id;})||{};
+      await dbUpsertTarefa({id:item.id,reuniao_id:reuniaoId,equipe_id:eqId,campos_valores:Object.assign({},item.campos_valores||{},cache.campos_valores||{},{pendencia_origem_key:key})});
+      await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:item.id});
+    }else if(item.origem==="projeto"){
+      await _garantirPautaProjetosNaReuniao(reuniaoId);
+      var novoId=uid();
+      var projeto=(projetosDB||[]).find(function(p){return p.id===item.projeto_id;})||{};
+      await dbUpsertTarefa({
+        id:novoId,
+        texto:item.texto,
+        status:item.status==="nao_iniciada"?"pendente":(item.status==="concluida"?"concluido":(item.status||"pendente")),
+        reuniao_id:reuniaoId,
+        equipe_id:eqId,
+        criado_em:new Date().toISOString(),
+        campos_valores:{pendencia_origem_key:key,projeto_id:item.projeto_id,checklist_item_id:item.checklist_id,projeto_titulo:projeto.titulo||"Projeto"}
+      });
+      await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:novoId});
+    }
+    _tarefasPautaCache[reuniaoId]=await dbFetchTarefasReuniao(reuniaoId);
+    await _loadPendenciasAnteriores(reuniaoId);
+    await _loadPautasSection(reuniaoId);
+    _loadProjetosArea(reuniaoId);
+    toast("Pendencia marcada na reuniao!");
+  }catch(_){
+    toast("Erro ao marcar pendencia",true);
+    await _loadPendenciasAnteriores(reuniaoId);
+  }
+}
+
 async function _coletarSnapshotTarefasReuniao(reuniaoId){
   var eqId=equipeAtiva?equipeAtiva.id:null;
   var catMap={"sem_cat":"Geral"};
@@ -2182,7 +2291,8 @@ function _buildTarefaCard(t,ce,ehPassado){
   var html='';
 
   // ── LINHA DO BOARD (estilo Monday) ──
-  html+='<div class="brow">';
+  var dragAttr=(ce&&!ehPassado)?' onpointerdown="_tarefaDragStart(event,\''+t.id+'\',false,null,'+!!ehPassado+')" title="Arraste para o lado para alterar status"':'';
+  html+='<div class="brow"'+dragAttr+'>';
   html+='<div class="brow-strip" style="background:'+bar+';"></div>';
   // coluna 1: expandir
   html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Expandir">&#9658;</button></div>';
@@ -2190,6 +2300,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(t.status==='concluido'?' done':'')+'"'
     +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>'
     +(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
+    +(t.campos_valores&&t.campos_valores.projeto_titulo?'<span class="bsub">Projeto: '+trunc(t.campos_valores.projeto_titulo,64)+'</span>':'')
     +((t.descricao&&!subExp)?'<span class="bsub">'+trunc(t.descricao,64)+'</span>':'')
     +'</div></div>';
   // coluna 3: responsavel
@@ -2297,7 +2408,7 @@ function _buildTarefaCard(t,ce,ehPassado){
             +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
             +'</div></div>';
         } else {
-          html+='<div class="subrow">';
+          html+='<div class="subrow"'+(canEdit?' onpointerdown="_tarefaDragStart(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Arraste para o lado para alterar status"':'')+'>';
           html+='<div class="subcell subcell-name"><span class="subdot" style="background:'+sBar+';"></span><div class="subname-wrap">';
           html+='<span id="tp-stxt-'+s.id+'" class="subname'+(s.status==='concluido'?' done':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
           if(s.descricao){
@@ -2634,6 +2745,70 @@ function _cancelarDescricaoMain(tarefaId,ehPassado){
 }
 
 // ── STATUS DROPDOWN DE TAREFA ──
+var _dragTarefaState=null;
+function _tarefaStatusAtual(tarefaId,isSub,parentId){
+  if(isSub&&parentId){
+    var sub=(_subtarefasCache[parentId]||[]).find(function(s){return s.id===tarefaId;});
+    return sub?sub.status:"pendente";
+  }
+  var rId=reuniaoAtiva?reuniaoAtiva.id:'';
+  var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
+  return t?t.status:"pendente";
+}
+function _statusPorArrasto(status,delta){
+  var ordem=["pendente","em_andamento","pausado","concluido"];
+  var idx=ordem.indexOf(status);
+  if(idx<0)idx=0;
+  if(delta>0)idx=Math.min(ordem.length-1,idx+1);
+  else idx=Math.max(0,idx-1);
+  return ordem[idx];
+}
+function _tarefaDragStart(ev,tarefaId,isSub,parentId,ehPassado){
+  if(ehPassado)return;
+  var alvo=ev.target;
+  if(alvo&&alvo.closest&&alvo.closest("button,input,textarea,select,a,.statcell,.substat,.rt-menu-btn"))return;
+  var row=alvo&&alvo.closest?(alvo.closest(".brow")||alvo.closest(".subrow")):null;
+  if(!row)return;
+  _dragTarefaState={id:tarefaId,isSub:!!isSub,parentId:parentId||null,ehPassado:!!ehPassado,startX:ev.clientX,row:row,moved:false};
+  row.setPointerCapture&&row.setPointerCapture(ev.pointerId);
+  row.style.transition="none";
+  row.addEventListener("pointermove",_tarefaDragMove);
+  row.addEventListener("pointerup",_tarefaDragEnd);
+  row.addEventListener("pointercancel",_tarefaDragCancel);
+}
+function _tarefaDragMove(ev){
+  if(!_dragTarefaState)return;
+  var dx=ev.clientX-_dragTarefaState.startX;
+  if(Math.abs(dx)>6)_dragTarefaState.moved=true;
+  var lim=Math.max(-110,Math.min(110,dx));
+  _dragTarefaState.row.style.transform="translateX("+lim+"px)";
+  _dragTarefaState.row.style.opacity=String(1-Math.min(0.22,Math.abs(lim)/500));
+}
+async function _tarefaDragEnd(ev){
+  if(!_dragTarefaState)return;
+  var st=_dragTarefaState;
+  var dx=ev.clientX-st.startX;
+  _tarefaDragCleanup();
+  if(Math.abs(dx)<70)return;
+  var atual=_tarefaStatusAtual(st.id,st.isSub,st.parentId);
+  var novo=_statusPorArrasto(atual,dx);
+  if(novo!==atual)await _alterarStatusTarefa(st.id,novo,st.isSub,st.parentId,st.ehPassado);
+}
+function _tarefaDragCancel(){
+  _tarefaDragCleanup();
+}
+function _tarefaDragCleanup(){
+  if(!_dragTarefaState)return;
+  var row=_dragTarefaState.row;
+  row.removeEventListener("pointermove",_tarefaDragMove);
+  row.removeEventListener("pointerup",_tarefaDragEnd);
+  row.removeEventListener("pointercancel",_tarefaDragCancel);
+  row.style.transition="transform .16s ease, opacity .16s ease";
+  row.style.transform="";
+  row.style.opacity="";
+  _dragTarefaState=null;
+}
+
 function _abrirStatusDropdown(ev,tarefaId,isSub,parentId,ehPassado){
   var old=document.getElementById("status-dd-wrap");if(old)old.remove();
   var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluido'};
