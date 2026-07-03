@@ -13,6 +13,7 @@ var _tarefaCmtsCache={};
 var _tarefaCmtsExpanded={};
 var _subCollapsed={};
 var _anterioresAberto=false;
+var _modelosAdminContext=false;
 // Tipos de reuniao (Fase 0). Slug salvo na coluna reunioes.tipo; label/cor/icone
 // definidos aqui. Vira configuravel pelo mestre no construtor (Fase 1).
 var REUNIAO_TIPOS={
@@ -20,7 +21,32 @@ var REUNIAO_TIPOS={
   evento:{label:'Evento',cor:'#fa510e',ic:'spark'}
 };
 function _reunTipo(r){
+  if(r&&r.modelo_snapshot){
+    return {label:r.modelo_snapshot.nome||"Reuni\u00e3o",cor:r.modelo_snapshot.cor||"#185FA5",ic:r.modelo_snapshot.icone||"users"};
+  }
+  var m=r?_modeloPorTipo(r.tipo):null;
+  if(m)return {label:m.nome||"Reuni\u00e3o",cor:m.cor||"#185FA5",ic:m.icone||"users"};
   return (r&&REUNIAO_TIPOS[r.tipo])||REUNIAO_TIPOS.acompanhamento;
+}
+function _modeloSlug(txt){
+  return String(txt||"").trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
+}
+function _modeloPorTipo(tipo){
+  return (modelosDB||[]).find(function(m){return m.slug===tipo;})||(modelosDB||[]).find(function(m){return m.slug==="acompanhamento";})||null;
+}
+function _snapshotModelo(m){
+  if(!m)return null;
+  return {
+    id:m.id,
+    nome:m.nome,
+    cor:m.cor,
+    icone:m.icone,
+    slug:m.slug,
+    campos:JSON.parse(JSON.stringify(m.campos||[])),
+    colunas_tarefa:JSON.parse(JSON.stringify(m.colunas_tarefa||[]))
+  };
 }
 function toggleAnteriores(){
   _anterioresAberto=!_anterioresAberto;
@@ -218,7 +244,12 @@ function _buildReuniaoDetalhe(r){
     +'</div></div>';
   var hoje=new Date().toISOString().slice(0,10);
   var ehPassado=!!(r.data&&r.data<hoje);
-  // Secao de campos customizados removida (sistema de modelos descontinuado).
+  if(_buildCamposGrid(r,ce,ehPassado)){
+    html+='<div class="reun-section">'
+      +'<div class="reun-sechdr"><div class="reun-sectitles"><span class="reun-sec-eye">Estrutura</span><span class="reun-sec-ttl">Informa\u00e7\u00f5es</span></div></div>'
+      +'<div id="reun-campos-area">'+_buildCamposGrid(r,ce,ehPassado)+'</div>'
+      +'</div>';
+  }
   // Participantes agora ficam no rodape do hero (cabecalho da reuniao).
   html+='<div class="reun-section">'
     +'<div class="reun-sechdr">'
@@ -868,8 +899,9 @@ async function openEditReuniao(id){
 function _abrirFormReuniao(r){
   var isEdit=!!r.id;
   var eqOptions=equipesDB.map(function(e){return '<option value="'+e.id+'"'+(r.equipe_id===e.id?' selected':'')+'>'+e.nome+'</option>';}).join("");
-  var tipoSel=r.tipo||'acompanhamento';
-  var modeloField='<div class="field"><label>Tipo</label><select id="rf-tipo">'+Object.keys(REUNIAO_TIPOS).map(function(k){return '<option value="'+k+'"'+(tipoSel===k?' selected':'')+'>'+REUNIAO_TIPOS[k].label+'</option>';}).join("")+'</select></div>';
+  var tipoSel=r.tipo||(r.modelo_snapshot&&r.modelo_snapshot.slug)||'acompanhamento';
+  var tipoOpts=(modelosDB&&modelosDB.length)?modelosDB.map(function(m){return '<option value="'+(m.slug||_modeloSlug(m.nome))+'"'+(tipoSel===(m.slug||_modeloSlug(m.nome))?' selected':'')+'>'+m.nome+'</option>';}).join(""):Object.keys(REUNIAO_TIPOS).map(function(k){return '<option value="'+k+'"'+(tipoSel===k?' selected':'')+'>'+REUNIAO_TIPOS[k].label+'</option>';}).join("");
+  var modeloField='<div class="field"><label>Tipo</label><select id="rf-tipo">'+tipoOpts+'</select></div>';
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,520px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isEdit?"Editar reuniao":"Nova reuniao")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo</label><input id="rf-titulo" value="'+(r.titulo||"")+'"/></div>'
@@ -899,6 +931,12 @@ async function salvarReuniao(id){
   var tipoEl=document.getElementById("rf-tipo");var tipo=tipoEl?tipoEl.value:'acompanhamento';
   var obj={data,hora:hora+":00",status,tipo,observacoes:obs||null,equipe_id,criado_por:userDbId};
   if(titulo)obj.titulo=titulo;
+  var existente=id?reunioesDB.find(function(x){return x.id===id;}):null;
+  var modelo=_modeloPorTipo(tipo);
+  if(modelo&&(!id||!existente||existente.tipo!==tipo||!existente.modelo_snapshot)){
+    obj.modelo_id=modelo.id;
+    obj.modelo_snapshot=_snapshotModelo(modelo);
+  }
   if(id)obj.id=id;
   try{
     var criada=await dbUpsertReuniao(obj);
@@ -2322,6 +2360,19 @@ function _buildTarefaCard(t,ce,ehPassado){
   }
   html+='</div>';
   html+='</div>';// fecha brow
+  var colunasCustom=_colunasTarefaSnapshot();
+  if(colunasCustom.length){
+    var valsCustom=t.campos_valores||{};
+    html+='<div class="tcols">';
+    colunasCustom.forEach(function(col){
+      var editando=_tcolEditando[t.id]===col.id;
+      html+='<div class="tcol'+(ce&&!ehPassado?' editavel':'')+'"'+(ce&&!ehPassado&&!editando?' onclick="_tcolAbrir(\''+t.id+'\',\''+col.id+'\')"':'')+'>'
+        +'<div class="tcol-lbl">'+col.label+'</div>'
+        +'<div class="tcol-val">'+(editando?_tcolRenderEditor(col,valsCustom[col.id],t.id):_tcolRenderVal(col,valsCustom[col.id]))+'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
   // ── BLOCO EXPANDIDO (descricao, edicao, checklist, comentarios) ──
   var _temExp=(_itemEditando===t.id)||subExp;
   if(_temExp){html+='<div class="brow-exp">';}
@@ -3138,6 +3189,7 @@ var TIPOS_CAMPO={
 };
 
 function openGerenciarModelos(){
+  _modelosAdminContext=false;
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,560px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
     +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelos de reunião</div>'
@@ -3149,6 +3201,12 @@ function openGerenciarModelos(){
     +'</div>'
     +'</div></div>';
   _renderModelosLista();
+}
+
+function openAdminFormModelo(idOpcional){
+  _modelosAdminContext=true;
+  if(typeof _estruturaModelosCache!=="undefined"&&_estruturaModelosCache&&_estruturaModelosCache.length)modelosDB=_estruturaModelosCache.slice();
+  openFormModelo(idOpcional);
 }
 
 function _renderModelosLista(){
@@ -3201,8 +3259,8 @@ function openFormModelo(idOpcional){
     +'<button type="button" onclick="_mfAdicionarCampo(\'colunas\')" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar coluna</button>'
     +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">'
-    +'<button class="btn" onclick="openGerenciarModelos()">Cancelar</button>'
-    +'<button class="btn btn-primary" onclick="salvarModelo()">Salvar</button>'
+      +'<button class="btn" onclick="'+(_modelosAdminContext?'closeModal();renderEstrutura()':'openGerenciarModelos()')+'">Cancelar</button>'
+      +'<button class="btn btn-primary" onclick="salvarModelo()">Salvar</button>'
     +'</div>'
     +'</div></div>';
   _mfRenderCampos('campos');
@@ -3330,6 +3388,7 @@ function _mfSelecionarIcone(icone){
 async function salvarModelo(){
   var nome=(document.getElementById("mf-nome").value||"").trim();
   if(!nome){toast("Informe o nome do modelo",true);return;}
+  var modeloAtual=_mfEditId?modelosDB.find(function(x){return x.id===_mfEditId;}):null;
   // Valida labels dos campos
   for(var ci=0;ci<_mfCampos.length;ci++){
     if(!(_mfCampos[ci].label||"").trim()){toast("Preencha o rótulo do campo "+(ci+1),true);return;}
@@ -3338,13 +3397,14 @@ async function salvarModelo(){
   for(var ki=0;ki<_mfColunas.length;ki++){
     if(!(_mfColunas[ki].label||"").trim()){toast("Preencha o rótulo da coluna "+(ki+1),true);return;}
   }
-  var obj={nome:nome,cor:_mfCor,icone:_mfIcone,campos:_mfCampos,colunas_tarefa:_mfColunas};
+  var obj={nome:nome,cor:_mfCor,icone:_mfIcone,slug:(modeloAtual&&modeloAtual.slug)||_modeloSlug(nome),campos:_mfCampos,colunas_tarefa:_mfColunas};
   if(_mfEditId){obj.id=_mfEditId;}else{obj.criado_por=userDbId;}
   try{
     await dbUpsertModelo(obj);
     modelosDB=await dbFetchModelos();
     toast("Modelo salvo!");
-    openGerenciarModelos();
+    if(_modelosAdminContext){closeModal();renderEstrutura();}
+    else openGerenciarModelos();
   }catch(e){toast("Erro ao salvar modelo",true);}
 }
 
@@ -3358,7 +3418,8 @@ async function duplicarModelo(id){
     });
   }
   try{
-    await dbUpsertModelo({nome:m.nome+' (cópia)',cor:m.cor,icone:m.icone,campos:_clonarArr(m.campos),colunas_tarefa:_clonarArr(m.colunas_tarefa),criado_por:userDbId});
+    var nomeCopia=m.nome+' (cópia)';
+    await dbUpsertModelo({nome:nomeCopia,slug:_modeloSlug(nomeCopia),cor:m.cor,icone:m.icone,campos:_clonarArr(m.campos),colunas_tarefa:_clonarArr(m.colunas_tarefa),criado_por:userDbId});
     modelosDB=await dbFetchModelos();
     toast("Modelo duplicado!");
     _renderModelosLista();

@@ -90,6 +90,7 @@ async function saveEquipeMembros(equipeId){
 
 // â”€â”€ ESTRUTURA â”€â”€
 var _estruturaStatusCache=[];
+var _estruturaModelosCache=[];
 
 function _estruturaSlug(txt){
   return String(txt||"").trim().toLowerCase()
@@ -104,6 +105,7 @@ async function renderEstrutura(){
   try{
     _estruturaStatusCache=await dbFetchTarefaStatus();
     tarefaStatusDB=_estruturaStatusCache.slice();
+    try{_estruturaModelosCache=await dbFetchModelos();modelosDB=_estruturaModelosCache.slice();}catch(_){_estruturaModelosCache=[];}
     var ativos=_estruturaStatusCache.filter(function(s){return s.ativo!==false;}).length;
     var finalizadores=_estruturaStatusCache.filter(function(s){return s.finalizador&&s.ativo!==false;}).length;
     var rows=_estruturaStatusCache.length===0?'<tr><td colspan="6" style="text-align:center;padding:34px;color:var(--text3);">Nenhum status cadastrado</td></tr>':_estruturaStatusCache.map(function(s){
@@ -114,6 +116,17 @@ async function renderEstrutura(){
         +'<td style="padding:11px 14px;">'+(s.finalizador?'<span class="badge" style="background:#dcfce7;color:#15803d;">Finalizador</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;">Aberto</span>')+'</td>'
         +'<td style="padding:11px 14px;">'+(s.ativo!==false?'<span style="font-size:12px;font-weight:700;color:#16a34a;">Ativo</span>':'<span style="font-size:12px;font-weight:700;color:#94a3b8;">Inativo</span>')+'</td>'
         +'<td style="padding:11px 14px;"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button onclick="openEditTarefaStatus(\''+s.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("edit")+' Editar</button><button onclick="toggleTarefaStatusAtivo(\''+s.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">'+(s.ativo!==false?'Desativar':'Ativar')+'</button></div></td>'
+        +'</tr>';
+    }).join("");
+    var modeloRows=!_estruturaModelosCache.length?'<tr><td colspan="5" style="text-align:center;padding:34px;color:var(--text3);">Nenhum modelo cadastrado</td></tr>':_estruturaModelosCache.map(function(m){
+      var campos=(m.campos||[]).length;
+      var colunas=(m.colunas_tarefa||[]).length;
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        +'<td style="padding:11px 14px;"><span style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--bt-navy);"><span style="width:10px;height:10px;border-radius:50%;background:'+(m.cor||"#94a3b8")+';flex-shrink:0;"></span>'+ic(m.icone||"meeting")+m.nome+'</span></td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);font-family:monospace;">'+(m.slug||"")+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+campos+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+colunas+'</td>'
+        +'<td style="padding:11px 14px;"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button onclick="openAdminFormModelo(\''+m.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("edit")+' Editar</button><button onclick="openAdminFormModelo()" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Novo</button></div></td>'
         +'</tr>';
     }).join("");
     app.innerHTML=headerHTML("estrutura")
@@ -131,7 +144,16 @@ async function renderEstrutura(){
       +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
       +['Status','ID','Ordem','Tipo','Uso','A\u00e7\u00f5es'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
-      +'<div style="font-size:12px;color:var(--text3);margin-top:12px;line-height:1.5;">Nesta etapa os status ficam configurados na Administra\u00e7\u00e3o. A pr\u00f3xima etapa \u00e9 fazer as telas de tarefas, reuni\u00f5es e projetos consumirem esta estrutura.</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 12px;gap:12px;">'
+      +'<div><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelos de reuni\u00e3o</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Campos do cabe\u00e7alho e colunas extras das tarefas.</div></div>'
+      +'<button class="btn btn-accent" onclick="openAdminFormModelo()" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+ic("plus")+' Novo modelo</button>'
+      +'</div>'
+      +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
+      +'<table style="width:100%;border-collapse:collapse;">'
+      +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
+      +['Modelo','Slug','Campos','Colunas de tarefa','A\u00e7\u00f5es'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
+      +'</tr></thead><tbody>'+modeloRows+'</tbody></table></div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-top:12px;line-height:1.5;">As altera\u00e7\u00f5es em modelos valem para reuni\u00f5es novas. Reuni\u00f5es antigas preservam o snapshot da estrutura que tinham.</div>'
       +'</div>';
   }catch(e){toast("Erro ao carregar estrutura",true);}
 }
