@@ -88,6 +88,106 @@ async function saveEquipeMembros(equipeId){
   }catch(e){toast("Erro",true);}
 }
 
+// â”€â”€ ESTRUTURA â”€â”€
+var _estruturaStatusCache=[];
+
+function _estruturaSlug(txt){
+  return String(txt||"").trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
+}
+
+async function renderEstrutura(){
+  if(perfil!=="mestre"){renderView();return;}
+  var app=document.getElementById("app");app.className="page-mode";
+  app.innerHTML=headerHTML("estrutura")+'<div style="padding:24px;max-width:980px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
+  try{
+    _estruturaStatusCache=await dbFetchTarefaStatus();
+    var ativos=_estruturaStatusCache.filter(function(s){return s.ativo!==false;}).length;
+    var finalizadores=_estruturaStatusCache.filter(function(s){return s.finalizador&&s.ativo!==false;}).length;
+    var rows=_estruturaStatusCache.length===0?'<tr><td colspan="6" style="text-align:center;padding:34px;color:var(--text3);">Nenhum status cadastrado</td></tr>':_estruturaStatusCache.map(function(s){
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        +'<td style="padding:11px 14px;"><span style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--bt-navy);"><span style="width:10px;height:10px;border-radius:50%;background:'+(s.cor||"#94a3b8")+';flex-shrink:0;"></span>'+s.nome+'</span></td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);font-family:monospace;">'+s.id+'</td>'
+        +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+s.ordem+'</td>'
+        +'<td style="padding:11px 14px;">'+(s.finalizador?'<span class="badge" style="background:#dcfce7;color:#15803d;">Finalizador</span>':'<span class="badge" style="background:#f1f5f9;color:#64748b;">Aberto</span>')+'</td>'
+        +'<td style="padding:11px 14px;">'+(s.ativo!==false?'<span style="font-size:12px;font-weight:700;color:#16a34a;">Ativo</span>':'<span style="font-size:12px;font-weight:700;color:#94a3b8;">Inativo</span>')+'</td>'
+        +'<td style="padding:11px 14px;"><div style="display:flex;gap:5px;flex-wrap:wrap;"><button onclick="openEditTarefaStatus(\''+s.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic("edit")+' Editar</button><button onclick="toggleTarefaStatusAtivo(\''+s.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">'+(s.ativo!==false?'Desativar':'Ativar')+'</button></div></td>'
+        +'</tr>';
+    }).join("");
+    app.innerHTML=headerHTML("estrutura")
+      +'<div style="padding:24px;max-width:980px;margin:0 auto;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;">'
+      +'<div><div style="font-size:18px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Estrutura</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Configura\u00e7\u00e3o modular inicial de tarefas e subtarefas.</div></div>'
+      +'<button class="btn btn-accent" onclick="openEditTarefaStatus()" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+ic("plus")+' Novo status</button>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px;">'
+      +'<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:var(--text3);font-weight:800;text-transform:uppercase;">Status ativos</div><div style="font-size:24px;font-weight:800;color:var(--bt-navy);margin-top:3px;">'+ativos+'</div></div>'
+      +'<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:var(--text3);font-weight:800;text-transform:uppercase;">Finalizadores</div><div style="font-size:24px;font-weight:800;color:var(--bt-navy);margin-top:3px;">'+finalizadores+'</div></div>'
+      +'</div>'
+      +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
+      +'<table style="width:100%;border-collapse:collapse;">'
+      +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
+      +['Status','ID','Ordem','Tipo','Uso','A\u00e7\u00f5es'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-top:12px;line-height:1.5;">Nesta etapa os status ficam configurados na Administra\u00e7\u00e3o. A pr\u00f3xima etapa \u00e9 fazer as telas de tarefas, reuni\u00f5es e projetos consumirem esta estrutura.</div>'
+      +'</div>';
+  }catch(e){toast("Erro ao carregar estrutura",true);}
+}
+
+function openEditTarefaStatus(id){
+  var s=id?(_estruturaStatusCache||[]).find(function(x){return x.id===id;}):null;
+  var isE=!!s;
+  var nome=s?s.nome:"";
+  var sid=s?s.id:"";
+  var cor=s?s.cor:"#2b76e5";
+  var ordem=s?s.ordem:(_estruturaStatusCache||[]).length;
+  var finalizador=s&&s.finalizador;
+  var ativo=!s||s.ativo!==false;
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isE?"Editar status":"Novo status")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+    +'<div class="field"><label>Nome</label><input id="ts-nome" value="'+nome.replace(/"/g,"&quot;")+'" placeholder="Ex: Em revisao" oninput="previewStatusId('+isE+')"/></div>'
+    +'<div class="field"><label>ID</label><input id="ts-id" value="'+sid+'" placeholder="em_revisao" '+(isE?'disabled':'')+' style="font-family:monospace;"/></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="field"><div><label>Cor</label><input id="ts-cor" type="color" value="'+cor+'" style="width:70px;height:36px;padding:2px;"/></div><div><label>Ordem</label><input id="ts-ordem" type="number" value="'+ordem+'" style="width:100%;"/></div></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin:8px 0;"><input id="ts-finalizador" type="checkbox" '+(finalizador?'checked':'')+' style="accent-color:var(--bt-orange);"> Status finalizador</label>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin:8px 0 16px;"><input id="ts-ativo" type="checkbox" '+(ativo?'checked':'')+' style="accent-color:var(--bt-orange);"> Ativo</label>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveTarefaStatus(\''+(sid||"")+'\')">Salvar</button></div>'
+    +'</div></div>';
+  if(!isE)previewStatusId(false);
+}
+
+function previewStatusId(isEdit){
+  if(isEdit)return;
+  var nomeEl=document.getElementById("ts-nome");
+  var idEl=document.getElementById("ts-id");
+  if(nomeEl&&idEl&&!idEl.dataset.touched)idEl.value=_estruturaSlug(nomeEl.value);
+}
+
+async function saveTarefaStatus(idAtual){
+  var nome=(document.getElementById("ts-nome").value||"").trim();
+  var id=(idAtual||document.getElementById("ts-id").value||"").trim();
+  var cor=document.getElementById("ts-cor").value||"#94a3b8";
+  var ordem=parseInt(document.getElementById("ts-ordem").value||"0",10);
+  var finalizador=document.getElementById("ts-finalizador").checked;
+  var ativo=document.getElementById("ts-ativo").checked;
+  if(!nome){toast("Informe o nome",true);return;}
+  if(!id){id=_estruturaSlug(nome);}
+  if(!id){toast("Informe um ID valido",true);return;}
+  try{
+    await dbUpsertTarefaStatus({id:id,nome:nome,cor:cor,ordem:ordem,finalizador:finalizador,ativo:ativo});
+    closeModal();toast("Status salvo!");renderEstrutura();
+  }catch(e){toast("Erro ao salvar status",true);}
+}
+
+async function toggleTarefaStatusAtivo(id){
+  var s=(_estruturaStatusCache||[]).find(function(x){return x.id===id;});if(!s)return;
+  try{
+    await dbUpsertTarefaStatus({id:id,nome:s.nome,cor:s.cor,ordem:s.ordem,finalizador:!!s.finalizador,ativo:s.ativo===false});
+    toast(s.ativo===false?"Status ativado":"Status desativado");
+    renderEstrutura();
+  }catch(e){toast("Erro ao alterar status",true);}
+}
+
 // Etapa 1 da consolidacao: funcoes de IMPORTAR, ETIQUETAS, LOGS, USUARIOS e FORMULARIO de
 // card removidas daqui por estarem duplicadas em app.js (que carrega por ultimo e prevalecia).
 // Exclusivas mantidas neste arquivo: EQUIPES (acima) e EMAILS + CATEGORIAS DE PAUTA (abaixo).

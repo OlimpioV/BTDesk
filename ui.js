@@ -80,11 +80,12 @@ function switchEquipe(equipeId){
 }
 
 function _isAdminAba(aba){
-  return aba==="admin"||aba==="usr"||aba==="eq"||aba==="imp"||aba==="etq"||aba==="logs";
+  return aba==="admin"||aba==="estrutura"||aba==="usr"||aba==="eq"||aba==="imp"||aba==="etq"||aba==="logs";
 }
 
 function _adminMenuHTML(aba){
   var itens=[
+    {id:"estrutura",label:"Estrutura",icon:"kanban",fn:"renderEstrutura()"},
     {id:"usr",label:"Usu\u00e1rios",icon:"users",fn:"renderUsers()"},
     {id:"eq",label:"Equipes",icon:"group",fn:"renderEquipes()"},
     {id:"imp",label:"Importa\u00e7\u00e3o",icon:"upload",fn:"renderImp()"},
@@ -108,7 +109,8 @@ function _adminShellOpen(aba){
 function renderAdministracao(sec){
   if(perfil!=="mestre"){renderView();return;}
   var destino=sec||"usr";
-  if(destino==="eq")renderEquipes();
+  if(destino==="estrutura")renderEstrutura();
+  else if(destino==="eq")renderEquipes();
   else if(destino==="imp")renderImp();
   else if(destino==="etq")renderEtq();
   else if(destino==="logs")renderLogs();

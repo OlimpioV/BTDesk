@@ -192,3 +192,16 @@ async function dbReenviarEmail(logId){
   var log=rows[0];
   return enviarEmail({destinatarios:log.destinatarios,assunto:log.assunto,corpo_html:log.corpo_html,tipo:log.tipo,referencia_id:log.referencia_id});
 }
+
+// â”€â”€ ESTRUTURA DB â”€â”€
+async function dbFetchTarefaStatus(){
+  var r=await fetch(SB+"/rest/v1/tarefa_status?select=*&order=ordem.asc",{headers:H});
+  if(!r.ok)return [];
+  return r.json();
+}
+async function dbUpsertTarefaStatus(st){
+  var r=await fetch(SB+"/rest/v1/tarefa_status",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(st)});
+  if(!r.ok)throw new Error();
+  var rows=await r.json();
+  return rows[0]||null;
+}
