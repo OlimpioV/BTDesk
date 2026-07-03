@@ -14,6 +14,7 @@ var _tarefaCmtsExpanded={};
 var _subCollapsed={};
 var _anterioresAberto=false;
 var _modelosAdminContext=false;
+var _projCampoEditando={};
 // Tipos de reuniao (Fase 0). Slug salvo na coluna reunioes.tipo; label/cor/icone
 // definidos aqui. Vira configuravel pelo mestre no construtor (Fase 1).
 var REUNIAO_TIPOS={
@@ -48,6 +49,17 @@ function _snapshotModelo(m){
     colunas_tarefa:JSON.parse(JSON.stringify(m.colunas_tarefa||[]))
   };
 }
+function _snapshotProjetoModelo(){
+  var m=projetoModeloDB||{nome:"Projeto padrão",campos:[]};
+  return {nome:m.nome||"Projeto padrão",campos:JSON.parse(JSON.stringify(m.campos||[]))};
+}
+function _projetoCampos(p){
+  if(p&&p.modelo_snapshot&&p.modelo_snapshot.campos)return p.modelo_snapshot.campos||[];
+  return (projetoModeloDB&&projetoModeloDB.campos)||[];
+}
+function _projetoCampoVal(campo,val){
+  return _tcolRenderVal(campo,val);
+}
 function toggleAnteriores(){
   _anterioresAberto=!_anterioresAberto;
   var el=document.getElementById("reun-anteriores");if(el)el.style.display=_anterioresAberto?'block':'none';
@@ -63,6 +75,7 @@ async function renderReunioes(){
     pautasDB=await dbFetchPautas(eqId);
     projetosDB=await dbFetchProjetos(eqId);
     try{modelosDB=await dbFetchModelos();}catch(_){modelosDB=[];}
+    await loadProjetoModelo();
   }catch(e){toast("Erro ao carregar reunioes",true);}
   _renderReunioesPagina();
 }
@@ -619,6 +632,7 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   html+='</div></div>';
   if(resp)html+='<div class="proj-resp"><span class="av av-sm" style="background:'+_avCor((p.usuarios&&p.usuarios.id)||respNome)+';" title="'+resp+'">'+resp.slice(0,2).toUpperCase()+'</span><span class="nm">'+resp+'</span></div>';
   if(p.descricao)html+='<div class="proj-desc">'+p.descricao+'</div>';
+  html+=_buildProjetoCamposGrid(p,ce&&!ehP);
   if(isPontual&&checklist&&checklist.length){
     html+=_buildChecklistBar(checklist);
     var done=checklist.filter(function(i){return statusTarefaFinalizador(i.status);}).length;
@@ -637,6 +651,109 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   }
   html+='</div></div></div>';
   return html;
+}
+function _buildProjetoCamposGrid(p,editavel){
+  var campos=_projetoCampos(p);
+  if(!campos.length)return "";
+  var vals=p.campos_valores||{};
+  var html='<div class="tcols" style="margin-top:10px;">';
+  campos.forEach(function(campo){
+    var editando=_projCampoEditando[p.id]===campo.id;
+    html+='<div class="tcol'+(editavel?' editavel':'')+'"'+(editavel&&!editando?' onclick="_projCampoAbrir(\''+p.id+'\',\''+campo.id+'\')"':'')+'>'
+      +'<div class="tcol-lbl">'+campo.label+'</div>'
+      +'<div class="tcol-val">'+(editando?_projCampoEditor(campo,vals[campo.id],p.id):_projetoCampoVal(campo,vals[campo.id]))+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  return html;
+}
+function _projCampoAbrir(projetoId,campoId){
+  _projCampoEditando[projetoId]=campoId;
+  _reloadProjetoCard(projetoId,false);
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  setTimeout(function(){var el=document.getElementById("pcf-"+vid);if(el)el.focus();},30);
+}
+function _projCampoFechar(projetoId){
+  delete _projCampoEditando[projetoId];
+  _reloadProjetoCard(projetoId,false);
+}
+function _projCampoEditor(campo,val,projetoId){
+  var tipo=campo.tipo;
+  var vid=campo.id.replace(/[^a-zA-Z0-9]/g,'_');
+  if(tipo==='texto'){
+    return '<input id="pcf-'+vid+'" value="'+(val!==undefined&&val!==null?String(val).replace(/"/g,'&quot;'):'')+'" style="width:100%;font-size:12px;" onkeydown="_projCampoKd(event,\''+projetoId+'\',\''+campo.id+'\')" onblur="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')"/>';
+  }
+  if(tipo==='numero'){
+    return '<input id="pcf-'+vid+'" type="number" value="'+(val!==undefined&&val!==null?val:'')+'" style="width:100%;font-size:12px;" onkeydown="_projCampoKd(event,\''+projetoId+'\',\''+campo.id+'\')" onblur="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')"/>';
+  }
+  if(tipo==='texto_longo'){
+    return '<textarea id="pcf-'+vid+'" rows="3" style="width:100%;font-size:12px;resize:vertical;">'+(val||'')+'</textarea>'
+      +'<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button onclick="_projCampoFechar(\''+projetoId+'\')" class="rbtn rbtn-sm">Cancelar</button><button onclick="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')" class="rbtn rbtn-sm rbtn-accent">Salvar</button></div>';
+  }
+  if(tipo==='data'){
+    return '<input id="pcf-'+vid+'" type="date" value="'+(val||'')+'" style="width:100%;font-size:12px;" onchange="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')" onblur="_projCampoFechar(\''+projetoId+'\')"/>';
+  }
+  if(tipo==='status'){
+    return '<select id="pcf-'+vid+'" onchange="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')" style="width:100%;font-size:12px;">'
+      +'<option value="">Sem valor</option>'
+      +(campo.opcoes||[]).map(function(o){return '<option value="'+o.id+'"'+(val===o.id?' selected':'')+'>'+o.label+'</option>';}).join("")
+      +'</select>';
+  }
+  if(tipo==='responsavel'){
+    return '<select id="pcf-'+vid+'" onchange="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')" style="width:100%;font-size:12px;">'
+      +'<option value="">Sem responsavel</option>'
+      +(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(val===s?' selected':'')+'>'+s+'</option>';}).join("")
+      +'</select>';
+  }
+  if(tipo==='checkbox'){
+    return '<input id="pcf-'+vid+'" type="checkbox"'+(val?' checked':'')+' onchange="_projCampoPersistir(\''+projetoId+'\',\''+campo.id+'\',this.checked?true:null)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--bt-navy);"/>';
+  }
+  if(tipo==='link'){
+    return '<input id="pcf-'+vid+'" type="url" value="'+(val||'')+'" placeholder="https://..." style="width:100%;font-size:12px;" onkeydown="_projCampoKd(event,\''+projetoId+'\',\''+campo.id+'\')" onblur="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')"/>';
+  }
+  if(tipo==='multi'){
+    var sel=Array.isArray(val)?val:[];
+    var checks=(campo.opcoes||[]).map(function(o){
+      return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0;"><input type="checkbox" value="'+o.id+'"'+(sel.indexOf(o.id)>=0?' checked':'')+'/> '+o.label+'</label>';
+    }).join("");
+    return '<div id="pcf-'+vid+'" style="display:flex;flex-direction:column;">'+checks+'</div>'
+      +'<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button onclick="_projCampoFechar(\''+projetoId+'\')" class="rbtn rbtn-sm">Cancelar</button><button onclick="_projCampoSalvarMulti(\''+projetoId+'\',\''+campo.id+'\')" class="rbtn rbtn-sm rbtn-accent">Aplicar</button></div>';
+  }
+  return "";
+}
+function _projCampoKd(evt,projetoId,campoId){
+  if(evt.key==="Enter"){evt.preventDefault();_projCampoSalvar(projetoId,campoId);}
+  else if(evt.key==="Escape"){delete _projCampoEditando[projetoId];_reloadProjetoCard(projetoId,false);}
+}
+async function _projCampoSalvar(projetoId,campoId){
+  var p=projetosDB.find(function(x){return x.id===projetoId;});if(!p)return;
+  var campo=_projetoCampos(p).find(function(c){return c.id===campoId;});if(!campo)return;
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  var el=document.getElementById("pcf-"+vid);if(!el)return;
+  var val;
+  if(campo.tipo==="numero")val=el.value!==""?parseFloat(el.value):null;
+  else if(campo.tipo==="texto_longo")val=(el.value||"").trim()||null;
+  else val=(el.value||"").trim()||null;
+  await _projCampoPersistir(projetoId,campoId,val);
+}
+async function _projCampoSalvarMulti(projetoId,campoId){
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  var container=document.getElementById("pcf-"+vid);if(!container)return;
+  var sel=[];container.querySelectorAll("input[type=checkbox]").forEach(function(cb){if(cb.checked)sel.push(cb.value);});
+  await _projCampoPersistir(projetoId,campoId,sel.length?sel:null);
+}
+async function _projCampoPersistir(projetoId,campoId,valor){
+  var p=projetosDB.find(function(x){return x.id===projetoId;});if(!p)return;
+  var novo=Object.assign({},p.campos_valores||{});
+  if(valor===null||valor===undefined||(Array.isArray(valor)&&!valor.length))delete novo[campoId];
+  else novo[campoId]=valor;
+  try{
+    await dbUpsertProjeto({id:projetoId,campos_valores:novo});
+    p.campos_valores=novo;
+    delete _projCampoEditando[projetoId];
+    _reloadProjetoCard(projetoId,false);
+    toast("Salvo!");
+  }catch(e){toast("Erro ao salvar",true);}
 }
 function _buildChecklistBar(checklist){
   if(!checklist||!checklist.length)return '';
@@ -1666,6 +1783,7 @@ async function salvarProjeto(id){
   var desc=(document.getElementById("proj-desc").value||"").trim();
   var eqEl=document.getElementById("proj-equipe");var equipe_id=eqEl?eqEl.value||null:(equipeAtiva?equipeAtiva.id:null);
   var obj={titulo:titulo,tipo:tipo,responsavel_id:resp,status:status,descricao:desc||null,equipe_id:equipe_id};
+  if(!id){obj.modelo_snapshot=_snapshotProjetoModelo();obj.campos_valores={};}
   if(id)obj.id=id;
   try{
     var salvo=await dbUpsertProjeto(obj);
@@ -3207,6 +3325,42 @@ function openAdminFormModelo(idOpcional){
   _modelosAdminContext=true;
   if(typeof _estruturaModelosCache!=="undefined"&&_estruturaModelosCache&&_estruturaModelosCache.length)modelosDB=_estruturaModelosCache.slice();
   openFormModelo(idOpcional);
+}
+
+function openAdminProjetoModelo(){
+  var m=projetoModeloDB||{nome:"Projeto padrão",campos:[]};
+  _mfCampos=JSON.parse(JSON.stringify(m.campos||[]));
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,540px);max-height:85vh;overflow-y:auto;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelo de projetos</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Nome</label><input id="pm-nome" value="'+(m.nome||"Projeto padrão").replace(/"/g,'&quot;')+'"/></div>'
+    +'<div class="field">'
+    +'<label style="margin-bottom:6px;display:block;">Campos do projeto</label>'
+    +'<div id="mf-campos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>'
+    +'<button type="button" onclick="_mfAdicionarCampo(\'campos\')" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar campo</button>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">'
+    +'<button class="btn" onclick="closeModal();renderEstrutura()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="salvarProjetoModelo()">Salvar</button>'
+    +'</div>'
+    +'</div></div>';
+  _mfRenderCampos('campos');
+}
+
+async function salvarProjetoModelo(){
+  var nome=(document.getElementById("pm-nome").value||"").trim()||"Projeto padrão";
+  for(var ci=0;ci<_mfCampos.length;ci++){
+    if(!(_mfCampos[ci].label||"").trim()){toast("Preencha o rótulo do campo "+(ci+1),true);return;}
+  }
+  var data={nome:nome,campos:_mfCampos};
+  try{
+    projetoModeloDB=await dbSaveProjetoModelo(data);
+    closeModal();
+    renderEstrutura();
+    toast("Modelo de projetos salvo!");
+  }catch(e){toast("Erro ao salvar modelo de projetos",true);}
 }
 
 function _renderModelosLista(){

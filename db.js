@@ -144,8 +144,32 @@ async function dbFetchProjetos(equipeId){
   var r=await fetch(SB+"/rest/v1/projetos_internos?select=*,usuarios(id,nome,sigla)&order=criado_em.desc"+q,{headers:H});
   if(!r.ok)throw new Error();return r.json();
 }
-async function dbUpsertProjeto(p){var r=await fetch(SB+"/rest/v1/projetos_internos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbUpsertProjeto(p){
+  if(p&&p.id&&p.titulo===undefined){
+    var idp=p.id,body=Object.assign({},p);delete body.id;
+    var rp=await fetch(SB+"/rest/v1/projetos_internos?id=eq."+encodeURIComponent(idp),{method:"PATCH",headers:Object.assign({"Prefer":"return=representation"},H),body:JSON.stringify(body)});
+    if(!rp.ok)throw new Error();
+    var prow=await rp.json();return Array.isArray(prow)?prow[0]:prow;
+  }
+  var r=await fetch(SB+"/rest/v1/projetos_internos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(p)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;
+}
 async function dbDelProjeto(id){await fetch(SB+"/rest/v1/projetos_internos?id=eq."+id,{method:"DELETE",headers:H});}
+async function dbFetchProjetoModelo(){
+  var r=await fetch(SB+"/rest/v1/estrutura_config?id=eq.projeto_modelo&select=data",{headers:H});
+  if(!r.ok)return {nome:"Projeto padrão",campos:[]};
+  var rows=await r.json();
+  return rows&&rows[0]&&rows[0].data?rows[0].data:{nome:"Projeto padrão",campos:[]};
+}
+async function dbSaveProjetoModelo(data){
+  var r=await fetch(SB+"/rest/v1/estrutura_config",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify({id:"projeto_modelo",data:data,atualizado_em:new Date().toISOString()})});
+  if(!r.ok)throw new Error();
+  var rows=await r.json();
+  return rows&&rows[0]?rows[0].data:data;
+}
+async function loadProjetoModelo(){
+  try{projetoModeloDB=await dbFetchProjetoModelo();}
+  catch(e){projetoModeloDB={nome:"Projeto padrão",campos:[]};}
+}
 async function dbFetchProjetoComentarios(projetoId){var r=await fetch(SB+"/rest/v1/projeto_comentarios?projeto_id=eq."+projetoId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertProjetoComentario(c){var r=await fetch(SB+"/rest/v1/projeto_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelProjetoComentario(id){await fetch(SB+"/rest/v1/projeto_comentarios?id=eq."+id,{method:"DELETE",headers:H});}

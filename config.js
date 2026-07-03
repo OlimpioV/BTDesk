@@ -39,6 +39,7 @@ let cards=[],perfil=null,nomeUser=null,emailUser=null,userDbId=null;
 let equipeAtiva=null,equipesDB=[],demandaEquipesDB={};
 let tarefaStatusDB=[];
 let reunioesDB=[],pautasDB=[],projetosDB=[],notificacoesDB=[];
+let projetoModeloDB={nome:"Projeto padrão",campos:[]};
 let reuniaoAtiva=null;
 let filterResp="",filterTipo="",filterStatus="",filterCliente="",filterCaso="";
 let viewMode="kanban";
