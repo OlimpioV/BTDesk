@@ -96,7 +96,7 @@ function _adminMenuHTML(aba){
     return '<button onclick="'+it.fn+'" style="width:100%;display:flex;align-items:center;gap:8px;text-align:left;border:0;border-radius:8px;padding:9px 11px;font-size:13px;font-weight:'+(active?'750':'600')+';background:'+(active?'rgba(37,63,79,.10)':'transparent')+';color:'+(active?'var(--bt-navy)':'var(--text2)')+';cursor:pointer;">'+ic(it.icon)+' '+it.label+'</button>';
   }).join("");
 }
-function headerHTML(aba){
+headerHTML=function(aba){
   var ce=perfil==="mestre"||perfil==="advogado";
   var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
   if(ce)tabs+='<button class="tab '+(aba==="minhas-tarefas"?"active":"")+'" onclick="renderMinhasTarefas()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("check")+' Minhas tarefas</button>';
@@ -116,7 +116,7 @@ function headerHTML(aba){
     +'<div style="display:flex;flex-direction:column;gap:4px;">'+_adminMenuHTML(aba)+'</div>'
     +'</aside><main style="flex:1;min-width:0;">';
   return base+adminOpen;
-}
+};
 function renderAdministracao(sec){
   if(perfil!=="mestre"){renderView();return;}
   var destino=sec||"usr";
