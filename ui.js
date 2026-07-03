@@ -11,6 +11,7 @@ function perfilBadge(p){if(p==="mestre")return '<span class="badge" style="backg
 function headerHTML(aba){
   var ce=perfil==="mestre"||perfil==="advogado";
   var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
+  if(ce){tabs+='<button class="tab '+(aba==="minhas-tarefas"?"active":"")+'" onclick="renderMinhasTarefas()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("check")+' Minhas tarefas</button>';}
   if(ce){tabs+='<button class="tab '+(aba==="reunioes"?"active":"")+'" onclick="renderReunioes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("meeting")+' Reuniões</button>';}
   if(ce){tabs+='<button class="tab '+(aba==="logs"?"active":"")+'" onclick="renderLogs()">Histórico</button><button class="tab '+(aba==="etq"?"active":"")+'" onclick="renderEtq()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("tag")+' Etiquetas</button><button class="tab '+(aba==="imp"?"active":"")+'" onclick="renderImp()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("upload")+' Importar</button>';}
   if(perfil==="mestre")tabs+='<button class="tab '+(aba==="usr"?"active":"")+'" onclick="renderUsers()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("users")+' Usu\u00e1rios</button>';

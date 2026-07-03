@@ -539,7 +539,192 @@ function renderLista(){
   bindFCI();
 }
 
+async function verificarAlertasPrazos(){
+  if(!(perfil==="mestre"||perfil==="advogado"))return;
+  var sigla=_mtUserSigla();if(!sigla)return;
+  var hoje=new Date().toISOString().slice(0,10);
+  var amanha=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  var existentes={};
+  (notificacoesDB||[]).forEach(function(n){if(n&&n.mensagem)existentes[n.mensagem]=true;});
+  var novas=[];
+  function addAviso(tipo,texto,ctx,prazo){
+    var prazoTxt=_mtFmtDate(prazo);
+    var msg=(tipo==="atrasada"?"Tarefa atrasada: ":"Tarefa vence em breve: ")+trunc(texto||"Tarefa",70)+" ("+ctx+", prazo "+prazoTxt+")";
+    if(!existentes[msg]){existentes[msg]=true;novas.push({usuario_id:userDbId,tipo:tipo==="atrasada"?"tarefa_atrasada":"tarefa_vencendo",mensagem:msg});}
+  }
+  getFiltered().forEach(function(card){
+    (card.tarefas||[]).forEach(function(t){
+      if(t.responsavel!==sigla||_mtIsDone(t)||!t.dataFim)return;
+      if(t.dataFim<hoje)addAviso("atrasada",t.texto,card.titulo||"Demanda",t.dataFim);
+      else if(t.dataFim===hoje||t.dataFim===amanha)addAviso("vencendo",t.texto,card.titulo||"Demanda",t.dataFim);
+    });
+  });
+  try{
+    var eqId=equipeAtiva?equipeAtiva.id:null;
+    var reunioes=await dbFetchReunioes(eqId);
+    var rMap={};reunioes.forEach(function(r){rMap[r.id]=r;});
+    var tarefas=await dbFetchTodasTarefas();
+    tarefas.forEach(function(t){
+      if(t.parent_id||!t.reuniao_id||t.responsavel!==sigla||_mtIsDone(t)||!t.data_fim)return;
+      if(eqId&&t.equipe_id&&t.equipe_id!==eqId)return;
+      var r=rMap[t.reuniao_id]||null;
+      if(!r)return;
+      var ctx=r.titulo||("Reuniao de "+_mtFmtDate(r.data));
+      if(t.data_fim<hoje)addAviso("atrasada",t.texto,ctx,t.data_fim);
+      else if(t.data_fim===hoje||t.data_fim===amanha)addAviso("vencendo",t.texto,ctx,t.data_fim);
+    });
+  }catch(_){}
+  if(!novas.length)return;
+  try{
+    for(var i=0;i<novas.length;i++)await dbUpsertNotificacao(novas[i]);
+    notificacoesDB=await dbFetchNotificacoes();
+  }catch(_){}
+}
+
 // ── IMPORTAR ──
+function _mtUserSigla(){
+  var u=(usuariosFullDB||[]).find(function(x){return x.id===userDbId||x.email===emailUser;});
+  return u&&u.sigla?u.sigla:"";
+}
+function _mtStatusLabel(status){
+  var m={pendente:"Pendente",em_andamento:"Em andamento",pausado:"Pausado",concluido:"Concluida",concluida:"Concluida",nao_iniciada:"Nao iniciada",bloqueada:"Bloqueada"};
+  return m[status]||status||"Pendente";
+}
+function _mtFmtDate(d){
+  if(!d)return "—";
+  var p=String(d).split("-");
+  return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:d;
+}
+function _mtIsDone(t){
+  return t.status==="concluido"||t.status==="concluida";
+}
+function _mtRow(t){
+  var hoje=new Date().toISOString().slice(0,10);
+  var late=t.prazo&&t.prazo<hoje&&!_mtIsDone(t);
+  var done=_mtIsDone(t);
+  var cor=late?"#dc2626":done?"#16a34a":"#2b76e5";
+  return '<tr style="border-bottom:1px solid var(--border);">'
+    +'<td style="padding:11px 14px;font-size:12px;color:var(--text3);white-space:nowrap;"><span style="font-weight:700;color:'+cor+';">'+t.origem+'</span></td>'
+    +'<td style="padding:11px 14px;font-size:13px;font-weight:650;color:var(--bt-navy);">'+t.texto+'</td>'
+    +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+t.contexto+'</td>'
+    +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+_mtStatusLabel(t.status)+'</td>'
+    +'<td style="padding:11px 14px;font-size:12px;color:'+(late?"#dc2626":"var(--text2)")+';font-weight:'+(late?"700":"400")+';white-space:nowrap;">'+_mtFmtDate(t.prazo)+'</td>'
+    +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(t.acao||"")+'</td>'
+    +'</tr>';
+}
+async function _mtAbrirReuniao(id){
+  await renderReunioes();
+  selecionarReuniao(id);
+}
+async function _mtAbrirProjetos(projetoId){
+  _projExpanded[projetoId]=true;
+  await renderReunioes();
+  if(!reuniaoAtiva&&reunioesDB&&reunioesDB.length)selecionarReuniao(reunioesDB[0].id);
+}
+function _notifTextoBase(msg){
+  msg=msg||"";
+  var m=msg.match(/^(?:Nova tarefa de reuniao para voce: |Tarefa atrasada: |Tarefa vence em breve: )(.+?) \(/);
+  return m?m[1]:"";
+}
+async function abrirNotificacao(id){
+  var n=(notificacoesDB||[]).find(function(x){return x.id===id;});
+  if(!n)return;
+  try{await dbMarcarNotificacaoLida(id);}catch(_){}
+  notificacoesDB=(notificacoesDB||[]).map(function(x){return x.id===id?Object.assign({},x,{lida:true}):x;});
+  var drop=document.getElementById("notif-dropdown");if(drop)drop.remove();
+  var txt=_notifTextoBase(n.mensagem);
+  if(txt){
+    var cardMatch=null;
+    getFiltered().some(function(card){
+      var ok=(card.tarefas||[]).some(function(t){return (t.texto||"").indexOf(txt)>=0||txt.indexOf(t.texto||"")>=0;});
+      if(ok){cardMatch=card;return true;}
+      return false;
+    });
+    if(cardMatch){openCardModal(cardMatch.id);return;}
+    try{
+      var eqId=equipeAtiva?equipeAtiva.id:null;
+      var reunioes=await dbFetchReunioes(eqId);
+      var rMap={};reunioes.forEach(function(r){rMap[r.id]=r;});
+      var tarefas=await dbFetchTodasTarefas();
+      var tm=tarefas.find(function(t){return t.reuniao_id&&((t.texto||"").indexOf(txt)>=0||txt.indexOf(t.texto||"")>=0);});
+      if(tm&&rMap[tm.reuniao_id]){await _mtAbrirReuniao(tm.reuniao_id);return;}
+    }catch(_){}
+  }
+  renderMinhasTarefas();
+}
+async function renderMinhasTarefas(){
+  if(!(perfil==="mestre"||perfil==="advogado")){renderView();return;}
+  var app=document.getElementById("app");app.className="page-mode";
+  app.innerHTML=headerHTML("minhas-tarefas")+'<div style="padding:24px;max-width:1200px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
+  var sigla=_mtUserSigla();
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var itens=[];
+  getFiltered().forEach(function(card){
+    (card.tarefas||[]).forEach(function(t){
+      if(sigla&&t.responsavel!==sigla)return;
+      itens.push({origem:"Demanda",texto:t.texto||"Tarefa sem descricao",contexto:card.titulo||"Demanda",status:t.status,prazo:t.dataFim,acao:'<button onclick="openCardModal(\''+card.id+'\')" class="rbtn rbtn-sm">Abrir</button>'});
+    });
+  });
+  try{
+    var reunioes=await dbFetchReunioes(eqId);
+    var rMap={};reunioes.forEach(function(r){rMap[r.id]=r;});
+    var tarefas=await dbFetchTodasTarefas();
+    tarefas.filter(function(t){return !t.parent_id&&t.reuniao_id&&(!sigla||t.responsavel===sigla)&&(!eqId||t.equipe_id===eqId);}).forEach(function(t){
+      var r=rMap[t.reuniao_id]||null;
+      if(!r&&t.reuniao_id)return;
+      itens.push({origem:"Reuniao",texto:t.texto||"Tarefa sem titulo",contexto:r?(r.titulo||("Reuniao de "+_mtFmtDate(r.data))):"Sem reuniao",status:t.status,prazo:t.data_fim,acao:r?'<button onclick="_mtAbrirReuniao(\''+r.id+'\')" class="rbtn rbtn-sm">Abrir</button>':""});
+    });
+  }catch(_){}
+  try{
+    var projetos=await dbFetchProjetos(eqId);
+    for(var pi=0;pi<projetos.length;pi++){
+      var p=projetos[pi];
+      if(p.arquivado)continue;
+      var checklist=await dbFetchChecklist(p.id);
+      checklist.filter(function(it){return it.responsavel_id===userDbId;}).forEach(function(it){
+        itens.push({origem:"Projeto",texto:it.titulo||"Item sem titulo",contexto:p.titulo||"Projeto interno",status:it.status,prazo:null,acao:'<button onclick="_mtAbrirProjetos(\''+p.id+'\')" class="rbtn rbtn-sm">Abrir</button>'});
+      });
+    }
+  }catch(_){}
+  itens.sort(function(a,b){
+    var ad=a.prazo||"9999-12-31",bd=b.prazo||"9999-12-31";
+    if(_mtIsDone(a)&&!_mtIsDone(b))return 1;
+    if(!_mtIsDone(a)&&_mtIsDone(b))return -1;
+    return ad.localeCompare(bd);
+  });
+  var abertas=itens.filter(function(t){return !_mtIsDone(t);}).length;
+  var hoje=new Date().toISOString().slice(0,10);
+  var atrasadas=itens.filter(function(t){return t.prazo&&t.prazo<hoje&&!_mtIsDone(t);}).length;
+  var origemSel=window._mtOrigem||"";
+  var situacaoSel=window._mtSituacao||"";
+  var filtrados=itens.filter(function(t){
+    if(origemSel&&t.origem!==origemSel)return false;
+    if(situacaoSel==="abertas"&&_mtIsDone(t))return false;
+    if(situacaoSel==="atrasadas"&&!(t.prazo&&t.prazo<hoje&&!_mtIsDone(t)))return false;
+    if(situacaoSel==="concluidas"&&!_mtIsDone(t))return false;
+    return true;
+  });
+  var rows=filtrados.length?filtrados.map(_mtRow).join(""):'<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma tarefa neste filtro</td></tr>';
+  app.innerHTML=headerHTML("minhas-tarefas")
+    +'<div style="padding:24px;max-width:1200px;margin:0 auto;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:16px;flex-wrap:wrap;">'
+    +'<div><div style="font-size:18px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Minhas tarefas</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Responsavel: '+(sigla||nomeUser||emailUser)+'</div></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +'<span style="font-size:12px;font-weight:700;color:#2b76e5;background:#eff6ff;border-radius:20px;padding:5px 10px;">Abertas: '+abertas+'</span>'
+    +'<span style="font-size:12px;font-weight:700;color:#dc2626;background:#fef2f2;border-radius:20px;padding:5px 10px;">Atrasadas: '+atrasadas+'</span>'
+    +'<span style="font-size:12px;font-weight:700;color:var(--text2);background:#f8fafc;border-radius:20px;padding:5px 10px;">Total: '+itens.length+'</span>'
+    +'</div></div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;">'
+    +'<span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Filtros</span>'
+    +'<select onchange="window._mtOrigem=this.value;renderMinhasTarefas()" style="font-size:12px;"><option value="">Todas as origens</option><option value="Demanda"'+(origemSel==="Demanda"?' selected':'')+'>Demandas</option><option value="Reuniao"'+(origemSel==="Reuniao"?' selected':'')+'>Reunioes</option><option value="Projeto"'+(origemSel==="Projeto"?' selected':'')+'>Projetos</option></select>'
+    +'<select onchange="window._mtSituacao=this.value;renderMinhasTarefas()" style="font-size:12px;"><option value="">Todas as situacoes</option><option value="abertas"'+(situacaoSel==="abertas"?' selected':'')+'>Abertas</option><option value="atrasadas"'+(situacaoSel==="atrasadas"?' selected':'')+'>Atrasadas</option><option value="concluidas"'+(situacaoSel==="concluidas"?' selected':'')+'>Concluidas</option></select>'
+    +(origemSel||situacaoSel?'<button onclick="window._mtOrigem=\'\';window._mtSituacao=\'\';renderMinhasTarefas()" class="rbtn rbtn-sm">Limpar</button>':'')
+    +'<span style="font-size:12px;color:var(--text3);margin-left:auto;">Mostrando '+filtrados.length+' de '+itens.length+'</span>'
+    +'</div>'
+    +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:860px;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Origem','Tarefa','Contexto','Status','Prazo','Acao'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>'
+    +'</div>';
+}
+
 function renderImp(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("imp")+'<div style="padding:26px;max-width:680px;margin:0 auto;"><div style="margin-bottom:18px;"><div style="font-size:18px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Importar planilha</div></div><div style="background:#fff;border-radius:14px;border:1px solid var(--border);padding:24px;box-shadow:var(--shadow);"><div style="margin-bottom:16px;padding:11px 13px;background:rgba(37,63,79,.05);border:1px solid rgba(37,63,79,.1);border-radius:9px;font-size:13px;color:var(--bt-navy);">A planilha deve ter as colunas: <strong>Cliente</strong>, <strong>Caso</strong>, <strong>Nome da Consulta</strong>, <strong>Objeto</strong>, <strong>Situação</strong>.</div><div class="field"><label>Arquivo Excel (.xlsx)</label><input type="file" id="import-file" accept=".xlsx,.xls" style="padding:8px;"/></div><button class="btn btn-primary" onclick="processarImp()" style="display:flex;align-items:center;gap:6px;">'+ic('upload')+' Importar</button><div id="imp-result" style="margin-top:12px;"></div></div></div>';}
 async function processarImp(){var fi=document.getElementById("import-file");if(!fi||!fi.files||!fi.files[0]){toast("Selecione um arquivo",true);return;}var rd=document.getElementById("imp-result");rd.innerHTML='<div style="color:var(--text3);font-size:13px;">Processando...</div>';try{var data=await fi.files[0].arrayBuffer();var wb=XLSX.read(data,{type:"array"});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{defval:""});var cm={};var ca=[];rows.forEach(function(row){var cs=String(row["Cliente"]||"").trim();var cas=String(row["Caso"]||"").trim();var cn=numFromStr(cs);var can=numFromStr(cas);if(!cn||!can)return;cm[cn]={numero:cn,nome:cs.replace(/^\d+\s*-\s*/,"").trim()};ca.push({cliNum:cn,casoNum:can,descricao:cas.replace(/^\d+\s*-\s*/,"").trim(),nome_consulta:String(row["Nome da Consulta"]||"").trim(),objeto:String(row["Objeto"]||"").trim(),situacao:String(row["Situação"]||row["Situacao"]||"").trim()});});var cl=Object.values(cm);var CHUNK=50;for(var i=0;i<cl.length;i+=CHUNK)await fetch(SB+"/rest/v1/clientes",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(cl.slice(i,i+CHUNK))});await loadClientes();var ci=ca.map(function(c){var x=clientesDB.find(function(x){return x.numero===c.cliNum;});if(!x)return null;return {numero:c.casoNum,cliente_id:x.id,descricao:c.descricao,nome_consulta:c.nome_consulta,objeto:c.objeto,situacao:c.situacao};}).filter(Boolean);for(var j=0;j<ci.length;j+=CHUNK)await fetch(SB+"/rest/v1/casos",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(ci.slice(j,j+CHUNK))});await loadCasos();rd.innerHTML='<div style="padding:11px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:13px;color:#14532d;">Importação concluída! <strong>'+cl.length+' clientes</strong> e <strong>'+ci.length+' casos</strong> processados.</div>';toast("Importação concluída!");}catch(e){rd.innerHTML='<div style="padding:11px 13px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:13px;color:#dc2626;">Erro: '+e.message+'</div>';}}
 
@@ -659,7 +844,7 @@ async function saveCard(){
 async function init(){
   var app=document.getElementById("app");app.className="kanban-mode";
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;"><div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#fff;">BT</span></div><div style="width:28px;height:3px;background:linear-gradient(90deg,#ff8204,#e20500);border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div><style>@keyframes pulse{0%,100%{opacity:.4;transform:scaleX(.8)}50%{opacity:1;transform:scaleX(1)}}</style><div style="font-size:13px;color:rgba(255,255,255,.35);">Carregando BTDesk...</div></div>';
-  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);}catch(e){toast("Erro ao carregar",true);}
+  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await verificarAlertasPrazos();}catch(e){toast("Erro ao carregar",true);}
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   loadEtq();renderKanban();
 }

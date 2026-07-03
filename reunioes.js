@@ -222,6 +222,12 @@ function _buildReuniaoDetalhe(r){
   // Participantes agora ficam no rodape do hero (cabecalho da reuniao).
   html+='<div class="reun-section">'
     +'<div class="reun-sechdr">'
+    +'<div class="reun-sectitles"><span class="reun-sec-eye">Acompanhamento</span><span class="reun-sec-ttl">Pendencias anteriores</span></div>'
+    +'</div>'
+    +'<div id="reun-pendencias-area">Carregando...</div>'
+    +'</div>';
+  html+='<div class="reun-section">'
+    +'<div class="reun-sechdr">'
     +'<div class="reun-sectitles"><span class="reun-sec-eye">O que será discutido</span><span class="reun-sec-ttl">Pautas</span></div>'
     +(ce?'<button onclick="openGerenciarPautas(\''+r.id+'\')" class="rbtn rbtn-sm rbtn-ghost">'+ic("plus")+' Gerenciar</button>':"")
     +'</div>'
@@ -238,7 +244,7 @@ function _buildReuniaoDetalhe(r){
     +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadPautasSection(r.id);_loadProjetosArea(r.id);_loadReuniaoComentários(r.id);},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadPendenciasAnteriores(r.id);_loadPautasSection(r.id);_loadProjetosArea(r.id);_loadReuniaoComentários(r.id);},0);
   return html;
 }
 
@@ -923,6 +929,7 @@ async function salvarReuniao(id){
         await criarNotifParaMembros(equipe_id,"reuniao_criada",criada.id,"Nova reuniao agendada: "+titulo_r+" em "+_fmtData(obj.data));
       }
     }
+    if(status==="realizada"&&reuniaoAtiva)await salvarSnapshotReuniao(reuniaoAtiva.id);
     closeModal();_renderReunioesPagina();toast("Reuniao salva!");
   }catch(e){toast("Erro ao salvar",true);}
 }
@@ -1077,7 +1084,7 @@ function _tiposOpts(sel){
     +'<option value="atualizacao_demandas"'+(sel==='atualizacao_demandas'?' selected':'')+'>Atualizacao de demandas</option>'
     +'<option value="avisos_gerais"'+(sel==='avisos_gerais'?' selected':'')+'>Avisos gerais</option>';
 }
-var _apCatSel=null;var _apReuniao=null;var _gpEditando=null;
+var _apCatSel=null;var _apReuniao=null;var _gpEditando=null;var _apPautasCtx=[];
 async function openGerenciarPautas(reuniaoId){
   _apReuniao=reuniaoId;
   var mc=document.getElementById("modal-container");
@@ -1100,6 +1107,13 @@ async function openGerenciarPautas(reuniaoId){
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
     var cats=await dbFetchPautaCategorias(eqId);
+    try{
+      var rps=await dbFetchReuniaoPautas(reuniaoId);
+      _apPautasCtx=rps.map(function(rp){
+        var p=pautasDB.find(function(x){return x.id===rp.pauta_id;})||{};
+        return {reuniao_pauta_id:rp.id,pauta_id:rp.pauta_id,titulo:p.titulo||"Pauta"};
+      });
+    }catch(_){_apPautasCtx=[];}
     _apRenderDoisPaineis(reuniaoId,cats,cats[0]?cats[0].id:null);
   }catch(e){var b=document.getElementById("ap-body");if(b)b.innerHTML='<div style="padding:20px;color:var(--text3);">Erro ao carregar.</div>';}
 }
@@ -1245,17 +1259,20 @@ async function _gpLoadItens(catId){
       +'<div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;">'+catNome+'</div>'
       +'</div>';
     var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
+    var pautaOpts='<option value="">Sem pauta especifica</option>'+(_apPautasCtx||[]).map(function(p){return '<option value="'+p.reuniao_pauta_id+'">'+p.titulo+'</option>';}).join("");
     var formHTML='<div id="gp-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
       +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo *</label>'
       +'<input id="gp-ni-titulo" placeholder="Titulo da tarefa..." style="font-size:13px;"/></div>'
       +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
       +'<textarea id="gp-ni-descricao" rows="2" placeholder="Descricao opcional..." style="font-size:13px;resize:vertical;"></textarea></div>'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel *</label>'
       +'<select id="gp-ni-resp" style="font-size:13px;">'+respOpts+'</select></div>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Pauta da reuniao</label>'
+      +'<select id="gp-ni-pauta" style="font-size:13px;">'+pautaOpts+'</select></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
       +'<div class="field"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Inicio</label>'
       +'<input id="gp-ni-inicio" type="date" style="font-size:13px;"/></div>'
-      +'<div class="field"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Encerramento</label>'
+      +'<div class="field"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Encerramento *</label>'
       +'<input id="gp-ni-fim" type="date" style="font-size:13px;"/></div>'
       +'</div>'
       +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
@@ -1296,16 +1313,27 @@ async function _gpSalvarNovaTarefa(catId){
   if(!texto){toast("Informe o titulo",true);return;}
   var descricao=(document.getElementById("gp-ni-descricao").value||"").trim()||null;
   var resp=document.getElementById("gp-ni-resp").value||null;
+  var pautaSel=document.getElementById("gp-ni-pauta");
+  var reuniaoPautaId=pautaSel?pautaSel.value||null:null;
   var inicio=document.getElementById("gp-ni-inicio").value||null;
   var fim=document.getElementById("gp-ni-fim").value||null;
+  if(!resp){toast("Informe o responsavel",true);return;}
+  if(!fim){toast("Informe o prazo",true);return;}
+  if(inicio&&fim&&fim<inicio){toast("Prazo final menor que o inicio",true);return;}
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
     var tarefaId=uid();
     var payload={id:tarefaId,texto:texto,descricao:descricao||null,responsavel:resp||null,status:'pendente',data_inicio:inicio||null,data_fim:fim||null,criado_em:new Date().toISOString()};
     if(catId)payload.pauta_categoria_id=catId;
     if(eqId)payload.equipe_id=eqId;
+    if(_apReuniao)payload.reuniao_id=_apReuniao;
+    if(reuniaoPautaId){
+      var pctx=(_apPautasCtx||[]).find(function(p){return p.reuniao_pauta_id===reuniaoPautaId;});
+      if(pctx)payload.campos_valores={reuniao_pauta_id:pctx.reuniao_pauta_id,pauta_id:pctx.pauta_id,pauta_titulo:pctx.titulo};
+    }
     await dbUpsertTarefa(payload);
     await dbUpsertReuniaoTarefa({reuniao_id:_apReuniao,tarefa_id:tarefaId});
+    await notificarTarefaReuniao(tarefaId,resp,texto,_apReuniao);
     _gpLoadItens(catId);
     _gpRefreshBadges();
     toast("Tarefa criada!");
@@ -1323,7 +1351,18 @@ async function _gpDeletarTarefa(tarefaId,catId){
 }
 async function _gpToggleReuniaoTarefa(reuniaoId,tarefaId,checked,catId){
   try{
-    if(checked){await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:tarefaId});}
+    if(checked){
+      var eqId=equipeAtiva?equipeAtiva.id:null;
+      var patch={id:tarefaId,reuniao_id:reuniaoId};
+      if(eqId)patch.equipe_id=eqId;
+      await dbUpsertTarefa(patch);
+      await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:tarefaId});
+      try{
+        var rows=await dbFetchTarefasReuniao(reuniaoId);
+        var t=rows.find(function(x){return x.id===tarefaId;});
+        if(t)await notificarTarefaReuniao(tarefaId,t.responsavel,t.texto,reuniaoId);
+      }catch(_){}
+    }
     else{await dbDelReuniaoTarefa(reuniaoId,tarefaId);}
     _gpRefreshBadges();
   }catch(_){toast("Erro",true);_gpLoadItens(catId);}
@@ -1711,7 +1750,7 @@ function toggleNotifDropdown(){
   var naoLidas=(notificacoesDB||[]).filter(function(n){return !n.lida;});
   var todas=(notificacoesDB||[]).slice(0,15);
   var itens=!todas.length?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma notificacao</div>':todas.map(function(n){
-    return '<div style="padding:10px 14px;border-bottom:1px solid var(--border);background:'+(n.lida?"#fff":"#eff6ff")+';cursor:default;">'
+    return '<div onclick="abrirNotificacao(\''+n.id+'\')" style="padding:10px 14px;border-bottom:1px solid var(--border);background:'+(n.lida?"#fff":"#eff6ff")+';cursor:pointer;">'
       +'<div style="font-size:12px;color:var(--bt-navy);font-weight:'+(n.lida?"400":"600")+';">'+n.mensagem+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+new Date(n.criado_em).toLocaleDateString("pt-BR")+'</div>'
       +'</div>';
@@ -1735,11 +1774,134 @@ async function marcarTodasNotifLidas(){
     var hdr=app.querySelector(".bt-header");
   }catch(e){}
 }
+async function notificarTarefaReuniao(tarefaId,responsavel,texto,reuniaoId){
+  if(!responsavel||!tarefaId)return;
+  try{
+    var user=(usuariosFullDB||[]).find(function(u){return u.sigla===responsavel;});
+    if(!user||!user.id)return;
+    var r=(reunioesDB||[]).find(function(x){return x.id===reuniaoId;})||reuniaoAtiva||{};
+    var tituloReuniao=r.titulo||("Reuniao de "+(r.data?_fmtData(r.data):""));
+    var msg='Nova tarefa de reuniao para voce: '+trunc(texto||"Tarefa",80)+' ('+tituloReuniao+')';
+    var n={usuario_id:user.id,tipo:"tarefa_reuniao",mensagem:msg};
+    if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tarefaId))n.referencia_id=tarefaId;
+    await dbUpsertNotificacao(n);
+    if(user.id===userDbId){
+      try{notificacoesDB=await dbFetchNotificacoes();}catch(_){}
+    }
+  }catch(_){}
+}
+
+// PENDENCIAS ANTERIORES
+function _reuniaoKey(r){
+  return String((r&&r.data)||"")+" "+String((r&&r.hora)||"00:00");
+}
+function _getReuniaoAnterior(r){
+  if(!r)return null;
+  var eqId=r.equipe_id||(equipeAtiva?equipeAtiva.id:null);
+  var atualKey=_reuniaoKey(r);
+  var candidatas=(reunioesDB||[]).filter(function(x){
+    if(!x||x.id===r.id||x.status==="cancelada")return false;
+    if(eqId&&x.equipe_id&&x.equipe_id!==eqId)return false;
+    return _reuniaoKey(x)<atualKey;
+  });
+  candidatas.sort(function(a,b){return _reuniaoKey(b).localeCompare(_reuniaoKey(a));});
+  return candidatas[0]||null;
+}
+function _buildPendenciaItem(t,cor){
+  var statusLbl={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
+  var prazo=t.data_fim?_fmtDateBrShort(t.data_fim):"Sem prazo";
+  return '<div style="border:1px solid var(--border);border-left:4px solid '+cor+';border-radius:7px;background:#fff;padding:9px 10px;margin-bottom:7px;">'
+    +'<div style="font-size:13px;font-weight:650;color:var(--bt-navy);line-height:1.25;">'+trunc(t.texto||"Tarefa sem titulo",90)+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--text3);">'
+    +'<span>Responsavel: '+(t.responsavel||"Sem responsavel")+'</span>'
+    +'<span>Prazo: '+prazo+'</span>'
+    +'<span>Status: '+(statusLbl[t.status]||t.status||"Pendente")+'</span>'
+    +'</div>'
+    +'</div>';
+}
+function _buildPendenciaGrupo(titulo,itens,cor){
+  return '<div style="min-width:0;">'
+    +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+    +'<span style="width:8px;height:8px;border-radius:50%;background:'+cor+';display:inline-block;"></span>'
+    +'<span style="font-size:12px;font-weight:750;color:var(--bt-navy);">'+titulo+'</span>'
+    +'<span style="font-size:11px;color:var(--text3);">('+itens.length+')</span>'
+    +'</div>'
+    +(itens.length?itens.map(function(t){return _buildPendenciaItem(t,cor);}).join(""):'<div style="font-size:12px;color:var(--text3);padding:10px;border:1px dashed var(--border);border-radius:7px;background:#fff;">Nenhuma.</div>')
+    +'</div>';
+}
+async function _loadPendenciasAnteriores(reuniaoId){
+  var el=document.getElementById("reun-pendencias-area");if(!el)return;
+  var atual=(reunioesDB||[]).find(function(r){return r.id===reuniaoId;})||reuniaoAtiva;
+  var anterior=_getReuniaoAnterior(atual);
+  if(!anterior){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhuma reuniao anterior encontrada para acompanhamento.</div>';
+    return;
+  }
+  try{
+    var tarefas=await dbFetchTarefasReuniao(anterior.id);
+    var refData=(atual&&atual.data)||new Date().toISOString().slice(0,10);
+    var abertas=tarefas.filter(function(t){return t.status!=="concluido";});
+    var atrasadas=abertas.filter(function(t){return t.data_fim&&t.data_fim<refData;});
+    var abertasNoPrazo=abertas.filter(function(t){return !(t.data_fim&&t.data_fim<refData);});
+    var concluidas=tarefas.filter(function(t){return t.status==="concluido";});
+    var html='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
+      +'<div style="font-size:12px;color:var(--text3);">Base: '+(anterior.titulo||("Reuniao de "+_fmtData(anterior.data)))+' em '+_fmtData(anterior.data)+'</div>'
+      +'<button onclick="selecionarReuniao(\''+anterior.id+'\')" class="rbtn rbtn-sm">Abrir anterior</button>'
+      +'</div>';
+    if(!tarefas.length){
+      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;">A reuniao anterior nao tem tarefas vinculadas.</div>';
+    } else {
+      html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">'
+        +_buildPendenciaGrupo("Atrasadas",atrasadas,"#dc2626")
+        +_buildPendenciaGrupo("Abertas",abertasNoPrazo,"#2b76e5")
+        +_buildPendenciaGrupo("Concluidas",concluidas,"#16a34a")
+        +'</div>';
+    }
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3);">Erro ao carregar pendencias anteriores.</div>';
+  }
+}
 
 // ── GERAR ATA ──
+async function _coletarSnapshotTarefasReuniao(reuniaoId){
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var catMap={"sem_cat":"Geral"};
+  try{var catsDB=await dbFetchPautaCategorias(eqId);catsDB.forEach(function(c){catMap[c.id]=c.nome;});}catch(_){}
+  var tarefas=[];
+  try{tarefas=await dbFetchTarefasReuniao(reuniaoId);}catch(_){tarefas=[];}
+  for(var i=0;i<tarefas.length;i++){
+    try{tarefas[i]=Object.assign({},tarefas[i],{subtarefas:await dbFetchSubtarefas(tarefas[i].id)});}catch(_){tarefas[i]=Object.assign({},tarefas[i],{subtarefas:[]});}
+  }
+  return {criado_em:new Date().toISOString(),categorias:catMap,tarefas:tarefas};
+}
+function _getSnapshotTarefas(rps){
+  for(var i=0;i<(rps||[]).length;i++){
+    var snap=rps[i].snapshot_json&&rps[i].snapshot_json.tarefas_snapshot;
+    if(snap&&Array.isArray(snap.tarefas))return snap;
+  }
+  return null;
+}
+async function salvarSnapshotReuniao(reuniaoId){
+  try{
+    var rps=await dbFetchReuniaoPautas(reuniaoId);
+    if(!rps.length)return null;
+    var snapTarefas=await _coletarSnapshotTarefasReuniao(reuniaoId);
+    for(var i=0;i<rps.length;i++){
+      var rp=Object.assign({},rps[i]);
+      rp.snapshot_json=Object.assign({},rp.snapshot_json||{},{tarefas_snapshot:snapTarefas});
+      await dbUpsertReuniaoPauta(rp);
+    }
+    return snapTarefas;
+  }catch(_){return null;}
+}
 async function gerarAta(reuniaoId){
   var r=reunioesDB.find(function(x){return x.id===reuniaoId;});if(!r)return;
+  await salvarSnapshotReuniao(reuniaoId);
   var rps=await dbFetchReuniaoPautas(reuniaoId);
+  var snapTarefas=_getSnapshotTarefas(rps);
+  var tarefas=snapTarefas?snapTarefas.tarefas:[];
+  var catMap=(snapTarefas&&snapTarefas.categorias)||{"sem_cat":"Geral"};
   var dataFmt=_fmtData(r.data);
   var linhas=["ATA DE REUNIAO","","Titulo: "+(r.titulo||("Reuniao de "+dataFmt)),"Data: "+dataFmt+" as "+r.hora.slice(0,5),"Status: "+r.status,""];
   if(r.observacoes){linhas.push("Observacoes: "+r.observacoes);linhas.push("");}
@@ -1751,6 +1913,30 @@ async function gerarAta(reuniaoId){
     if(notas){notas.split("\n").forEach(function(l){linhas.push("   "+l);});}
     linhas.push("");
   });
+  linhas.push("TAREFAS DA REUNIAO","");
+  if(!tarefas.length){
+    linhas.push("Nenhuma tarefa vinculada a esta reuniao.","");
+  } else {
+    var statusLbl={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
+    tarefas.forEach(function(t,i){
+      var catId=t.pauta_categoria_id||"sem_cat";
+      var subs=t.subtarefas||[];
+      var concluidas=subs.filter(function(s){return s.status==='concluido';}).length;
+      linhas.push((i+1)+". "+(t.texto||"Tarefa sem titulo"));
+      var pautaTitulo=t.campos_valores&&t.campos_valores.pauta_titulo;
+      linhas.push("   Categoria/pauta: "+(pautaTitulo||catMap[catId]||"Geral"));
+      linhas.push("   Responsavel: "+(t.responsavel||"Sem responsavel"));
+      linhas.push("   Status: "+(statusLbl[t.status]||t.status||"Pendente"));
+      linhas.push("   Prazo: "+(t.data_fim?_fmtDateBr(t.data_fim):"Sem prazo"));
+      if(t.data_inicio)linhas.push("   Inicio: "+_fmtDateBr(t.data_inicio));
+      if(subs.length)linhas.push("   Progresso: "+concluidas+"/"+subs.length+" subtarefas concluidas");
+      if(t.descricao){
+        linhas.push("   Descricao:");
+        String(t.descricao).split("\n").forEach(function(l){linhas.push("      "+l);});
+      }
+      linhas.push("");
+    });
+  }
   linhas.push("","--- Fim da ata ---");
   var texto=linhas.join("\n");
   var blob=new Blob([texto],{type:"text/plain;charset=utf-8"});
@@ -1768,7 +1954,14 @@ async function _loadPautasSection(reuniaoId){
   var hoje=new Date().toISOString().slice(0,10);
   var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
   try{
+    var rps=[];
+    var snapTarefas=null;
+    try{rps=await dbFetchReuniaoPautas(reuniaoId);snapTarefas=ehPassado?_getSnapshotTarefas(rps):null;}catch(_){}
     var tarefas=await dbFetchTarefasReuniao(reuniaoId);
+    if(snapTarefas&&snapTarefas.tarefas){
+      tarefas=snapTarefas.tarefas;
+      tarefas.forEach(function(t){_subtarefasCache[t.id]=t.subtarefas||[];});
+    }
     _tarefasPautaCache[reuniaoId]=tarefas;
     if(!tarefas.length){
       el.innerHTML='<div style="font-size:12px;color:var(--text3);font-style:italic;">Nenhuma tarefa de pauta. Use o botao Gerenciar.</div>';
@@ -1781,7 +1974,8 @@ async function _loadPautasSection(reuniaoId){
       cats[cid].itens.push(t);
     });
     var eqId=equipeAtiva?equipeAtiva.id:null;
-    try{var catsDB=await dbFetchPautaCategorias(eqId);catsDB.forEach(function(c){if(cats[c.id])cats[c.id].nome=c.nome;});}catch(_){}
+    if(snapTarefas&&snapTarefas.categorias){Object.keys(snapTarefas.categorias).forEach(function(cid){if(cats[cid])cats[cid].nome=snapTarefas.categorias[cid];});}
+    else{try{var catsDB=await dbFetchPautaCategorias(eqId);catsDB.forEach(function(c){if(cats[c.id])cats[c.id].nome=c.nome;});}catch(_){}}
     var html='<div style="display:flex;flex-direction:column;gap:18px;">';
     catOrder.forEach(function(catId){
       var cat=cats[catId];
@@ -1995,6 +2189,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   // coluna 2: tarefa (titulo editavel)
   html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(t.status==='concluido'?' done':'')+'"'
     +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>'
+    +(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
     +((t.descricao&&!subExp)?'<span class="bsub">'+trunc(t.descricao,64)+'</span>':'')
     +'</div></div>';
   // coluna 3: responsavel
@@ -2259,6 +2454,7 @@ async function _salvarSubtarefaPauta(parentId,ehPassado){
     if(rId)payload.reuniao_id=rId;
     if(eqId)payload.equipe_id=eqId;
     await dbUpsertTarefa(payload);
+    await notificarTarefaReuniao(payload.id,respSub,texto,rId);
     _subtarefasCache[parentId]=await dbFetchSubtarefas(parentId);
     _reloadTarefaCard(parentId,ehPassado);
     toast("Subtarefa adicionada!");
@@ -2296,6 +2492,7 @@ async function _quickSaveSubtarefa(parentId,ehPassado){
     if(rId)nova.reuniao_id=rId;
     if(eqId)nova.equipe_id=eqId;
     await dbUpsertTarefa(nova);
+    await notificarTarefaReuniao(nova.id,resp,texto,rId);
     if(!_subtarefasCache[parentId])_subtarefasCache[parentId]=[];
     _subtarefasCache[parentId].push(nova);
     inp.value='';
@@ -3126,6 +3323,7 @@ async function _confirmarDuplicarTarefa(t,vals){
     if(t.data_fim)nova.data_fim=t.data_fim;
     if(rId)nova.reuniao_id=rId;
     if(t.pauta_categoria_id)nova.pauta_categoria_id=t.pauta_categoria_id;
+    if(t.campos_valores)nova.campos_valores=JSON.parse(JSON.stringify(t.campos_valores));
     if(eqId)nova.equipe_id=eqId;
     if(vals.opcoes.valores&&t.campos_valores&&Object.keys(t.campos_valores).length){
       nova.campos_valores=JSON.parse(JSON.stringify(t.campos_valores));
