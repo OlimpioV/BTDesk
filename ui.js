@@ -79,3 +79,51 @@ function switchEquipe(equipeId){
   renderView();
 }
 
+var _headerBaseHTML=headerHTML;
+function _isAdminAba(aba){
+  return aba==="admin"||aba==="usr"||aba==="eq"||aba==="imp"||aba==="etq"||aba==="logs";
+}
+function _adminMenuHTML(aba){
+  var itens=[
+    {id:"usr",label:"Usu\u00e1rios",icon:"users",fn:"renderUsers()"},
+    {id:"eq",label:"Equipes",icon:"group",fn:"renderEquipes()"},
+    {id:"imp",label:"Importa\u00e7\u00e3o",icon:"upload",fn:"renderImp()"},
+    {id:"etq",label:"Etiquetas",icon:"tag",fn:"renderEtq()"},
+    {id:"logs",label:"Hist\u00f3rico",icon:"clock",fn:"renderLogs()"}
+  ];
+  return itens.map(function(it){
+    var active=aba===it.id;
+    return '<button onclick="'+it.fn+'" style="width:100%;display:flex;align-items:center;gap:8px;text-align:left;border:0;border-radius:8px;padding:9px 11px;font-size:13px;font-weight:'+(active?'750':'600')+';background:'+(active?'rgba(37,63,79,.10)':'transparent')+';color:'+(active?'var(--bt-navy)':'var(--text2)')+';cursor:pointer;">'+ic(it.icon)+' '+it.label+'</button>';
+  }).join("");
+}
+function headerHTML(aba){
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
+  if(ce)tabs+='<button class="tab '+(aba==="minhas-tarefas"?"active":"")+'" onclick="renderMinhasTarefas()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("check")+' Minhas tarefas</button>';
+  if(ce)tabs+='<button class="tab '+(aba==="reunioes"?"active":"")+'" onclick="renderReunioes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("meeting")+' Reuni\u00f5es</button>';
+  if(perfil==="mestre")tabs+='<button class="tab '+(_isAdminAba(aba)?"active":"")+'" onclick="renderAdministracao(\'usr\')" style="display:inline-flex;align-items:center;gap:5px;">'+ic("users")+' Administra\u00e7\u00e3o</button>';
+  var base=_headerBaseHTML("kanban");
+  var marker='<div style="background:rgba(0,0,0,.15);padding:0 14px;display:flex;">';
+  var ini=base.lastIndexOf(marker);
+  if(ini>=0){
+    var fim=base.indexOf('</div>',ini);
+    if(fim>=0)base=base.slice(0,ini)+marker+tabs+'</div>'+base.slice(fim+6);
+  }
+  if(perfil!=="mestre"||!_isAdminAba(aba))return base;
+  var adminOpen='<div style="display:flex;min-height:calc(100vh - 118px);background:var(--surface);">'
+    +'<aside style="width:230px;flex-shrink:0;border-right:1px solid var(--border);background:#fff;padding:18px 12px;">'
+    +'<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:0 10px 10px;">Administra\u00e7\u00e3o</div>'
+    +'<div style="display:flex;flex-direction:column;gap:4px;">'+_adminMenuHTML(aba)+'</div>'
+    +'</aside><main style="flex:1;min-width:0;">';
+  return base+adminOpen;
+}
+function renderAdministracao(sec){
+  if(perfil!=="mestre"){renderView();return;}
+  var destino=sec||"usr";
+  if(destino==="eq")renderEquipes();
+  else if(destino==="imp")renderImp();
+  else if(destino==="etq")renderEtq();
+  else if(destino==="logs")renderLogs();
+  else renderUsers();
+}
+
