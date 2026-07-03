@@ -79,3 +79,69 @@ function switchEquipe(equipeId){
   renderView();
 }
 
+function _isAdminAba(aba){
+  return aba==="admin"||aba==="usr"||aba==="eq"||aba==="imp"||aba==="etq"||aba==="logs";
+}
+
+function _adminMenuHTML(aba){
+  var itens=[
+    {id:"usr",label:"Usu\u00e1rios",icon:"users",fn:"renderUsers()"},
+    {id:"eq",label:"Equipes",icon:"group",fn:"renderEquipes()"},
+    {id:"imp",label:"Importa\u00e7\u00e3o",icon:"upload",fn:"renderImp()"},
+    {id:"etq",label:"Etiquetas",icon:"tag",fn:"renderEtq()"},
+    {id:"logs",label:"Hist\u00f3rico",icon:"clock",fn:"renderLogs()"}
+  ];
+  return itens.map(function(it){
+    var active=aba===it.id;
+    return '<button onclick="'+it.fn+'" style="width:100%;display:flex;align-items:center;gap:8px;text-align:left;border:0;border-radius:8px;padding:9px 11px;font-size:13px;font-weight:'+(active?'750':'600')+';background:'+(active?'rgba(37,63,79,.10)':'transparent')+';color:'+(active?'var(--bt-navy)':'var(--text2)')+';cursor:pointer;">'+ic(it.icon)+' '+it.label+'</button>';
+  }).join("");
+}
+
+function _adminShellOpen(aba){
+  return '<div style="display:flex;min-height:calc(100vh - 118px);background:var(--surface);">'
+    +'<aside style="width:230px;flex-shrink:0;border-right:1px solid var(--border);background:#fff;padding:18px 12px;">'
+    +'<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:0 10px 10px;">Administra\u00e7\u00e3o</div>'
+    +'<div style="display:flex;flex-direction:column;gap:4px;">'+_adminMenuHTML(aba)+'</div>'
+    +'</aside><main style="flex:1;min-width:0;">';
+}
+
+function renderAdministracao(sec){
+  if(perfil!=="mestre"){renderView();return;}
+  var destino=sec||"usr";
+  if(destino==="eq")renderEquipes();
+  else if(destino==="imp")renderImp();
+  else if(destino==="etq")renderEtq();
+  else if(destino==="logs")renderLogs();
+  else renderUsers();
+}
+
+headerHTML=function(aba){
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
+  if(ce)tabs+='<button class="tab '+(aba==="minhas-tarefas"?"active":"")+'" onclick="renderMinhasTarefas()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("check")+' Minhas tarefas</button>';
+  if(ce)tabs+='<button class="tab '+(aba==="reunioes"?"active":"")+'" onclick="renderReunioes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("meeting")+' Reuni\u00f5es</button>';
+  if(perfil==="mestre")tabs+='<button class="tab '+(_isAdminAba(aba)?"active":"")+'" onclick="renderAdministracao(\'usr\')" style="display:inline-flex;align-items:center;gap:5px;">'+ic("users")+' Administra\u00e7\u00e3o</button>';
+  var logoSide='<div style="display:flex;align-items:center;padding:0 14px;border-right:1px solid rgba(255,255,255,.07);flex-shrink:0;background:rgba(0,0,0,.12);"><img src="logo-branco-negativo.png" style="height:68px;object-fit:contain;" onerror="this.style.display=\'none\'"/></div>';
+  var centerBlock='<div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;"><div style="font-family:var(--font-titulo);font-size:17px;font-weight:800;color:#fff;letter-spacing:.04em;">BTDesk</div><div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;">Controle o seu dia</div></div>';
+  var eqBtnHtml="";
+  if(perfil==="mestre"||perfil==="advogado"){
+    var eqNome=equipeAtiva?equipeAtiva.nome:(perfil==="mestre"?"Todas":"Equipe");
+    var eqCor=equipeAtiva?equipeAtiva.cor:"#94a3b8";
+    eqBtnHtml='<div style="position:relative;display:inline-block;" id="eq-wrap">'
+      +'<button id="eq-btn" onclick="toggleEquipeDropdown()" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);" onmouseover="this.style.background=\'rgba(255,255,255,.14)\'" onmouseout="this.style.background=\'rgba(255,255,255,.08)\'">'
+      +'<span style="width:8px;height:8px;border-radius:50%;background:'+eqCor+';flex-shrink:0;"></span>'+eqNome+ic("chevdown")
+      +'</button></div>';
+  }
+  var nNaoLidas=(notificacoesDB||[]).filter(function(n){return !n.lida;}).length;
+  var bellHtml='<button onclick="toggleNotifDropdown()" style="position:relative;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);cursor:pointer;" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("bell")+(nNaoLidas>0?'<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0 3px;">'+nNaoLidas+'</span>':"")+'</button>';
+  var rightBar='<div style="display:flex;align-items:center;gap:8px;">'+perfilBadge(perfil)+'<span style="font-size:11px;color:rgba(255,255,255,.3);">'+emailUser+'</span>'+eqBtnHtml+bellHtml+'<button onclick="openMyProfile()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("edit")+' Perfil</button><button onclick="logout()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(250,81,14,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("logout")+' Sair</button></div>';
+  var html='<div style="background:linear-gradient(135deg,#1a2e3a 0%,#253f4f 60%,#2d4f63 100%);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;align-items:stretch;">'
+    +logoSide
+    +'<div style="flex:1;display:flex;flex-direction:column;min-width:0;">'
+    +'<div style="height:52px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;position:relative;border-bottom:1px solid rgba(255,255,255,.05);">'+centerBlock+rightBar+'</div>'
+    +'<div style="background:rgba(0,0,0,.15);padding:0 14px;display:flex;">'+tabs+'</div>'
+    +'</div></div>';
+  if(perfil==="mestre"&&_isAdminAba(aba))html+=_adminShellOpen(aba);
+  return html;
+};
+
