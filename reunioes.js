@@ -590,7 +590,7 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   if(p.descricao)html+='<div class="proj-desc">'+p.descricao+'</div>';
   if(isPontual&&checklist&&checklist.length){
     html+=_buildChecklistBar(checklist);
-    var done=checklist.filter(function(i){return i.status==='concluida'||i.status==='concluido';}).length;
+    var done=checklist.filter(function(i){return statusTarefaFinalizador(i.status);}).length;
     html+='<div class="prog-info">'+done+' de '+checklist.length+' itens concluídos</div>';
   }
   if(expanded){
@@ -609,19 +609,16 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
 }
 function _buildChecklistBar(checklist){
   if(!checklist||!checklist.length)return '';
-  var corItem={'nao_iniciada':'#e8edf2','pendente':'#e8edf2','em_andamento':'#2563eb','bloqueada':'#dc2626','concluida':'#16a34a','concluido':'#16a34a'};
   return '<div class="prog">'+checklist.map(function(it){
-    return '<div class="prog-seg" style="background:'+(corItem[it.status]||'#e8edf2')+';"></div>';
+    return '<div class="prog-seg" style="background:'+statusTarefaCor(it.status,'#e8edf2')+';"></div>';
   }).join("")+'</div>';
 }
 function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
-  var corStatus={'nao_iniciada':'#94a3b8','pendente':'#94a3b8','em_andamento':'#3b82f6','bloqueada':'#ef4444','concluida':'#22c55e','concluido':'#22c55e'};
-  var lblStatus={'nao_iniciada':'Nao iniciada','pendente':'Nao iniciada','em_andamento':'Em andamento','bloqueada':'Bloqueada','concluida':'Concluida','concluido':'Concluída'};
   var html='<div class="cl"><div class="cl-lbl">Checklist</div>';
   if(!checklist.length){html+='<div class="pauta-empty">Nenhum item.</div>';}
   else{
     checklist.forEach(function(it){
-      var cor=corStatus[it.status]||'#94a3b8';
+      var cor=statusTarefaCor(it.status,'#94a3b8');
       var respIt=(it.usuarios&&(it.usuarios.sigla||it.usuarios.nome))||"";
       html+='<div id="cl-item-'+it.id+'" class="cl-item">';
       html+='<span class="cl-dot" style="background:'+cor+';"></span>';
@@ -677,7 +674,7 @@ async function _showAddChecklistItem(projetoId,ehPassado){
     +'<input id="cli-titulo-'+projetoId+'" placeholder="Titulo do item *" style="font-size:12px;"/>'
     +'<div style="display:flex;gap:6px;">'
     +'<select id="cli-resp-'+projetoId+'" style="flex:1;font-size:11px;"><option value="">Responsável...</option>'+respOpts+'</select>'
-    +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;"><option value="nao_iniciada">Nao iniciada</option><option value="em_andamento">Em andamento</option><option value="bloqueada">Bloqueada</option><option value="concluida">Concluida</option></select>'
+    +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;">'+statusTarefaOptions("nao_iniciada",false)+'</select>'
     +'</div>'
     +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
     +'<button onclick="_cancelAddChecklistItem(\''+projetoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
@@ -714,7 +711,7 @@ async function _editChecklistItemInline(itemId,projetoId,ehPassado){
     +'<input id="cli-edit-t-'+itemId+'" value="'+it.titulo+'" style="font-size:12px;width:100%;"/>'
     +'<div style="display:flex;gap:6px;">'
     +'<select id="cli-edit-r-'+itemId+'" style="flex:1;font-size:11px;"><option value="">Responsável...</option>'+respOpts+'</select>'
-    +'<select id="cli-edit-s-'+itemId+'" style="flex:1;font-size:11px;"><option value="nao_iniciada"'+((it.status==="nao_iniciada"||it.status==="pendente"||!it.status)?" selected":"")+'>Nao iniciada</option><option value="em_andamento"'+(it.status==="em_andamento"?" selected":"")+'>Em andamento</option><option value="bloqueada"'+(it.status==="bloqueada"?" selected":"")+'>Bloqueada</option><option value="concluida"'+((it.status==="concluida"||it.status==="concluido")?" selected":"")+'>Concluida</option></select>'
+    +'<select id="cli-edit-s-'+itemId+'" style="flex:1;font-size:11px;">'+statusTarefaOptions(it.status||"nao_iniciada",false)+'</select>'
     +'</div>'
     +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
     +'<button onclick="_reloadProjetoCard(\''+projetoId+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
@@ -1808,25 +1805,23 @@ function _getReuniaoAnterior(r){
   return candidatas[0]||null;
 }
 function _buildPendenciaItem(t,cor){
-  var statusLbl={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
   var prazo=t.data_fim?_fmtDateBrShort(t.data_fim):"Sem prazo";
   return '<div style="border:1px solid var(--border);border-left:4px solid '+cor+';border-radius:7px;background:#fff;padding:9px 10px;margin-bottom:7px;">'
     +'<div style="font-size:13px;font-weight:650;color:var(--bt-navy);line-height:1.25;">'+trunc(t.texto||"Tarefa sem titulo",90)+'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--text3);">'
     +'<span>Responsavel: '+(t.responsavel||"Sem responsavel")+'</span>'
     +'<span>Prazo: '+prazo+'</span>'
-    +'<span>Status: '+(statusLbl[t.status]||t.status||"Pendente")+'</span>'
+    +'<span>Status: '+statusTarefaLabel(t.status)+'</span>'
     +'</div>'
     +'</div>';
 }
 function _buildPendenciaPoolItem(item,marcado){
-  var statusLbl={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida','nao_iniciada':'Nao iniciada','bloqueada':'Bloqueada','concluida':'Concluida'};
   var cor=item.origem==="projeto"?'#7c3aed':'#2b76e5';
   var meta=[];
   if(item.contexto)meta.push(item.contexto);
   if(item.responsavel)meta.push("Resp.: "+item.responsavel);
   if(item.prazo)meta.push("Prazo: "+_fmtDateBrShort(item.prazo));
-  if(item.status)meta.push(statusLbl[item.status]||item.status);
+  if(item.status)meta.push(statusTarefaLabel(item.status));
   return '<label class="pend-pool-item" style="display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid '+cor+';border-radius:7px;background:#fff;padding:9px 10px;margin-bottom:7px;cursor:pointer;">'
     +'<input type="checkbox" '+(marcado?'checked disabled':'')+' onchange="_marcarPendenciaPool(\''+item.key+'\')" style="margin-top:2px;accent-color:var(--bt-orange);">'
     +'<span style="min-width:0;display:flex;flex-direction:column;gap:4px;">'
@@ -1849,7 +1844,7 @@ function _buildPendenciaGrupo(titulo,itens,cor){
 var _pendenciasPoolCache={};
 async function _coletarPendenciasPool(reuniaoId,anterior,tarefasAnterior){
   var pool=[];
-  (tarefasAnterior||[]).filter(function(t){return t.status!=="concluido";}).forEach(function(t){
+  (tarefasAnterior||[]).filter(function(t){return !statusTarefaFinalizador(t.status);}).forEach(function(t){
     pool.push({key:"tarefa:"+t.id,origem:"reuniao",id:t.id,texto:t.texto,status:t.status,responsavel:t.responsavel,prazo:t.data_fim,campos_valores:t.campos_valores||{},contexto:anterior?(anterior.titulo||("Reuniao de "+_fmtData(anterior.data))):"Reuniao anterior"});
   });
   var projetos=(projetosDB||[]).filter(function(p){return !p.arquivado&&(!equipeAtiva||!p.equipe_id||p.equipe_id===equipeAtiva.id);});
@@ -1860,7 +1855,7 @@ async function _coletarPendenciasPool(reuniaoId,anterior,tarefasAnterior){
       checklist=_checklistCache[p.id]||await dbFetchChecklist(p.id);
       _checklistCache[p.id]=checklist;
     }catch(_){checklist=[];}
-    checklist.filter(function(it){return it.status!=="concluido"&&it.status!=="concluida";}).forEach(function(it){
+    checklist.filter(function(it){return !statusTarefaFinalizador(it.status);}).forEach(function(it){
       var resp=(it.usuarios&&(it.usuarios.sigla||it.usuarios.nome))||"";
       pool.push({key:"projeto:"+p.id+":"+it.id,origem:"projeto",projeto_id:p.id,checklist_id:it.id,texto:it.titulo,status:it.status,responsavel:resp,prazo:null,contexto:"Projeto: "+(p.titulo||"Projeto")});
     });
@@ -1886,10 +1881,10 @@ async function _loadPendenciasAnteriores(reuniaoId){
   try{
     var tarefas=anterior?await dbFetchTarefasReuniao(anterior.id):[];
     var refData=(atual&&atual.data)||new Date().toISOString().slice(0,10);
-    var abertas=tarefas.filter(function(t){return t.status!=="concluido";});
+    var abertas=tarefas.filter(function(t){return !statusTarefaFinalizador(t.status);});
     var atrasadas=abertas.filter(function(t){return t.data_fim&&t.data_fim<refData;});
     var abertasNoPrazo=abertas.filter(function(t){return !(t.data_fim&&t.data_fim<refData);});
-    var concluidas=tarefas.filter(function(t){return t.status==="concluido";});
+    var concluidas=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);});
     var pool=await _coletarPendenciasPool(reuniaoId,anterior,tarefas);
     var marcadas=await _pendenciasMarcadasReuniao(reuniaoId);
     var html='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
@@ -1954,7 +1949,7 @@ async function _marcarPendenciaPool(key){
       await dbUpsertTarefa({
         id:novoId,
         texto:item.texto,
-        status:item.status==="nao_iniciada"?"pendente":(item.status==="concluida"?"concluido":(item.status||"pendente")),
+        status:item.status||"pendente",
         reuniao_id:reuniaoId,
         equipe_id:eqId,
         criado_em:new Date().toISOString(),
@@ -2026,16 +2021,15 @@ async function gerarAta(reuniaoId){
   if(!tarefas.length){
     linhas.push("Nenhuma tarefa vinculada a esta reuniao.","");
   } else {
-    var statusLbl={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
     tarefas.forEach(function(t,i){
       var catId=t.pauta_categoria_id||"sem_cat";
       var subs=t.subtarefas||[];
-      var concluidas=subs.filter(function(s){return s.status==='concluido';}).length;
+      var concluidas=subs.filter(function(s){return statusTarefaFinalizador(s.status);}).length;
       linhas.push((i+1)+". "+(t.texto||"Tarefa sem titulo"));
       var pautaTitulo=t.campos_valores&&t.campos_valores.pauta_titulo;
       linhas.push("   Categoria/pauta: "+(pautaTitulo||catMap[catId]||"Geral"));
       linhas.push("   Responsavel: "+(t.responsavel||"Sem responsavel"));
-      linhas.push("   Status: "+(statusLbl[t.status]||t.status||"Pendente"));
+      linhas.push("   Status: "+statusTarefaLabel(t.status));
       linhas.push("   Prazo: "+(t.data_fim?_fmtDateBr(t.data_fim):"Sem prazo"));
       if(t.data_inicio)linhas.push("   Inicio: "+_fmtDateBr(t.data_inicio));
       if(subs.length)linhas.push("   Progresso: "+concluidas+"/"+subs.length+" subtarefas concluidas");
@@ -2110,7 +2104,7 @@ var _itemEditando=null;
 var _subEditando=null;
 function _fmtDateBr(d){if(!d)return '';var p=d.split('-');if(p.length<3)return d;return p[2]+'/'+p[1]+'/'+p[0];}
 function _fmtDateBrShort(d){if(!d)return '';var p=d.split('-');if(p.length<3)return d;return p[2]+'/'+p[1]+'/'+p[0];}
-function _isAtrasado(dataFim,status){if(!dataFim||status==='concluido')return false;var hoje=new Date().toISOString().slice(0,10);return dataFim<hoje;}
+function _isAtrasado(dataFim,status){if(!dataFim||statusTarefaFinalizador(status))return false;var hoje=new Date().toISOString().slice(0,10);return dataFim<hoje;}
 
 // Retorna as colunas customizadas de tarefa do snapshot da reuniao ativa
 function _colunasTarefaSnapshot(){
@@ -2275,15 +2269,10 @@ async function _tcolPersistir(tarefaId,colId,valor){
 }
 
 function _buildTarefaCard(t,ce,ehPassado){
-  var corBar={'pendente':'#e2445c','em_andamento':'#2b76e5','pausado':'#fdab3d','concluido':'#00c875'};
-  var corBg={'pendente':'#e2445c','em_andamento':'#2b76e5','pausado':'#fdab3d','concluido':'#00c875'};
-  var corTxt={'pendente':'#fff','em_andamento':'#fff','pausado':'#fff','concluido':'#fff'};
-  var corSeg={'pendente':'#e8edf2','em_andamento':'#2b76e5','pausado':'#fdab3d','concluido':'#00c875'};
-  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluida'};
-  var bar=corBar[t.status]||'#E24B4A';
-  var bg=corBg[t.status]||'#FCEBEB';
-  var txt=corTxt[t.status]||'#A32D2D';
-  var lbl=lblStatus[t.status]||t.status||'Pendente';
+  var bar=statusTarefaCor(t.status,'#E24B4A');
+  var bg=bar;
+  var txt='#fff';
+  var lbl=statusTarefaLabel(t.status);
   var subtarefas=_subtarefasCache[t.id]||null;
   var cmts=_tarefaCmtsCache[t.id]||null;
   var subExp=subtarefas!==null&&!_subCollapsed[t.id];
@@ -2297,7 +2286,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   // coluna 1: expandir
   html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Expandir">&#9658;</button></div>';
   // coluna 2: tarefa (titulo editavel)
-  html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(t.status==='concluido'?' done':'')+'"'
+  html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(statusTarefaFinalizador(t.status)?' done':'')+'"'
     +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>'
     +(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
     +(t.campos_valores&&t.campos_valores.projeto_titulo?'<span class="bsub">Projeto: '+trunc(t.campos_valores.projeto_titulo,64)+'</span>':'')
@@ -2320,10 +2309,10 @@ function _buildTarefaCard(t,ce,ehPassado){
   // coluna 6: progresso + menu de acoes
   html+='<div class="bc bc-prog">';
   if(subtarefas&&subtarefas.length>0){
-    var _conc=subtarefas.filter(function(s){return s.status==='concluido';}).length;
+    var _conc=subtarefas.filter(function(s){return statusTarefaFinalizador(s.status);}).length;
     html+='<div class="bprogwrap" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Ver subtarefas">';
     html+='<div class="btrack">';
-    subtarefas.forEach(function(s){html+='<div class="bseg" style="background:'+(corSeg[s.status]||'#e8edf2')+';"></div>';});
+    subtarefas.forEach(function(s){html+='<div class="bseg" style="background:'+statusTarefaCor(s.status,'#e8edf2')+';"></div>';});
     html+='</div><span class="bpct">'+_conc+'/'+subtarefas.length+'</span></div>';
   } else if(ce&&!ehPassado){
     html+='<button class="baddsub" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Adicionar subtarefa">'+ic("plus")+'<span>subtarefa</span></button>';
@@ -2350,7 +2339,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   // form de edicao da tarefa principal
   if(_itemEditando===t.id){
     var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
-    var statusOpts=['pendente','em_andamento','pausado','concluido'].map(function(s){return '<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+lblStatus[s]+'</option>';}).join("");
+    var statusOpts=statusTarefaOptions(t.status,false);
     html+='<div class="rt-edit-form" style="margin-top:10px;">'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
       +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
@@ -2385,12 +2374,12 @@ function _buildTarefaCard(t,ce,ehPassado){
     }
     if(_temSubs){
       subtarefas.forEach(function(s){
-        var sBg=corBg[s.status]||'#FCEBEB';
-        var sTxt=corTxt[s.status]||'#A32D2D';
-        var sBar=corBar[s.status]||'#E24B4A';
-        var sLbl=lblStatus[s.status]||s.status;
+        var sBg=statusTarefaCor(s.status,'#FCEBEB');
+        var sTxt='#fff';
+        var sBar=statusTarefaCor(s.status,'#E24B4A');
+        var sLbl=statusTarefaLabel(s.status);
         if(_subEditando===s.id){
-          var sStatOpts=['pendente','em_andamento','pausado','concluido'].map(function(ss){return '<option value="'+ss+'"'+(s.status===ss?' selected':'')+'>'+lblStatus[ss]+'</option>';}).join("");
+          var sStatOpts=statusTarefaOptions(s.status,false);
           var sRespOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(sr){return '<option value="'+sr+'"'+(s.responsavel===sr?' selected':'')+'>'+sr+'</option>';}).join("");
           html+='<div class="rt-edit-form" style="margin:6px 0;">'
             +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Nome</label>'
@@ -2410,7 +2399,7 @@ function _buildTarefaCard(t,ce,ehPassado){
         } else {
           html+='<div class="subrow"'+(canEdit?' onpointerdown="_tarefaDragStart(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Arraste para o lado para alterar status"':'')+'>';
           html+='<div class="subcell subcell-name"><span class="subdot" style="background:'+sBar+';"></span><div class="subname-wrap">';
-          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(s.status==='concluido'?' done':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
+          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(statusTarefaFinalizador(s.status)?' done':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
           if(s.descricao){
             html+='<span id="tp-sdesc-'+s.id+'" class="subdesc"'+(canEdit?' style="cursor:text;" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
           } else if(canEdit){
@@ -2756,7 +2745,8 @@ function _tarefaStatusAtual(tarefaId,isSub,parentId){
   return t?t.status:"pendente";
 }
 function _statusPorArrasto(status,delta){
-  var ordem=["pendente","em_andamento","pausado","concluido"];
+  var ordem=statusTarefaOrdem();
+  if(!ordem.length)ordem=["pendente","em_andamento","pausado","concluido"];
   var idx=ordem.indexOf(status);
   if(idx<0)idx=0;
   if(delta>0)idx=Math.min(ordem.length-1,idx+1);
@@ -2811,8 +2801,7 @@ function _tarefaDragCleanup(){
 
 function _abrirStatusDropdown(ev,tarefaId,isSub,parentId,ehPassado){
   var old=document.getElementById("status-dd-wrap");if(old)old.remove();
-  var lblStatus={'pendente':'Pendente','em_andamento':'Em andamento','pausado':'Pausado','concluido':'Concluido'};
-  var corTxt={'pendente':'#dc2626','em_andamento':'#1d4ed8','pausado':'#854F0B','concluido':'#15803d'};
+  var statusList=statusTarefaList(false);
   var top=120,left=120;
   var anchor=ev&&(ev.currentTarget||ev.target);
   if(anchor&&anchor.getBoundingClientRect){var rect=anchor.getBoundingClientRect();top=rect.bottom+4;left=rect.left;}
@@ -2820,10 +2809,10 @@ function _abrirStatusDropdown(ev,tarefaId,isSub,parentId,ehPassado){
   top=Math.min(top,window.innerHeight-180);
   var html='<div id="status-dd-wrap" style="position:fixed;inset:0;z-index:2000;" onclick="document.getElementById(\'status-dd-wrap\').remove();">';
   html+='<div style="position:fixed;top:'+top+'px;left:'+left+'px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:4px;min-width:150px;z-index:2001;" onclick="event.stopPropagation();">';
-  ['pendente','em_andamento','pausado','concluido'].forEach(function(s){
-    html+='<div onclick="_alterarStatusTarefa(\''+tarefaId+'\',\''+s+'\','+!!isSub+',\''+parentId+'\','+!!ehPassado+')" style="padding:7px 12px;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">'
-      +'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+corTxt[s]+';flex-shrink:0;"></span>'
-      +'<span style="font-size:13px;color:'+corTxt[s]+';">'+lblStatus[s]+'</span>'
+  statusList.forEach(function(st){
+    html+='<div onclick="_alterarStatusTarefa(\''+tarefaId+'\',\''+st.id+'\','+!!isSub+',\''+parentId+'\','+!!ehPassado+')" style="padding:7px 12px;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">'
+      +'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+statusTarefaCor(st.id,'#94a3b8')+';flex-shrink:0;"></span>'
+      +'<span style="font-size:13px;color:'+statusTarefaCor(st.id,'#475569')+';">'+statusTarefaLabel(st.id)+'</span>'
       +'</div>';
   });
   html+='</div></div>';
@@ -2832,13 +2821,23 @@ function _abrirStatusDropdown(ev,tarefaId,isSub,parentId,ehPassado){
 async function _alterarStatusTarefa(tarefaId,novoStatus,isSub,parentId,ehPassado){
   var sd=document.getElementById("status-dd-wrap");if(sd)sd.remove();
   try{
-    await dbUpsertTarefa({id:tarefaId,status:novoStatus});
     if(isSub&&parentId){
+      var sub=(_subtarefasCache[parentId]||[]).find(function(s){return s.id===tarefaId;});
+      var subCampos=Object.assign({},sub&&sub.campos_valores?sub.campos_valores:{});
+      if(statusTarefaFinalizador(novoStatus)){if(!subCampos.concluida_em)subCampos.concluida_em=new Date().toISOString().slice(0,10);}
+      else{delete subCampos.concluida_em;}
+      await dbUpsertTarefa({id:tarefaId,status:novoStatus,campos_valores:subCampos});
       (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===tarefaId)s.status=novoStatus;});
+      if(sub)sub.campos_valores=subCampos;
       _reloadTarefaCard(parentId,ehPassado);
     } else {
       var rId=reuniaoAtiva?reuniaoAtiva.id:'';
-      (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId)t.status=novoStatus;});
+      var tarefa=(_tarefasPautaCache[rId]||[]).find(function(t){return t.id===tarefaId;});
+      var campos=Object.assign({},tarefa&&tarefa.campos_valores?tarefa.campos_valores:{});
+      if(statusTarefaFinalizador(novoStatus)){if(!campos.concluida_em)campos.concluida_em=new Date().toISOString().slice(0,10);}
+      else{delete campos.concluida_em;}
+      await dbUpsertTarefa({id:tarefaId,status:novoStatus,campos_valores:campos});
+      (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId){t.status=novoStatus;t.campos_valores=campos;}});
       _reloadTarefaCard(tarefaId,ehPassado);
     }
   }catch(_){toast("Erro ao alterar status",true);}

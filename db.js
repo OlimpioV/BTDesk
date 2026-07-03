@@ -205,3 +205,7 @@ async function dbUpsertTarefaStatus(st){
   var rows=await r.json();
   return rows[0]||null;
 }
+async function loadTarefaStatus(){
+  try{tarefaStatusDB=await dbFetchTarefaStatus();}
+  catch(e){tarefaStatusDB=[];}
+}

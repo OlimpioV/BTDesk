@@ -331,9 +331,9 @@ function buildTarefasHTML(card,ce){
   var html="<div style=\"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;\"><div style=\"font-size:11px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:5px;\">"+ic("check")+" Tarefas"+badge+"</div>"+btnAddHtml+"</div>";
   if(!tarefas.length){html+="<div style=\"font-size:12px;color:#94a3b8;font-style:italic;padding:6px 0;\">Nenhuma tarefa</div>";return html;}
   tarefas.forEach(function(t){
-    var col=COLS.find(function(co){return co.id===t.status;})||{label:"?",dot:"#94a3b8",badgeBg:"#f1f5f9",badgeText:"#475569"};
-    var atrasada=t.status!=="concluido"&&t.dataFim&&t.dataFim<today;
-    var concluida=t.status==="concluido";
+    var col={label:statusTarefaLabel(t.status),dot:statusTarefaCor(t.status,"#94a3b8"),badgeBg:"#f1f5f9",badgeText:"#475569"};
+    var concluida=statusTarefaFinalizador(t.status);
+    var atrasada=!concluida&&t.dataFim&&t.dataFim<today;
     var bLeft=atrasada?"#dc2626":concluida?"#22c55e":"transparent";
     var titleStyle="font-size:12px;font-weight:600;color:"+(concluida?"#94a3b8":"#172b4d")+";flex:1;"+(concluida?"text-decoration:line-through;":"");
     var dc=atrasada?"#dc2626":"#94a3b8";var fw=atrasada?"font-weight:700;":"";
@@ -360,7 +360,7 @@ function buildTarefasHTML(card,ce){
 
     if(ce){
       // EDIT panel - inline expandível
-      var sOpts=COLS.map(function(co){return "<option value=\""+co.id+"\""+(t.status===co.id?" selected":"")+">"+co.label+"</option>";}).join("");
+      var sOpts=statusTarefaOptions(t.status,false);
       var rOpts="<option value=\"\">Sem responsável</option>"+responsaveis.map(function(r){return "<option value=\""+r+"\""+(t.responsavel===r?" selected":"")+">"+r+"</option>";}).join("");
       html+="<div id=\"tep-"+t.id+"\" style=\"display:none;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid #f0f0f0;background:#fafafa;\">";
       html+="<div><div style=\"font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;\">Descrição</div>";
@@ -489,8 +489,8 @@ function taskChipHTML(card){
   var tarefas=card.tarefas||[];if(!tarefas.length)return "";
   var today=new Date().toISOString().split("T")[0];
   var total=tarefas.length;
-  var done=tarefas.filter(function(t){return t.status==="concluido";}).length;
-  var atrasada=tarefas.some(function(t){return t.status!=="concluido"&&t.dataFim&&t.dataFim<today;});
+  var done=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
+  var atrasada=tarefas.some(function(t){return !statusTarefaFinalizador(t.status)&&t.dataFim&&t.dataFim<today;});
   if(atrasada)return '<span class="chip" style="background:#fef2f2;color:#dc2626;font-weight:700;">'+ic("check")+" "+done+"/"+total+" \u00b7 atraso</span>";
   if(done===total)return '<span class="chip" style="background:#dcfce7;color:#15803d;font-weight:700;">'+ic("check")+" "+done+"/"+total+" \u00b7 ok</span>";
   return '<span class="chip">'+ic("check")+" "+done+"/"+total+"</span>";
@@ -587,8 +587,7 @@ function _mtUserSigla(){
   return u&&u.sigla?u.sigla:"";
 }
 function _mtStatusLabel(status){
-  var m={pendente:"Pendente",em_andamento:"Em andamento",pausado:"Pausado",concluido:"Concluida",concluida:"Concluida",nao_iniciada:"Nao iniciada",bloqueada:"Bloqueada"};
-  return m[status]||status||"Pendente";
+  return statusTarefaLabel(status);
 }
 function _mtFmtDate(d){
   if(!d)return "—";
@@ -596,7 +595,7 @@ function _mtFmtDate(d){
   return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:d;
 }
 function _mtIsDone(t){
-  return t.status==="concluido"||t.status==="concluida";
+  return statusTarefaFinalizador(t.status);
 }
 function _mtRow(t){
   var hoje=new Date().toISOString().slice(0,10);
@@ -844,7 +843,7 @@ async function saveCard(){
 async function init(){
   var app=document.getElementById("app");app.className="kanban-mode";
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;"><div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#fff;">BT</span></div><div style="width:28px;height:3px;background:linear-gradient(90deg,#ff8204,#e20500);border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div><style>@keyframes pulse{0%,100%{opacity:.4;transform:scaleX(.8)}50%{opacity:1;transform:scaleX(1)}}</style><div style="font-size:13px;color:rgba(255,255,255,.35);">Carregando BTDesk...</div></div>';
-  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await verificarAlertasPrazos();}catch(e){toast("Erro ao carregar",true);}
+  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes(),loadTarefaStatus()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await verificarAlertasPrazos();}catch(e){toast("Erro ao carregar",true);}
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   loadEtq();renderKanban();
 }

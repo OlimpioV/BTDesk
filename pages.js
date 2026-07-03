@@ -103,6 +103,7 @@ async function renderEstrutura(){
   app.innerHTML=headerHTML("estrutura")+'<div style="padding:24px;max-width:980px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
   try{
     _estruturaStatusCache=await dbFetchTarefaStatus();
+    tarefaStatusDB=_estruturaStatusCache.slice();
     var ativos=_estruturaStatusCache.filter(function(s){return s.ativo!==false;}).length;
     var finalizadores=_estruturaStatusCache.filter(function(s){return s.finalizador&&s.ativo!==false;}).length;
     var rows=_estruturaStatusCache.length===0?'<tr><td colspan="6" style="text-align:center;padding:34px;color:var(--text3);">Nenhum status cadastrado</td></tr>':_estruturaStatusCache.map(function(s){

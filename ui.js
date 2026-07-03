@@ -8,6 +8,51 @@ meeting:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="cur
 
 function perfilBadge(p){if(p==="mestre")return '<span class="badge" style="background:rgba(168,85,247,.18);color:#d8b4fe;border:1px solid rgba(168,85,247,.2);">Mestre</span>';if(p==="advogado")return '<span class="badge" style="background:rgba(250,81,14,.18);color:#fed7aa;border:1px solid rgba(250,81,14,.2);">Advogado</span>';return '<span class="badge" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);">Cliente</span>';}
 
+function statusTarefaDefaults(){
+  return [
+    {id:"nao_iniciada",nome:"N\u00e3o iniciada",cor:"#94a3b8",ordem:0,finalizador:false,ativo:true},
+    {id:"pendente",nome:"Pendente",cor:"#e2445c",ordem:1,finalizador:false,ativo:true},
+    {id:"em_andamento",nome:"Em andamento",cor:"#2b76e5",ordem:2,finalizador:false,ativo:true},
+    {id:"pausado",nome:"Pausado",cor:"#fdab3d",ordem:3,finalizador:false,ativo:true},
+    {id:"bloqueada",nome:"Bloqueada",cor:"#ef4444",ordem:4,finalizador:false,ativo:true},
+    {id:"concluido",nome:"Conclu\u00edda",cor:"#00c875",ordem:5,finalizador:true,ativo:true},
+    {id:"concluida",nome:"Conclu\u00edda",cor:"#16a34a",ordem:6,finalizador:true,ativo:false}
+  ];
+}
+function statusTarefaList(includeInactive){
+  var rows=(tarefaStatusDB&&tarefaStatusDB.length?tarefaStatusDB:statusTarefaDefaults()).slice();
+  if(!includeInactive)rows=rows.filter(function(s){return s.ativo!==false;});
+  rows.sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
+  return rows;
+}
+function statusTarefaById(id,includeInactive){
+  var rows=statusTarefaList(!!includeInactive);
+  return rows.find(function(s){return s.id===id;})||statusTarefaDefaults().find(function(s){return s.id===id;})||null;
+}
+function statusTarefaLabel(id){
+  var st=statusTarefaById(id,true);
+  return st?(st.nome||st.id):(id||"Pendente");
+}
+function statusTarefaCor(id,fallback){
+  var st=statusTarefaById(id,true);
+  return st&&st.cor?st.cor:(fallback||"#94a3b8");
+}
+function statusTarefaFinalizador(id){
+  var st=statusTarefaById(id,true);
+  return !!(st&&st.finalizador)||id==="concluido"||id==="concluida";
+}
+function statusTarefaOptions(selected,includeInactive){
+  var rows=statusTarefaList(!!includeInactive);
+  if(selected&&!rows.some(function(s){return s.id===selected;})){
+    var atual=statusTarefaById(selected,true);
+    if(atual)rows.push(atual);
+  }
+  return rows.map(function(s){return '<option value="'+s.id+'"'+(selected===s.id?' selected':'')+'>'+(s.nome||s.id)+'</option>';}).join("");
+}
+function statusTarefaOrdem(){
+  return statusTarefaList(false).map(function(s){return s.id;});
+}
+
 function headerHTML(aba){
   var ce=perfil==="mestre"||perfil==="advogado";
   var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
