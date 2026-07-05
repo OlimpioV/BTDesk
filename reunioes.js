@@ -636,7 +636,7 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   if(isPontual&&checklist&&checklist.length){
     html+=_buildChecklistBar(checklist);
     var done=checklist.filter(function(i){return statusTarefaFinalizador(i.status);}).length;
-    html+='<div class="prog-info">'+done+' de '+checklist.length+' itens concluídos</div>';
+    html+='<div class="prog-info">'+done+' de '+checklist.length+' subtarefas concluídas</div>';
   }
   if(expanded){
     if(checklist!==null)html+=_buildChecklistUI(p.id,checklist||[],ce,ehP);
@@ -762,8 +762,8 @@ function _buildChecklistBar(checklist){
   }).join("")+'</div>';
 }
 function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
-  var html='<div class="cl"><div class="cl-lbl">Checklist</div>';
-  if(!checklist.length){html+='<div class="pauta-empty">Nenhum item.</div>';}
+  var html='<div class="cl"><div class="cl-lbl">Subtarefas</div>';
+  if(!checklist.length){html+='<div class="pauta-empty">Nenhuma subtarefa.</div>';}
   else{
     checklist.forEach(function(it){
       var cor=statusTarefaCor(it.status,'#94a3b8');
@@ -781,7 +781,7 @@ function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
   }
   if(ce&&!ehPassado){
     html+='<div id="cl-add-'+projetoId+'" style="margin-top:8px;">';
-    html+='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar item</button>';
+    html+='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar subtarefa</button>';
     html+='</div>';
   }
   html+='</div>';
@@ -819,7 +819,7 @@ async function _showAddChecklistItem(projetoId,ehPassado){
   try{var us=await dbFetchUsers();advs=us.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});}catch(_){}
   var respOpts=advs.map(function(u){return '<option value="'+u.id+'">'+(u.sigla||u.nome||"")+'</option>';}).join("");
   el.innerHTML='<div style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:flex;flex-direction:column;gap:6px;">'
-    +'<input id="cli-titulo-'+projetoId+'" placeholder="Titulo do item *" style="font-size:12px;"/>'
+    +'<input id="cli-titulo-'+projetoId+'" placeholder="Titulo da subtarefa *" style="font-size:12px;"/>'
     +'<div style="display:flex;gap:6px;">'
     +'<select id="cli-resp-'+projetoId+'" style="flex:1;font-size:11px;"><option value="">Responsável...</option>'+respOpts+'</select>'
     +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;">'+statusTarefaOptions("nao_iniciada",false)+'</select>'
@@ -832,12 +832,12 @@ async function _showAddChecklistItem(projetoId,ehPassado){
 }
 function _cancelAddChecklistItem(projetoId){
   var el=document.getElementById("cl-add-"+projetoId);if(!el)return;
-  el.innerHTML='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar item</button>';
+  el.innerHTML='<button onclick="_showAddChecklistItem(\''+projetoId+'\',false)" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Adicionar subtarefa</button>';
 }
 async function _salvarAddChecklistItem(projetoId,ehPassado){
   var inp=document.getElementById("cli-titulo-"+projetoId);
   var titulo=(inp?inp.value||"":"").trim();
-  if(!titulo){toast("Informe o titulo do item",true);return;}
+  if(!titulo){toast("Informe o titulo da subtarefa",true);return;}
   var respId=document.getElementById("cli-resp-"+projetoId).value||null;
   var status=document.getElementById("cli-status-"+projetoId).value||"nao_iniciada";
   var cl=_checklistCache[projetoId]||[];
@@ -845,8 +845,8 @@ async function _salvarAddChecklistItem(projetoId,ehPassado){
     var criado=await dbUpsertChecklistItem({projeto_id:projetoId,titulo:titulo,status:status,responsavel_id:respId,ordem:cl.length});
     if(!_checklistCache[projetoId])_checklistCache[projetoId]=[];
     if(criado)_checklistCache[projetoId].push(criado);
-    _reloadProjetoCard(projetoId,ehPassado);toast("Item adicionado!");
-  }catch(e){toast("Erro ao adicionar item",true);}
+    _reloadProjetoCard(projetoId,ehPassado);toast("Subtarefa adicionada!");
+  }catch(e){toast("Erro ao adicionar subtarefa",true);}
 }
 async function _editChecklistItemInline(itemId,projetoId,ehPassado){
   var el=document.getElementById("cl-item-"+itemId);if(!el)return;
@@ -875,15 +875,15 @@ async function _saveChecklistItemInline(itemId,projetoId,ehPassado){
     var atualizado=await dbUpsertChecklistItem({id:itemId,titulo:titulo,responsavel_id:respId,status:status});
     var cl=_checklistCache[projetoId]||[];
     _checklistCache[projetoId]=cl.map(function(x){return x.id===itemId?Object.assign({},x,atualizado||{titulo:titulo,status:status,responsavel_id:respId}):x;});
-    _reloadProjetoCard(projetoId,ehPassado);toast("Item atualizado!");
+    _reloadProjetoCard(projetoId,ehPassado);toast("Subtarefa atualizada!");
   }catch(e){toast("Erro",true);}
 }
 async function delChecklistItem(itemId,projetoId,ehPassado){
-  modalConfirm("Excluir este item do checklist?",async function(){
+  modalConfirm("Excluir esta subtarefa?",async function(){
     try{
       await dbDelChecklistItem(itemId);
       if(_checklistCache[projetoId])_checklistCache[projetoId]=_checklistCache[projetoId].filter(function(x){return x.id!==itemId;});
-      _reloadProjetoCard(projetoId,ehPassado);toast("Item excluido!");
+      _reloadProjetoCard(projetoId,ehPassado);toast("Subtarefa excluida!");
     }catch(e){toast("Erro",true);}
   });
 }
@@ -959,7 +959,7 @@ async function _editProjetoInline(projetoId,ehPassado){
   el.innerHTML='<div class="proj-card"><div class="proj-card-bar" style="background:#94a3b8;"></div><div class="proj-card-content">'
     +'<div class="field" style="margin-bottom:10px;"><label>Titulo *</label><input id="pei-titulo-'+projetoId+'" value="'+p.titulo+'" style="font-size:13px;"/></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
-    +'<div><label class="icell-label">Tipo</label><select id="pei-tipo-'+projetoId+'" style="width:100%;font-size:12px;"><option value="continuo"'+(!p.tipo||p.tipo==="continuo"?" selected":"")+'>Continuo</option><option value="pontual"'+(p.tipo==="pontual"?" selected":"")+'>Pontual (checklist)</option></select></div>'
+    +'<div><label class="icell-label">Tipo</label><select id="pei-tipo-'+projetoId+'" style="width:100%;font-size:12px;"><option value="continuo"'+(!p.tipo||p.tipo==="continuo"?" selected":"")+'>Continuo</option><option value="pontual"'+(p.tipo==="pontual"?" selected":"")+'>Pontual (subtarefas)</option></select></div>'
     +'<div><label class="icell-label">Status</label><select id="pei-status-'+projetoId+'" style="width:100%;font-size:12px;"><option value="em_andamento"'+(!p.status||p.status==="em_andamento"?" selected":"")+'>Em andamento</option><option value="concluido"'+(p.status==="concluido"?" selected":"")+'>Concluido</option><option value="pausado"'+(p.status==="pausado"?" selected":"")+'>Pausado</option></select></div>'
     +'</div>'
     +'<div style="margin-bottom:10px;"><label class="icell-label">Responsavel</label><select id="pei-resp-'+projetoId+'" style="width:100%;font-size:12px;"><option value="">Nenhum</option>'+respOpts+'</select></div>'
@@ -1762,7 +1762,7 @@ async function openEditProjeto(id){
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(p?"Editar projeto":"Novo projeto interno")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo *</label><input id="proj-titulo" value="'+(p?p.titulo:'')+'"/></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="field">'
-    +'<div><label>Tipo</label><select id="proj-tipo"><option value="continuo"'+((!p||p.tipo==="continuo"||!p.tipo)?" selected":"")+'>Continuo</option><option value="pontual"'+((p&&p.tipo==="pontual")?" selected":"")+'>Pontual (checklist)</option></select></div>'
+    +'<div><label>Tipo</label><select id="proj-tipo"><option value="continuo"'+((!p||p.tipo==="continuo"||!p.tipo)?" selected":"")+'>Continuo</option><option value="pontual"'+((p&&p.tipo==="pontual")?" selected":"")+'>Pontual (subtarefas)</option></select></div>'
     +'<div><label>Status</label><select id="proj-status"><option value="em_andamento"'+((!p||p.status==="em_andamento")?" selected":"")+'>Em andamento</option><option value="concluido"'+((p&&p.status==="concluido")?" selected":"")+'>Concluido</option><option value="pausado"'+((p&&p.status==="pausado")?" selected":"")+'>Pausado</option></select></div>'
     +'</div>'
     +'<div class="field"><label>Responsavel</label><select id="proj-resp"><option value="">Selecione...</option>'+respOpts+'</select></div>'
@@ -1797,7 +1797,7 @@ async function salvarProjeto(id){
 }
 async function delProjeto(id){
   closeModal();
-  modalConfirm("Excluir este projeto? O checklist e comentarios tambem serao removidos.",async function(){
+  modalConfirm("Excluir este projeto? As subtarefas e comentarios tambem serao removidos.",async function(){
     try{
       await dbDelProjeto(id);
       projetosDB=projetosDB.filter(function(p){return p.id!==id;});

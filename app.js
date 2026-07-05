@@ -759,7 +759,7 @@ async function renderMinhasTarefas(){
       if(p.arquivado)continue;
       var checklist=await dbFetchChecklist(p.id);
       checklist.filter(function(it){return it.responsavel_id===userDbId;}).forEach(function(it){
-        itens.push({origem:"Projeto",texto:it.titulo||"Item sem titulo",contexto:p.titulo||"Projeto interno",status:it.status,prazo:null,acao:'<button onclick="_mtAbrirProjetos(\''+p.id+'\')" class="rbtn rbtn-sm">Abrir</button>'});
+        itens.push({origem:"Projeto",texto:it.titulo||"Subtarefa sem titulo",contexto:p.titulo||"Projeto interno",status:it.status,prazo:null,acao:'<button onclick="_mtAbrirProjetos(\''+p.id+'\')" class="rbtn rbtn-sm">Abrir</button>'});
       });
     }
   }catch(_){}
