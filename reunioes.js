@@ -2424,6 +2424,114 @@ async function _tcolPersistir(tarefaId,colId,valor){
   }catch(e){toast("Erro ao salvar",true);}
 }
 
+function _subcolInputId(subId,colId){
+  return "scol-inp-"+String(subId).replace(/[^a-zA-Z0-9]/g,'_')+"-"+String(colId).replace(/[^a-zA-Z0-9]/g,'_');
+}
+function _subcolRenderEditor(col,val,subId,parentId,ehPassado){
+  var tipo=col.tipo;
+  var idInp=_subcolInputId(subId,col.id);
+  var salvar='_subcolSalvar(\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')';
+  var fechar='_subcolFechar(\''+subId+'\',\''+parentId+'\','+!!ehPassado+')';
+  if(tipo==='texto'){
+    return '<input id="'+idInp+'" value="'+(val!==undefined&&val!==null?String(val).replace(/"/g,'&quot;'):'')+'" style="width:100%;font-size:12px;" onkeydown="_subcolKd(event,\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')" onblur="_subcolBlur(\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')" autofocus/>';
+  }
+  if(tipo==='numero'){
+    return '<input id="'+idInp+'" type="number" value="'+(val!==undefined&&val!==null?val:'')+'" style="width:100%;font-size:12px;" onkeydown="_subcolKd(event,\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')" onblur="_subcolBlur(\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')" autofocus/>';
+  }
+  if(tipo==='texto_longo'){
+    return '<textarea id="'+idInp+'" rows="3" style="width:100%;font-size:12px;resize:vertical;" autofocus>'+(val||'')+'</textarea>'
+      +'<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;">'
+      +'<button onclick="'+fechar+'" class="rbtn rbtn-sm">Cancelar</button>'
+      +'<button onclick="'+salvar+'" class="rbtn rbtn-sm rbtn-accent">Salvar</button>'
+      +'</div>';
+  }
+  if(tipo==='data'){
+    return '<input id="'+idInp+'" type="date" value="'+(val||'')+'" style="width:100%;font-size:12px;" onchange="'+salvar+'" onblur="'+fechar+'" autofocus/>';
+  }
+  if(tipo==='status'){
+    return '<select id="'+idInp+'" onchange="'+salvar+'" style="width:100%;font-size:12px;" autofocus>'
+      +'<option value="">Sem valor</option>'
+      +(col.opcoes||[]).map(function(o){return '<option value="'+o.id+'"'+(val===o.id?' selected':'')+'>'+o.label+'</option>';}).join("")
+      +'</select>';
+  }
+  if(tipo==='responsavel'){
+    return '<select id="'+idInp+'" onchange="'+salvar+'" style="width:100%;font-size:12px;" autofocus>'
+      +'<option value="">Sem responsável</option>'
+      +(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(val===s?' selected':'')+'>'+s+'</option>';}).join("")
+      +'</select>';
+  }
+  if(tipo==='checkbox'){
+    return '<input id="'+idInp+'" type="checkbox"'+(val?' checked':'')+' onchange="_subcolSalvarCheckbox(\''+subId+'\',\''+parentId+'\',\''+col.id+'\',this.checked,'+!!ehPassado+')" style="width:18px;height:18px;cursor:pointer;accent-color:var(--bt-navy);" autofocus/>';
+  }
+  if(tipo==='link'){
+    return '<input id="'+idInp+'" type="url" value="'+(val||'')+'" placeholder="https://..." style="width:100%;font-size:12px;" onkeydown="_subcolKd(event,\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')" onblur="_subcolBlur(\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')" autofocus/>';
+  }
+  if(tipo==='multi'){
+    var sel=Array.isArray(val)?val:[];
+    var checks=(col.opcoes||[]).map(function(o){
+      return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0;">'
+        +'<input type="checkbox" value="'+o.id+'"'+(sel.indexOf(o.id)>=0?' checked':'')+'/>'
+        +o.label+'</label>';
+    }).join("");
+    return '<div id="'+idInp+'" style="display:flex;flex-direction:column;">'+checks+'</div>'
+      +'<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;">'
+      +'<button onclick="'+fechar+'" class="rbtn rbtn-sm">Cancelar</button>'
+      +'<button onclick="_subcolSalvarMulti(\''+subId+'\',\''+parentId+'\',\''+col.id+'\','+!!ehPassado+')" class="rbtn rbtn-sm rbtn-accent">Aplicar</button>'
+      +'</div>';
+  }
+  return '';
+}
+function _subcolAbrir(subId,parentId,colId,ehPassado){
+  _tcolEditando[subId]=colId;
+  _reloadTarefaCard(parentId,ehPassado);
+  setTimeout(function(){var el=document.getElementById(_subcolInputId(subId,colId));if(el)el.focus();},30);
+}
+function _subcolFechar(subId,parentId,ehPassado){
+  if(_tcolEsc){_tcolEsc=false;return;}
+  delete _tcolEditando[subId];
+  _reloadTarefaCard(parentId,ehPassado);
+}
+function _subcolKd(evt,subId,parentId,colId,ehPassado){
+  if(evt.key==='Enter'){evt.preventDefault();_tcolEsc=true;_subcolSalvar(subId,parentId,colId,ehPassado);}
+  else if(evt.key==='Escape'){_tcolEsc=true;delete _tcolEditando[subId];_reloadTarefaCard(parentId,ehPassado);}
+}
+function _subcolBlur(subId,parentId,colId,ehPassado){
+  if(_tcolEsc){_tcolEsc=false;return;}
+  _subcolSalvar(subId,parentId,colId,ehPassado);
+}
+async function _subcolSalvar(subId,parentId,colId,ehPassado){
+  _tcolEsc=false;
+  var col=_colunasTarefaSnapshot().find(function(c){return c.id===colId;});if(!col)return;
+  var el=document.getElementById(_subcolInputId(subId,colId));if(!el)return;
+  var val;
+  if(col.tipo==='numero'){val=el.value!==''?parseFloat(el.value):null;}
+  else if(col.tipo==='texto_longo'){val=(el.value||'').trim()||null;}
+  else{val=(el.value||'').trim()||null;}
+  await _subcolPersistir(subId,parentId,colId,val,ehPassado);
+}
+async function _subcolSalvarCheckbox(subId,parentId,colId,checked,ehPassado){
+  await _subcolPersistir(subId,parentId,colId,checked?true:null,ehPassado);
+}
+async function _subcolSalvarMulti(subId,parentId,colId,ehPassado){
+  var container=document.getElementById(_subcolInputId(subId,colId));if(!container)return;
+  var checks=container.querySelectorAll("input[type=checkbox]");
+  var sel=[];checks.forEach(function(cb){if(cb.checked)sel.push(cb.value);});
+  await _subcolPersistir(subId,parentId,colId,sel.length?sel:null,ehPassado);
+}
+async function _subcolPersistir(subId,parentId,colId,valor,ehPassado){
+  var sub=(_subtarefasCache[parentId]||[]).find(function(s){return s.id===subId;});
+  var novo=Object.assign({},sub&&sub.campos_valores?sub.campos_valores:{});
+  if(valor===null||valor===undefined||(Array.isArray(valor)&&valor.length===0)){delete novo[colId];}
+  else{novo[colId]=valor;}
+  try{
+    await dbUpsertTarefa({id:subId,campos_valores:novo});
+    if(sub)sub.campos_valores=novo;
+    delete _tcolEditando[subId];
+    _reloadTarefaCard(parentId,ehPassado);
+    toast("Salvo!");
+  }catch(e){toast("Erro ao salvar",true);}
+}
+
 function _buildTarefaCard(t,ce,ehPassado){
   var bar=statusTarefaCor(t.status,'#E24B4A');
   var bg=bar;
@@ -2586,6 +2694,19 @@ function _buildTarefaCard(t,ce,ehPassado){
           html+='<div class="subcell subcell-date'+(sAtrasado?' late':'')+'">'+(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>')+'</div>';
           html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>':'')+'</div>';
           html+='</div>';
+          var subCols=_colunasTarefaSnapshot();
+          if(subCols.length){
+            var valsSub=s.campos_valores||{};
+            html+='<div class="tcols sub-tcols" style="margin:4px 0 8px 28px;">';
+            subCols.forEach(function(col){
+              var editandoSub=_tcolEditando[s.id]===col.id;
+              html+='<div class="tcol'+(ce&&!ehPassado?' editavel':'')+'"'+(ce&&!ehPassado&&!editandoSub?' onclick="_subcolAbrir(\''+s.id+'\',\''+t.id+'\',\''+col.id+'\','+!!ehPassado+')"':'')+'>'
+                +'<div class="tcol-lbl">'+col.label+'</div>'
+                +'<div class="tcol-val">'+(editandoSub?_subcolRenderEditor(col,valsSub[col.id],s.id,t.id,ehPassado):_tcolRenderVal(col,valsSub[col.id]))+'</div>'
+                +'</div>';
+            });
+            html+='</div>';
+          }
         }
       });
     }
@@ -3443,8 +3564,8 @@ function openFormModelo(idOpcional){
     +'</div>'
     +'<hr style="border:none;border-top:1px solid var(--border);margin:8px 0 14px;"/>'
     +'<div class="field">'
-    +'<label style="margin-bottom:4px;display:block;">Colunas das tarefas</label>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Campos extras exibidos em cada card de tarefa desta reunião.</div>'
+    +'<label style="margin-bottom:4px;display:block;">Colunas das tarefas e subtarefas</label>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Campos extras exibidos em cada tarefa e subtarefa desta reunião.</div>'
     +'<div id="mf-colunas-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>'
     +'<button type="button" onclick="_mfAdicionarCampo(\'colunas\')" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar coluna</button>'
     +'</div>'
