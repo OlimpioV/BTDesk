@@ -3363,6 +3363,42 @@ async function salvarProjetoModelo(){
   }catch(e){toast("Erro ao salvar modelo de projetos",true);}
 }
 
+function openAdminDemandaModelo(){
+  var m=demandaModeloDB||{nome:"Demanda padrão",campos:[]};
+  _mfCampos=JSON.parse(JSON.stringify(m.campos||[]));
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,540px);max-height:85vh;overflow-y:auto;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
+    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelo de demandas</div>'
+    +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'</div>'
+    +'<div class="field"><label>Nome</label><input id="dm-nome" value="'+(m.nome||"Demanda padrão").replace(/"/g,'&quot;')+'"/></div>'
+    +'<div class="field">'
+    +'<label style="margin-bottom:6px;display:block;">Campos da demanda</label>'
+    +'<div id="mf-campos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>'
+    +'<button type="button" onclick="_mfAdicionarCampo(\'campos\')" class="rbtn rbtn-sm">'+ic("plus")+' Adicionar campo</button>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">'
+    +'<button class="btn" onclick="closeModal();renderEstrutura()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="salvarDemandaModelo()">Salvar</button>'
+    +'</div>'
+    +'</div></div>';
+  _mfRenderCampos('campos');
+}
+
+async function salvarDemandaModelo(){
+  var nome=(document.getElementById("dm-nome").value||"").trim()||"Demanda padrão";
+  for(var ci=0;ci<_mfCampos.length;ci++){
+    if(!(_mfCampos[ci].label||"").trim()){toast("Preencha o rótulo do campo "+(ci+1),true);return;}
+  }
+  var data={nome:nome,campos:_mfCampos};
+  try{
+    demandaModeloDB=await dbSaveDemandaModelo(data);
+    closeModal();
+    renderEstrutura();
+    toast("Modelo de demandas salvo!");
+  }catch(e){toast("Erro ao salvar modelo de demandas",true);}
+}
+
 function _renderModelosLista(){
   var el=document.getElementById("modelos-lista");if(!el)return;
   if(!modelosDB.length){el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nenhum modelo cadastrado.</div>';return;}

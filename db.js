@@ -170,6 +170,22 @@ async function loadProjetoModelo(){
   try{projetoModeloDB=await dbFetchProjetoModelo();}
   catch(e){projetoModeloDB={nome:"Projeto padrão",campos:[]};}
 }
+async function dbFetchDemandaModelo(){
+  var r=await fetch(SB+"/rest/v1/estrutura_config?id=eq.demanda_modelo&select=data",{headers:H});
+  if(!r.ok)return {nome:"Demanda padrão",campos:[]};
+  var rows=await r.json();
+  return rows&&rows[0]&&rows[0].data?rows[0].data:{nome:"Demanda padrão",campos:[]};
+}
+async function dbSaveDemandaModelo(data){
+  var r=await fetch(SB+"/rest/v1/estrutura_config",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify({id:"demanda_modelo",data:data,atualizado_em:new Date().toISOString()})});
+  if(!r.ok)throw new Error();
+  var rows=await r.json();
+  return rows&&rows[0]?rows[0].data:data;
+}
+async function loadDemandaModelo(){
+  try{demandaModeloDB=await dbFetchDemandaModelo();}
+  catch(e){demandaModeloDB={nome:"Demanda padrão",campos:[]};}
+}
 async function dbFetchProjetoComentarios(projetoId){var r=await fetch(SB+"/rest/v1/projeto_comentarios?projeto_id=eq."+projetoId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertProjetoComentario(c){var r=await fetch(SB+"/rest/v1/projeto_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelProjetoComentario(id){await fetch(SB+"/rest/v1/projeto_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
