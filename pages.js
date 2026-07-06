@@ -108,6 +108,7 @@ async function renderEstrutura(){
     try{_estruturaModelosCache=await dbFetchModelos();modelosDB=_estruturaModelosCache.slice();}catch(_){_estruturaModelosCache=[];}
     try{await loadProjetoModelo();}catch(_){}
     try{await loadDemandaModelo();}catch(_){}
+    try{await loadSubtarefaModelo();}catch(_){}
     var ativos=_estruturaStatusCache.filter(function(s){return s.ativo!==false;}).length;
     var finalizadores=_estruturaStatusCache.filter(function(s){return s.finalizador&&s.ativo!==false;}).length;
     var rows=_estruturaStatusCache.length===0?'<tr><td colspan="6" style="text-align:center;padding:34px;color:var(--text3);">Nenhum status cadastrado</td></tr>':_estruturaStatusCache.map(function(s){
@@ -133,6 +134,7 @@ async function renderEstrutura(){
     }).join("");
     var projCampos=((projetoModeloDB&&projetoModeloDB.campos)||[]).length;
     var demandaCampos=((demandaModeloDB&&demandaModeloDB.campos)||[]).length;
+    var subtarefaCampos=((subtarefaModeloDB&&subtarefaModeloDB.campos)||[]).length;
     app.innerHTML=headerHTML("estrutura")
       +'<div style="padding:24px;max-width:980px;margin:0 auto;">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;">'
@@ -173,6 +175,14 @@ async function renderEstrutura(){
       +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow-md);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">'
       +'<div><div style="font-size:13px;font-weight:800;color:var(--bt-navy);">'+((demandaModeloDB&&demandaModeloDB.nome)||"Demanda padr\u00e3o")+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">'+demandaCampos+' campo(s) configurado(s)</div></div>'
       +'<span class="badge" style="background:#f1f5f9;color:#64748b;">Snapshot em demandas novas</span>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 12px;gap:12px;">'
+      +'<div><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelo de subtarefas</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Campos extras exibidos nas subtarefas das demandas do kanban.</div></div>'
+      +'<button class="btn btn-accent" onclick="openAdminSubtarefaModelo()" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+ic("edit")+' Editar campos</button>'
+      +'</div>'
+      +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow-md);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+      +'<div><div style="font-size:13px;font-weight:800;color:var(--bt-navy);">'+((subtarefaModeloDB&&subtarefaModeloDB.nome)||"Subtarefa padr\u00e3o")+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">'+subtarefaCampos+' campo(s) configurado(s)</div></div>'
+      +'<span class="badge" style="background:#f1f5f9;color:#64748b;">Snapshot em subtarefas novas</span>'
       +'</div>'
       +'</div>';
   }catch(e){toast("Erro ao carregar estrutura",true);}

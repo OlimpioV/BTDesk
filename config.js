@@ -41,6 +41,7 @@ let tarefaStatusDB=[];
 let reunioesDB=[],pautasDB=[],projetosDB=[],notificacoesDB=[];
 let projetoModeloDB={nome:"Projeto padrão",campos:[]};
 let demandaModeloDB={nome:"Demanda padrão",campos:[]};
+let subtarefaModeloDB={nome:"Subtarefa padrão",campos:[]};
 let reuniaoAtiva=null;
 let filterResp="",filterTipo="",filterStatus="",filterCliente="",filterCaso="";
 let viewMode="kanban";
