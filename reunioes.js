@@ -755,6 +755,69 @@ async function _projCampoPersistir(projetoId,campoId,valor){
     toast("Salvo!");
   }catch(e){toast("Erro ao salvar",true);}
 }
+function _snapshotSubtarefaProjetoModelo(){
+  var m=subtarefaModeloDB||{nome:"Subtarefa padrão",campos:[]};
+  return {nome:m.nome||"Subtarefa padrão",campos:JSON.parse(JSON.stringify(m.campos||[]))};
+}
+function _checklistCampos(it){
+  if(it&&it.modelo_snapshot&&it.modelo_snapshot.campos)return it.modelo_snapshot.campos||[];
+  return (subtarefaModeloDB&&subtarefaModeloDB.campos)||[];
+}
+function _checkCampoId(itemId,campoId){
+  return "clc-"+String(itemId).replace(/[^a-zA-Z0-9]/g,"_")+"-"+String(campoId).replace(/[^a-zA-Z0-9]/g,"_");
+}
+function _buildChecklistCamposPreview(it){
+  var campos=_checklistCampos(it);
+  if(!campos.length)return "";
+  var vals=it.campos_valores||{};
+  var html='<div class="tcols" style="margin:5px 0 8px 18px;">';
+  campos.forEach(function(campo){
+    html+='<div class="tcol"><div class="tcol-lbl">'+campo.label+'</div><div class="tcol-val">'+_tcolRenderVal(campo,vals[campo.id])+'</div></div>';
+  });
+  html+='</div>';
+  return html;
+}
+function _buildChecklistCamposEdit(it){
+  var campos=_checklistCampos(it);
+  if(!campos.length)return "";
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;">';
+  campos.forEach(function(campo){
+    html+='<div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:3px;">'+campo.label+'</div>'+_checkCampoInput(it,campo)+'</div>';
+  });
+  html+='</div>';
+  return html;
+}
+function _checkCampoInput(it,campo){
+  var val=(it.campos_valores||{})[campo.id];
+  var id=_checkCampoId(it.id,campo.id);
+  if(campo.tipo==="texto")return '<input id="'+id+'" value="'+(val!==undefined&&val!==null?String(val).replace(/"/g,'&quot;'):'')+'" style="width:100%;font-size:12px;"/>';
+  if(campo.tipo==="numero")return '<input id="'+id+'" type="number" value="'+(val!==undefined&&val!==null?val:'')+'" style="width:100%;font-size:12px;"/>';
+  if(campo.tipo==="texto_longo")return '<textarea id="'+id+'" rows="2" style="width:100%;font-size:12px;resize:vertical;">'+(val||'')+'</textarea>';
+  if(campo.tipo==="data")return '<input id="'+id+'" type="date" value="'+(val||'')+'" style="width:100%;font-size:12px;"/>';
+  if(campo.tipo==="status")return '<select id="'+id+'" style="width:100%;font-size:12px;"><option value="">Sem valor</option>'+(campo.opcoes||[]).map(function(o){return '<option value="'+o.id+'"'+(val===o.id?' selected':'')+'>'+o.label+'</option>';}).join("")+'</select>';
+  if(campo.tipo==="responsavel")return '<select id="'+id+'" style="width:100%;font-size:12px;"><option value="">Sem responsável</option>'+(responsaveis||[]).map(function(r){return '<option value="'+r+'"'+(val===r?' selected':'')+'>'+r+'</option>';}).join("")+'</select>';
+  if(campo.tipo==="checkbox")return '<input id="'+id+'" type="checkbox"'+(val?' checked':'')+' style="width:18px;height:18px;accent-color:var(--bt-navy);"/>';
+  if(campo.tipo==="link")return '<input id="'+id+'" type="url" value="'+(val||'')+'" placeholder="https://..." style="width:100%;font-size:12px;"/>';
+  if(campo.tipo==="multi"){
+    var sel=Array.isArray(val)?val:[];
+    return '<div id="'+id+'" style="display:flex;flex-direction:column;gap:2px;">'+(campo.opcoes||[]).map(function(o){return '<label style="display:flex;gap:5px;align-items:center;font-size:12px;color:var(--text2);"><input type="checkbox" value="'+o.id+'"'+(sel.indexOf(o.id)>=0?' checked':'')+'/> '+o.label+'</label>';}).join("")+'</div>';
+  }
+  return "";
+}
+function _checkCamposColetar(itemId,campos,atual){
+  var novo=Object.assign({},atual||{});
+  campos.forEach(function(campo){
+    var el=document.getElementById(_checkCampoId(itemId,campo.id));if(!el)return;
+    var val=null;
+    if(campo.tipo==="checkbox")val=el.checked?true:null;
+    else if(campo.tipo==="multi"){var sel=[];el.querySelectorAll("input[type=checkbox]").forEach(function(cb){if(cb.checked)sel.push(cb.value);});val=sel.length?sel:null;}
+    else if(campo.tipo==="numero")val=el.value!==""?parseFloat(el.value):null;
+    else val=(el.value||"").trim()||null;
+    if(val===null||val===undefined||(Array.isArray(val)&&!val.length))delete novo[campo.id];
+    else novo[campo.id]=val;
+  });
+  return novo;
+}
 function _buildChecklistBar(checklist){
   if(!checklist||!checklist.length)return '';
   return '<div class="prog">'+checklist.map(function(it){
@@ -777,6 +840,7 @@ function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
         html+='<button onclick="delChecklistItem(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" class="rbtn rbtn-sm rbtn-danger" style="padding:2px 6px;flex-shrink:0;">'+ic("trash")+'</button>';
       }
       html+='</div>';
+      html+=_buildChecklistCamposPreview(it);
     });
   }
   if(ce&&!ehPassado){
@@ -842,7 +906,7 @@ async function _salvarAddChecklistItem(projetoId,ehPassado){
   var status=document.getElementById("cli-status-"+projetoId).value||"nao_iniciada";
   var cl=_checklistCache[projetoId]||[];
   try{
-    var criado=await dbUpsertChecklistItem({projeto_id:projetoId,titulo:titulo,status:status,responsavel_id:respId,ordem:cl.length});
+    var criado=await dbUpsertChecklistItem({projeto_id:projetoId,titulo:titulo,status:status,responsavel_id:respId,ordem:cl.length,modelo_snapshot:_snapshotSubtarefaProjetoModelo(),campos_valores:{}});
     if(!_checklistCache[projetoId])_checklistCache[projetoId]=[];
     if(criado)_checklistCache[projetoId].push(criado);
     _reloadProjetoCard(projetoId,ehPassado);toast("Subtarefa adicionada!");
@@ -861,6 +925,7 @@ async function _editChecklistItemInline(itemId,projetoId,ehPassado){
     +'<select id="cli-edit-r-'+itemId+'" style="flex:1;font-size:11px;"><option value="">Responsável...</option>'+respOpts+'</select>'
     +'<select id="cli-edit-s-'+itemId+'" style="flex:1;font-size:11px;">'+statusTarefaOptions(it.status||"nao_iniciada",false)+'</select>'
     +'</div>'
+    +_buildChecklistCamposEdit(it)
     +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
     +'<button onclick="_reloadProjetoCard(\''+projetoId+'\','+!!ehPassado+')" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
     +'<button onclick="_saveChecklistItemInline(\''+itemId+'\',\''+projetoId+'\','+!!ehPassado+')" class="btn btn-primary" style="font-size:10px;padding:2px 8px;">Salvar</button>'
@@ -872,9 +937,14 @@ async function _saveChecklistItemInline(itemId,projetoId,ehPassado){
   var respId=document.getElementById("cli-edit-r-"+itemId).value||null;
   var status=document.getElementById("cli-edit-s-"+itemId).value||"pendente";
   try{
-    var atualizado=await dbUpsertChecklistItem({id:itemId,titulo:titulo,responsavel_id:respId,status:status});
+    var it=(_checklistCache[projetoId]||[]).find(function(x){return x.id===itemId;})||{};
+    var campos=_checklistCampos(it);
+    var atualValores=it.campos_valores||{};
+    var modelo=(it&&it.modelo_snapshot)||_snapshotSubtarefaProjetoModelo();
+    var valores=_checkCamposColetar(itemId,campos,atualValores);
+    var atualizado=await dbUpsertChecklistItem({id:itemId,titulo:titulo,responsavel_id:respId,status:status,modelo_snapshot:modelo,campos_valores:valores});
     var cl=_checklistCache[projetoId]||[];
-    _checklistCache[projetoId]=cl.map(function(x){return x.id===itemId?Object.assign({},x,atualizado||{titulo:titulo,status:status,responsavel_id:respId}):x;});
+    _checklistCache[projetoId]=cl.map(function(x){return x.id===itemId?Object.assign({},x,atualizado||{titulo:titulo,status:status,responsavel_id:respId,modelo_snapshot:modelo,campos_valores:valores}):x;});
     _reloadProjetoCard(projetoId,ehPassado);toast("Subtarefa atualizada!");
   }catch(e){toast("Erro",true);}
 }
