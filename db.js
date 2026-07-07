@@ -30,6 +30,7 @@ async function dbFetchTodasTarefas(){
   return all;
 }
 async function dbUpsertTarefa(t){
+  if(t&&t.status!==undefined&&typeof normalizarStatusTarefa==="function")t=normalizarStatusTarefa(t,t.status);
   // Colunas uuid: string vazia ou undefined gera 400 (invalid input syntax for type uuid). Remover antes de enviar.
   if(t){["equipe_id","reuniao_id","pauta_categoria_id","parent_id"].forEach(function(k){if(t[k]===""||t[k]===undefined)delete t[k];});}
   // Update parcial (id sem texto): usar PATCH. O upsert merge-duplicates roda INSERT ... ON CONFLICT e viola texto NOT NULL quando texto e omitido.
@@ -206,7 +207,7 @@ async function dbFetchProjetoComentarios(projetoId){var r=await fetch(SB+"/rest/
 async function dbUpsertProjetoComentario(c){var r=await fetch(SB+"/rest/v1/projeto_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelProjetoComentario(id){await fetch(SB+"/rest/v1/projeto_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
 async function dbFetchChecklist(projetoId){var r=await fetch(SB+"/rest/v1/checklist_projeto?projeto_id=eq."+projetoId+"&select=*,usuarios(id,nome,sigla)&order=ordem",{headers:H});if(!r.ok)return [];return r.json();}
-async function dbUpsertChecklistItem(item){var r=await fetch(SB+"/rest/v1/checklist_projeto",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
+async function dbUpsertChecklistItem(item){if(item&&item.status!==undefined&&typeof normalizarStatusTarefa==="function")item=normalizarStatusTarefa(item,item.status);var r=await fetch(SB+"/rest/v1/checklist_projeto",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(item)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 async function dbDelChecklistItem(id){await fetch(SB+"/rest/v1/checklist_projeto?id=eq."+id,{method:"DELETE",headers:H});}
 // ── REUNIAO COMENTARIOS DB ──
 async function dbFetchReuniaoComentarios(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_comentarios?reuniao_id=eq."+reuniaoId+"&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}

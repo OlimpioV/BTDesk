@@ -41,6 +41,33 @@ function statusTarefaFinalizador(id){
   var st=statusTarefaById(id,true);
   return !!(st&&st.finalizador)||id==="concluido"||id==="concluida";
 }
+function statusTarefaDataHoje(){
+  return new Date().toISOString().slice(0,10);
+}
+function statusTarefaCamposConclusao(item,status){
+  var campos=Object.assign({},item&&item.campos_valores?item.campos_valores:{});
+  if(statusTarefaFinalizador(status)){
+    if(!campos.concluida_em)campos.concluida_em=statusTarefaDataHoje();
+  } else {
+    delete campos.concluida_em;
+  }
+  return campos;
+}
+function normalizarStatusTarefa(item,status){
+  var out=Object.assign({},item||{});
+  var st=status!==undefined?status:out.status;
+  out.status=st;
+  out.campos_valores=statusTarefaCamposConclusao(out,st);
+  return out;
+}
+function statusTarefaConclusaoEm(item){
+  return item&&item.campos_valores?item.campos_valores.concluida_em||"": "";
+}
+function statusTarefaFmtData(data){
+  if(!data)return "";
+  var p=String(data).slice(0,10).split("-");
+  return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:data;
+}
 function statusTarefaOptions(selected,includeInactive){
   var rows=statusTarefaList(!!includeInactive);
   if(selected&&!rows.some(function(s){return s.id===selected;})){

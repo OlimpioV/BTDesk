@@ -377,12 +377,17 @@ async function addTarefa(cardId,texto,resp,di,df,st){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   var stList=statusTarefaList(false);
   var t={id:uid(),texto:texto,responsavel:resp||"",dataInicio:di||"",dataFim:df||"",status:st||(stList[0]?stList[0].id:"pendente"),criado:new Date().toISOString(),modelo_snapshot:_snapshotSubtarefaModelo(),campos_valores:{}};
+  t=normalizarStatusTarefa(t,t.status);
   card.tarefas=getTarefas(card);card.tarefas.push(t);
   await dbUpsert(card);toast("Subtarefa adicionada!");refreshTarefasPanel(cardId);
 }
 async function updateTarefa(cardId,tarefaId,fields){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  card.tarefas=(card.tarefas||[]).map(function(t){return t.id===tarefaId?Object.assign({},t,fields):t;});
+  card.tarefas=(card.tarefas||[]).map(function(t){
+    if(t.id!==tarefaId)return t;
+    var next=Object.assign({},t,fields);
+    return normalizarStatusTarefa(next,next.status);
+  });
   await dbUpsert(card);refreshTarefasPanel(cardId);
 }
 async function delTarefa(cardId,tarefaId){
@@ -468,7 +473,11 @@ async function saveTarefaInline(cardId,tarefaId){
     modelo_snapshot:(atual&&atual.modelo_snapshot)||_snapshotSubtarefaModelo(),
     campos_valores:_subtarefaCamposColetar(tarefaId,camposModelo,atual?atual.campos_valores:{})
   };
-  card.tarefas=(card.tarefas||[]).map(function(t){return t.id===tarefaId?Object.assign({},t,fields):t;});
+  card.tarefas=(card.tarefas||[]).map(function(t){
+    if(t.id!==tarefaId)return t;
+    var next=Object.assign({},t,fields);
+    return normalizarStatusTarefa(next,next.status);
+  });
   try{await dbUpsert(card);toast("Salvo!");refreshTarefasPanel(cardId);}catch(e){toast("Erro",true);}
 }
 function buildTarefasHTML(card,ce){
@@ -494,6 +503,7 @@ function buildTarefasHTML(card,ce){
       if(t.dataFim)dateStr+=t.dataFim.split("-").reverse().join("/");
       dateStr+="</span>";
     }
+    var concEm=statusTarefaConclusaoEm(t);
     var chevron="<svg id=\"tch-"+t.id+"\" width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"2.5\" stroke-linecap=\"round\" style=\"flex-shrink:0;transition:transform .2s;\"><polyline points=\"6 9 12 15 18 9\"/></svg>";
 
     // VIEW row - clicável
@@ -505,6 +515,7 @@ function buildTarefasHTML(card,ce){
     html+="<span style=\"display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:"+col.badgeBg+";color:"+col.badgeText+";\"><span style=\"width:6px;height:6px;border-radius:50%;background:"+col.dot+";flex-shrink:0;\"></span>"+col.label+"</span>";
     if(t.responsavel)html+="<span style=\"font-size:10px;font-weight:600;background:#f4f5f7;border-radius:4px;padding:2px 6px;color:#5e6c84;\">"+t.responsavel+"</span>";
     if(dateStr)html+=dateStr;
+    if(concEm)html+="<span style=\"font-size:10px;color:#16a34a;font-weight:700;\">Concluida em "+statusTarefaFmtData(concEm)+"</span>";
     html+="</div></div>";
     html+=_buildSubtarefaCamposPreview(t);
 

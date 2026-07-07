@@ -831,10 +831,12 @@ function _buildChecklistUI(projetoId,checklist,ce,ehPassado){
     checklist.forEach(function(it){
       var cor=statusTarefaCor(it.status,'#94a3b8');
       var respIt=(it.usuarios&&(it.usuarios.sigla||it.usuarios.nome))||"";
+      var concEm=statusTarefaConclusaoEm(it);
       html+='<div id="cl-item-'+it.id+'" class="cl-item">';
       html+='<span class="cl-dot" style="background:'+cor+';"></span>';
       html+='<span class="cl-t">'+it.titulo+'</span>';
       if(respIt)html+='<span class="cl-resp">'+respIt+'</span>';
+      if(concEm)html+='<span class="cl-resp" style="background:#dcfce7;color:#15803d;">Concluida em '+statusTarefaFmtData(concEm)+'</span>';
       if(ce&&!ehPassado){
         html+='<button onclick="_editChecklistItemInline(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" class="rbtn rbtn-sm" style="padding:2px 6px;flex-shrink:0;">'+ic("edit")+'</button>';
         html+='<button onclick="delChecklistItem(\''+it.id+'\',\''+projetoId+'\','+ehPassado+')" class="rbtn rbtn-sm rbtn-danger" style="padding:2px 6px;flex-shrink:0;">'+ic("trash")+'</button>';
@@ -906,7 +908,8 @@ async function _salvarAddChecklistItem(projetoId,ehPassado){
   var status=document.getElementById("cli-status-"+projetoId).value||"nao_iniciada";
   var cl=_checklistCache[projetoId]||[];
   try{
-    var criado=await dbUpsertChecklistItem({projeto_id:projetoId,titulo:titulo,status:status,responsavel_id:respId,ordem:cl.length,modelo_snapshot:_snapshotSubtarefaProjetoModelo(),campos_valores:{}});
+    var novoItem=normalizarStatusTarefa({projeto_id:projetoId,titulo:titulo,status:status,responsavel_id:respId,ordem:cl.length,modelo_snapshot:_snapshotSubtarefaProjetoModelo(),campos_valores:{}},status);
+    var criado=await dbUpsertChecklistItem(novoItem);
     if(!_checklistCache[projetoId])_checklistCache[projetoId]=[];
     if(criado)_checklistCache[projetoId].push(criado);
     _reloadProjetoCard(projetoId,ehPassado);toast("Subtarefa adicionada!");
@@ -942,9 +945,10 @@ async function _saveChecklistItemInline(itemId,projetoId,ehPassado){
     var atualValores=it.campos_valores||{};
     var modelo=(it&&it.modelo_snapshot)||_snapshotSubtarefaProjetoModelo();
     var valores=_checkCamposColetar(itemId,campos,atualValores);
-    var atualizado=await dbUpsertChecklistItem({id:itemId,titulo:titulo,responsavel_id:respId,status:status,modelo_snapshot:modelo,campos_valores:valores});
+    var patch=normalizarStatusTarefa({id:itemId,titulo:titulo,responsavel_id:respId,status:status,modelo_snapshot:modelo,campos_valores:valores},status);
+    var atualizado=await dbUpsertChecklistItem(patch);
     var cl=_checklistCache[projetoId]||[];
-    _checklistCache[projetoId]=cl.map(function(x){return x.id===itemId?Object.assign({},x,atualizado||{titulo:titulo,status:status,responsavel_id:respId,modelo_snapshot:modelo,campos_valores:valores}):x;});
+    _checklistCache[projetoId]=cl.map(function(x){return x.id===itemId?Object.assign({},x,atualizado||patch):x;});
     _reloadProjetoCard(projetoId,ehPassado);toast("Subtarefa atualizada!");
   }catch(e){toast("Erro",true);}
 }
@@ -2760,7 +2764,8 @@ function _buildTarefaCard(t,ce,ehPassado){
           html+='</div>';
           html+='<div class="subcell subcell-status"><span class="substat" style="background:'+sBar+';'+(canEdit?'cursor:pointer;':'')+'"'+(canEdit?' onclick="_abrirStatusDropdown(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')+'>'+sLbl+(canEdit?' <span class="cv">&#9660;</span>':'')+'</span></div>';
           var sAtrasado=s.data_fim&&_isAtrasado(s.data_fim,s.status);
-          html+='<div class="subcell subcell-date'+(sAtrasado?' late':'')+'">'+(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>')+'</div>';
+          var sConcEm=statusTarefaConclusaoEm(s);
+          html+='<div class="subcell subcell-date'+(sAtrasado?' late':'')+'">'+(sConcEm?'<span style="color:#16a34a;font-weight:700;">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>'))+'</div>';
           html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>':'')+'</div>';
           html+='</div>';
           var subCols=_colunasTarefaSnapshot();
@@ -2816,9 +2821,11 @@ async function _salvarEditTarefaPauta(tarefaId){
   var inicio=document.getElementById("tp-edit-inicio-"+tarefaId).value||null;
   var fim=document.getElementById("tp-edit-fim-"+tarefaId).value||null;
   try{
-    await dbUpsertTarefa({id:tarefaId,texto:texto,descricao:descricao,responsavel:resp,status:status,data_inicio:inicio||null,data_fim:fim||null});
     var rId=reuniaoAtiva?reuniaoAtiva.id:'';
-    (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId){t.texto=texto;t.descricao=descricao;t.responsavel=resp;t.status=status;t.data_inicio=inicio;t.data_fim=fim;}});
+    var atualTarefa=(_tarefasPautaCache[rId]||[]).find(function(t){return t.id===tarefaId;})||{};
+    var patchTarefa=normalizarStatusTarefa({id:tarefaId,texto:texto,descricao:descricao,responsavel:resp,status:status,data_inicio:inicio||null,data_fim:fim||null,campos_valores:atualTarefa.campos_valores||{}},status);
+    await dbUpsertTarefa(patchTarefa);
+    (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId){Object.assign(t,patchTarefa);}});
     _itemEditando=null;
     _reloadTarefaCard(tarefaId,false);
     toast("Tarefa salva!");
@@ -2873,8 +2880,10 @@ async function _salvarEditSubtarefaPauta(subId,parentId,ehPassado){
   var respSubEdit=document.getElementById("tp-sub-edit-resp-"+subId);
   var respSE=respSubEdit?respSubEdit.value||null:null;
   try{
-    await dbUpsertTarefa({id:subId,texto:texto,descricao:descricao,status:status,responsavel:respSE||null});
-    (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===subId){s.texto=texto;s.descricao=descricao;s.status=status;s.responsavel=respSE||null;}});
+    var atualSub=(_subtarefasCache[parentId]||[]).find(function(s){return s.id===subId;})||{};
+    var patchSub=normalizarStatusTarefa({id:subId,texto:texto,descricao:descricao,status:status,responsavel:respSE||null,campos_valores:atualSub.campos_valores||{}},status);
+    await dbUpsertTarefa(patchSub);
+    (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===subId){Object.assign(s,patchSub);}});
     _subEditando=null;
     _reloadTarefaCard(parentId,ehPassado);
     toast("Subtarefa salva!");
@@ -3182,21 +3191,16 @@ async function _alterarStatusTarefa(tarefaId,novoStatus,isSub,parentId,ehPassado
   try{
     if(isSub&&parentId){
       var sub=(_subtarefasCache[parentId]||[]).find(function(s){return s.id===tarefaId;});
-      var subCampos=Object.assign({},sub&&sub.campos_valores?sub.campos_valores:{});
-      if(statusTarefaFinalizador(novoStatus)){if(!subCampos.concluida_em)subCampos.concluida_em=new Date().toISOString().slice(0,10);}
-      else{delete subCampos.concluida_em;}
-      await dbUpsertTarefa({id:tarefaId,status:novoStatus,campos_valores:subCampos});
-      (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===tarefaId)s.status=novoStatus;});
-      if(sub)sub.campos_valores=subCampos;
+      var patchSub=normalizarStatusTarefa({id:tarefaId,status:novoStatus,campos_valores:sub&&sub.campos_valores?sub.campos_valores:{}},novoStatus);
+      await dbUpsertTarefa(patchSub);
+      (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===tarefaId){s.status=novoStatus;s.campos_valores=patchSub.campos_valores;}});
       _reloadTarefaCard(parentId,ehPassado);
     } else {
       var rId=reuniaoAtiva?reuniaoAtiva.id:'';
       var tarefa=(_tarefasPautaCache[rId]||[]).find(function(t){return t.id===tarefaId;});
-      var campos=Object.assign({},tarefa&&tarefa.campos_valores?tarefa.campos_valores:{});
-      if(statusTarefaFinalizador(novoStatus)){if(!campos.concluida_em)campos.concluida_em=new Date().toISOString().slice(0,10);}
-      else{delete campos.concluida_em;}
-      await dbUpsertTarefa({id:tarefaId,status:novoStatus,campos_valores:campos});
-      (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId){t.status=novoStatus;t.campos_valores=campos;}});
+      var patchTarefa=normalizarStatusTarefa({id:tarefaId,status:novoStatus,campos_valores:tarefa&&tarefa.campos_valores?tarefa.campos_valores:{}},novoStatus);
+      await dbUpsertTarefa(patchTarefa);
+      (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId){t.status=novoStatus;t.campos_valores=patchTarefa.campos_valores;}});
       _reloadTarefaCard(tarefaId,ehPassado);
     }
   }catch(_){toast("Erro ao alterar status",true);}
@@ -3979,6 +3983,8 @@ async function _confirmarDuplicarTarefa(t,vals){
     if(vals.opcoes.valores&&t.campos_valores&&Object.keys(t.campos_valores).length){
       nova.campos_valores=JSON.parse(JSON.stringify(t.campos_valores));
     }
+    if(nova.campos_valores)delete nova.campos_valores.concluida_em;
+    nova=normalizarStatusTarefa(nova,nova.status);
     await dbUpsertTarefa(nova);
     if(rId)await dbUpsertReuniaoTarefa({reuniao_id:rId,tarefa_id:novoId});
     // Subtarefas
@@ -3997,6 +4003,7 @@ async function _confirmarDuplicarTarefa(t,vals){
         if(s.data_fim)ns.data_fim=s.data_fim;
         if(rId)ns.reuniao_id=rId;
         if(eqId)ns.equipe_id=eqId;
+        ns=normalizarStatusTarefa(ns,ns.status);
         await dbUpsertTarefa(ns);
       }
     }
@@ -4049,6 +4056,7 @@ async function _confirmarDuplicarSubtarefa(sub,parentId,vals){
     if(sub.data_fim)nova.data_fim=sub.data_fim;
     if(rId)nova.reuniao_id=rId;
     if(eqId)nova.equipe_id=eqId;
+    nova=normalizarStatusTarefa(nova,nova.status);
     await dbUpsertTarefa(nova);
     // Comentários
     if(vals.opcoes.comentarios){
@@ -4135,6 +4143,8 @@ async function _confirmarDuplicarReuniao(r,vals){
         if(vals.opcoes.valores&&t.campos_valores&&Object.keys(t.campos_valores).length){
           nt.campos_valores=JSON.parse(JSON.stringify(t.campos_valores));
         }
+        if(nt.campos_valores)delete nt.campos_valores.concluida_em;
+        nt=normalizarStatusTarefa(nt,nt.status);
         await dbUpsertTarefa(nt);
         await dbUpsertReuniaoTarefa({reuniao_id:nova.id,tarefa_id:novoId});
       }
@@ -4149,6 +4159,7 @@ async function _confirmarDuplicarReuniao(r,vals){
         if(s.data_inicio)ns.data_inicio=s.data_inicio;
         if(s.data_fim)ns.data_fim=s.data_fim;
         if(s.equipe_id)ns.equipe_id=s.equipe_id;
+        ns=normalizarStatusTarefa(ns,ns.status);
         await dbUpsertTarefa(ns);
       }
     }
