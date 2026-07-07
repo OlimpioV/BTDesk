@@ -428,27 +428,30 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .cl-main .cl-t{flex:none;overflow-wrap:break-word;}
 .reun-wrap .cl-desc{font-size:11px;color:var(--text3);line-height:1.45;overflow-wrap:break-word;word-break:break-word;}
 /* Subtarefas em formato de tabela (estilo Monday) */
-.reun-wrap .subboard{margin-top:6px;border:1px solid var(--border-soft);border-radius:8px;overflow:hidden;background:#fff;}
+.reun-wrap .subboard{margin-top:6px;border:1px solid var(--border-soft);border-radius:8px;overflow-x:auto;overflow-y:hidden;background:#fff;}
 .reun-wrap .cl.cl-subtasks{margin-top:0;padding-top:0;border-top:none;}
 .reun-wrap .cl.cl-subtasks .subboard{margin-top:0;}
-.reun-wrap .subcols,.reun-wrap .subrow{display:grid;grid-template-columns:minmax(0,1fr) var(--col-resp) var(--col-status) var(--col-prazo) 26px;gap:10px;align-items:center;}
+.reun-wrap .subcols,.reun-wrap .subrow{display:grid;grid-template-columns:minmax(260px,1fr) minmax(78px,var(--col-resp)) var(--col-status) minmax(68px,var(--col-prazo)) 26px;gap:8px;align-items:start;}
 .reun-wrap .subcols{padding:6px 12px;background:var(--surface2);border-bottom:1px solid var(--border-soft);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);}
-.reun-wrap .subrow{padding:7px 12px;border-bottom:1px solid var(--border-soft);transition:background .12s;}
+.reun-wrap .subcols{align-items:center;}
+.reun-wrap .subrow{padding:9px 12px;border-bottom:1px solid var(--border-soft);transition:background .12s;}
 .reun-wrap .subrow:last-of-type{border-bottom:none;}
 .reun-wrap .subrow:hover{background:#f7f9fb;}
-.reun-wrap .subcell{min-width:0;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);overflow:hidden;}
-.reun-wrap .subcell-name{gap:8px;}
+.reun-wrap .subcell{min-width:0;display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--text2);overflow:hidden;}
+.reun-wrap .subcell-name{gap:8px;min-width:0;}
 .reun-wrap .subdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.reun-wrap .subname-wrap{min-width:0;display:flex;flex-direction:column;gap:1px;}
-.reun-wrap .subname{font-size:12.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reun-wrap .subname-wrap{min-width:0;width:100%;flex:1;display:flex;flex-direction:column;gap:3px;}
+.reun-wrap .subname{display:block;max-width:100%;font-size:12.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
 .reun-wrap .subname.done{text-decoration:line-through;color:var(--text3);}
-.reun-wrap .subdesc{font-size:10.5px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reun-wrap .subdesc{display:-webkit-box;max-width:100%;font-size:10.8px;color:var(--text3);line-height:1.35;overflow:hidden;white-space:normal;overflow-wrap:break-word;word-break:normal;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.reun-wrap .subdesc:has(textarea){display:block;overflow:visible;-webkit-line-clamp:unset;}
 .reun-wrap .subdesc-add{font-style:italic;color:var(--text-faint);cursor:pointer;}
 .reun-wrap .subresp-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;}
-.reun-wrap .subcell-status{overflow:visible;}
+.reun-wrap .subcell-resp{align-items:center;padding-top:1px;}
+.reun-wrap .subcell-status{overflow:visible;align-items:center;}
 .reun-wrap .substat{display:inline-flex;align-items:center;justify-content:center;gap:5px;width:100%;height:var(--stat-h);border-radius:6px;color:#fff;font-weight:700;font-size:11px;white-space:nowrap;overflow:hidden;padding:0 6px;box-shadow:0 1px 2px rgba(16,24,40,.12);}
 .reun-wrap .substat .cv{font-size:7px;opacity:.85;}
-.reun-wrap .subcell-date{font-size:11px;color:var(--text3);white-space:nowrap;}
+.reun-wrap .subcell-date{align-items:center;font-size:11px;color:var(--text3);white-space:nowrap;padding-top:2px;}
 .reun-wrap .subcell-date.late{color:#e2445c;font-weight:700;}
 .reun-wrap .subcell-menu{justify-content:flex-end;overflow:visible;}
 .reun-wrap .subadd{display:flex;gap:6px;align-items:center;padding:7px 12px;border-top:1px solid var(--border-soft);background:var(--surface2);}
@@ -459,6 +462,7 @@ button{font-family:inherit;cursor:pointer;}
   .reun-wrap{--col-resp:92px;--col-status:112px;--col-prazo:64px;--col-prog:96px;}
   .reun-wrap .board{overflow-x:auto;}
   .reun-wrap .bcols,.reun-wrap .brow{gap:8px;}
+  .reun-wrap .subcols,.reun-wrap .subrow{grid-template-columns:minmax(220px,1fr) 82px 112px 64px 26px;}
 }
 
 /* Grupo "Anteriores" recolhivel (seta gira ao abrir) */
