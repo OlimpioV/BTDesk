@@ -51,6 +51,8 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: sétimo lote movido de `app.js` para `modal.js`,
   cobrindo fechamento do modal, ações de comentários, etiquetas/status do modal
   e exclusão de demanda.
+- Progresso em 07/07/2026: oitavo lote movido de `app.js` para `pages.js`,
+  cobrindo páginas administrativas de importação, etiquetas, logs e usuários.
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
