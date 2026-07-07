@@ -65,6 +65,11 @@ e comentários; mestre ajusta o sistema quando necessário. Decisões fechadas:
 
 Roadmap consolidado:
 
+- [ ] **Proximo passo pausado: status e datas de conclusao unificados**:
+  consolidar as regras de status, atraso e data de conclusao entre kanban,
+  reunioes e projetos, para todas as subtarefas obedecerem ao mesmo
+  comportamento.
+
 - [x] **Fase 3 — colunas de tarefa pelo modelo** (concluída): o modelo define
   colunas adicionais de tarefa (`reuniao_modelos.colunas_tarefa jsonb`, mesmos
   9 tipos, construtor com seção própria "Colunas das tarefas"); copiadas para

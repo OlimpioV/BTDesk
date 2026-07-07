@@ -2618,7 +2618,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div class="brow"'+dragAttr+'>';
   html+='<div class="brow-strip" style="background:'+bar+';"></div>';
   // coluna 1: expandir
-  html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Expandir">&#9658;</button></div>';
+  html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="'+(subExp?'Ocultar subtarefas':'Ver subtarefas')+'">'+ic("chevdown")+'</button></div>';
   // coluna 2: tarefa (titulo editavel)
   html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(statusTarefaFinalizador(t.status)?' done':'')+'"'
     +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>'
@@ -2678,7 +2678,7 @@ function _buildTarefaCard(t,ce,ehPassado){
     if(t.descricao){
       html+='<div id="tp-desc-'+t.id+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
         +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
-    } else if(canEdit){
+    } else if(canEdit&&!(subtarefas&&subtarefas.length)){
       html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
     }
   }
@@ -2712,8 +2712,7 @@ function _buildTarefaCard(t,ce,ehPassado){
 
   // bloco expandido: checklist + campo de adicionar subtarefa + comentarios
   if(subExp){
-    html+='<div class="cl">';
-    html+='<div class="cl-lbl">Subtarefas</div>';
+    html+='<div class="cl cl-subtasks">';
     html+='<div class="subboard">';
     var _temSubs=subtarefas&&subtarefas.length>0;
     if(_temSubs){
