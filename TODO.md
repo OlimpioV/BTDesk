@@ -44,6 +44,10 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: quinto lote seguro movido de `app.js` para
   `modal.js`, cobrindo helpers de comentários de card (`getCmts`, `addCmt`,
   `editCmt`, `delCmt`, `canEditCmt`, `canComment`).
+- Progresso em 07/07/2026: sexto lote movido de `app.js` para `modal.js`,
+  cobrindo edição inline do modal (`icCell`, `openIcell`, `saveIcell`,
+  autocomplete de cliente, título e observações inline). Não mexeu no modelo de
+  tarefas dos cards.
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
