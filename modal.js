@@ -8,6 +8,92 @@
 // buildTarefasHTML por id), enquanto a versao ativa em app.js usa o modelo
 // antigo (tarefas embutidas no JSON do card). Ao reorganizar, decidir qual
 // modelo manter antes de mover estas funcoes de volta para ca.
+var _demCampoEditando={};
+function _snapshotDemandaModelo(){
+  var m=demandaModeloDB||{nome:"Demanda padrão",campos:[]};
+  return {nome:m.nome||"Demanda padrão",campos:JSON.parse(JSON.stringify(m.campos||[]))};
+}
+function _demandaCampos(card){
+  if(card&&card.modelo_snapshot&&card.modelo_snapshot.campos)return card.modelo_snapshot.campos||[];
+  return (demandaModeloDB&&demandaModeloDB.campos)||[];
+}
+function _buildDemandaCamposGrid(card,editavel){
+  var campos=_demandaCampos(card);
+  if(!campos.length)return "";
+  var vals=card.campos_valores||{};
+  var html='<div class="detail-grid" style="margin-top:8px;">';
+  campos.forEach(function(campo){
+    var editando=_demCampoEditando[card.id]===campo.id;
+    html+='<div class="icell'+(editavel?'':'')+'"'+(editavel&&!editando?' onclick="_demCampoAbrir(\''+card.id+'\',\''+campo.id+'\')"':'')+' style="'+(editavel?'cursor:pointer;':'cursor:default;')+'">'
+      +'<div class="icell-label">'+campo.label+'</div>'
+      +'<div class="icell-val">'+(editando?_demCampoEditor(campo,vals[campo.id],card.id):_tcolRenderVal(campo,vals[campo.id]))+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  return html;
+}
+function _demandaListaResumo(card){
+  var vals=card.campos_valores||{};
+  var campos=_demandaCampos(card).filter(function(c){return vals[c.id]!==undefined&&vals[c.id]!==null&&vals[c.id]!=="";}).slice(0,3);
+  if(!campos.length)return "";
+  return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;">'+campos.map(function(c){
+    return '<span style="font-size:10px;color:var(--text3);background:#f8fafc;border:1px solid var(--border);border-radius:5px;padding:2px 6px;"><b style="color:var(--text2);">'+c.label+':</b> '+_tcolRenderVal(c,vals[c.id])+'</span>';
+  }).join("")+'</div>';
+}
+function _demCampoAbrir(cardId,campoId){
+  _demCampoEditando[cardId]=campoId;
+  renderModal();
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  setTimeout(function(){var el=document.getElementById("dcf-"+vid);if(el)el.focus();},30);
+}
+function _demCampoFechar(cardId){delete _demCampoEditando[cardId];renderModal();}
+function _demCampoEditor(campo,val,cardId){
+  var tipo=campo.tipo;
+  var vid=campo.id.replace(/[^a-zA-Z0-9]/g,'_');
+  if(tipo==='texto')return '<input id="dcf-'+vid+'" value="'+(val!==undefined&&val!==null?String(val).replace(/"/g,'&quot;'):'')+'" style="width:100%;font-size:12px;" onkeydown="_demCampoKd(event,\''+cardId+'\',\''+campo.id+'\')" onblur="_demCampoSalvar(\''+cardId+'\',\''+campo.id+'\')"/>';
+  if(tipo==='numero')return '<input id="dcf-'+vid+'" type="number" value="'+(val!==undefined&&val!==null?val:'')+'" style="width:100%;font-size:12px;" onkeydown="_demCampoKd(event,\''+cardId+'\',\''+campo.id+'\')" onblur="_demCampoSalvar(\''+cardId+'\',\''+campo.id+'\')"/>';
+  if(tipo==='texto_longo')return '<textarea id="dcf-'+vid+'" rows="3" style="width:100%;font-size:12px;resize:vertical;">'+(val||'')+'</textarea><div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button onclick="_demCampoFechar(\''+cardId+'\')" class="rbtn rbtn-sm">Cancelar</button><button onclick="_demCampoSalvar(\''+cardId+'\',\''+campo.id+'\')" class="rbtn rbtn-sm rbtn-accent">Salvar</button></div>';
+  if(tipo==='data')return '<input id="dcf-'+vid+'" type="date" value="'+(val||'')+'" style="width:100%;font-size:12px;" onchange="_demCampoSalvar(\''+cardId+'\',\''+campo.id+'\')" onblur="_demCampoFechar(\''+cardId+'\')"/>';
+  if(tipo==='status')return '<select id="dcf-'+vid+'" onchange="_demCampoSalvar(\''+cardId+'\',\''+campo.id+'\')" style="width:100%;font-size:12px;"><option value="">Sem valor</option>'+(campo.opcoes||[]).map(function(o){return '<option value="'+o.id+'"'+(val===o.id?' selected':'')+'>'+o.label+'</option>';}).join("")+'</select>';
+  if(tipo==='responsavel')return '<select id="dcf-'+vid+'" onchange="_demCampoSalvar(\''+cardId+'\',\''+campo.id+'\')" style="width:100%;font-size:12px;"><option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(val===s?' selected':'')+'>'+s+'</option>';}).join("")+'</select>';
+  if(tipo==='checkbox')return '<input id="dcf-'+vid+'" type="checkbox"'+(val?' checked':'')+' onchange="_demCampoPersistir(\''+cardId+'\',\''+campo.id+'\',this.checked?true:null)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--bt-navy);"/>';
+  if(tipo==='link')return '<input id="dcf-'+vid+'" type="url" value="'+(val||'')+'" placeholder="https://..." style="width:100%;font-size:12px;" onkeydown="_demCampoKd(event,\''+cardId+'\',\''+campo.id+'\')" onblur="_demCampoSalvar(\''+cardId+'\',\''+campo.id+'\')"/>';
+  if(tipo==='multi'){
+    var sel=Array.isArray(val)?val:[];
+    var checks=(campo.opcoes||[]).map(function(o){return '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:2px 0;"><input type="checkbox" value="'+o.id+'"'+(sel.indexOf(o.id)>=0?' checked':'')+'/> '+o.label+'</label>';}).join("");
+    return '<div id="dcf-'+vid+'" style="display:flex;flex-direction:column;">'+checks+'</div><div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button onclick="_demCampoFechar(\''+cardId+'\')" class="rbtn rbtn-sm">Cancelar</button><button onclick="_demCampoSalvarMulti(\''+cardId+'\',\''+campo.id+'\')" class="rbtn rbtn-sm rbtn-accent">Aplicar</button></div>';
+  }
+  return "";
+}
+function _demCampoKd(evt,cardId,campoId){if(evt.key==="Enter"){evt.preventDefault();_demCampoSalvar(cardId,campoId);}else if(evt.key==="Escape"){delete _demCampoEditando[cardId];renderModal();}}
+async function _demCampoSalvar(cardId,campoId){
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  var campo=_demandaCampos(card).find(function(c){return c.id===campoId;});if(!campo)return;
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  var el=document.getElementById("dcf-"+vid);if(!el)return;
+  var val;
+  if(campo.tipo==="numero")val=el.value!==""?parseFloat(el.value):null;
+  else if(campo.tipo==="texto_longo")val=(el.value||"").trim()||null;
+  else val=(el.value||"").trim()||null;
+  await _demCampoPersistir(cardId,campoId,val);
+}
+async function _demCampoSalvarMulti(cardId,campoId){
+  var vid=campoId.replace(/[^a-zA-Z0-9]/g,'_');
+  var container=document.getElementById("dcf-"+vid);if(!container)return;
+  var sel=[];container.querySelectorAll("input[type=checkbox]").forEach(function(cb){if(cb.checked)sel.push(cb.value);});
+  await _demCampoPersistir(cardId,campoId,sel.length?sel:null);
+}
+async function _demCampoPersistir(cardId,campoId,valor){
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  var novo=Object.assign({},card.campos_valores||{});
+  if(valor===null||valor===undefined||(Array.isArray(valor)&&!valor.length))delete novo[campoId];
+  else novo[campoId]=valor;
+  card.campos_valores=novo;
+  try{await dbUpsert(card);delete _demCampoEditando[cardId];renderModal();toast("Salvo!");}
+  catch(e){toast("Erro ao salvar",true);}
+}
+
+
 function getCmts(card){return card.comentarios||[];}
 async function addCmt(cardId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;var cmts=getCmts(card);cmts.push({id:Date.now().toString(),texto,autor:emailUser,data:new Date().toISOString()});card.comentarios=cmts;await dbUpsert(card);await dbLog("Comentou",card.titulo);}
 async function editCmt(cardId,cmtId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getCmts(card).map(function(c){return c.id===cmtId?Object.assign({},c,{texto,editado:true}):c;});await dbUpsert(card);}
