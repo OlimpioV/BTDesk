@@ -66,6 +66,14 @@ function _buildDemandaCamposGrid(card,editavel){
   html+='</div>';
   return html;
 }
+function _demandaListaResumo(card){
+  var vals=card.campos_valores||{};
+  var campos=_demandaCampos(card).filter(function(c){return vals[c.id]!==undefined&&vals[c.id]!==null&&vals[c.id]!=="";}).slice(0,3);
+  if(!campos.length)return "";
+  return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;">'+campos.map(function(c){
+    return '<span style="font-size:10px;color:var(--text3);background:#f8fafc;border:1px solid var(--border);border-radius:5px;padding:2px 6px;"><b style="color:var(--text2);">'+c.label+':</b> '+_tcolRenderVal(c,vals[c.id])+'</span>';
+  }).join("")+'</div>';
+}
 function _demCampoAbrir(cardId,campoId){
   _demCampoEditando[cardId]=campoId;
   renderModal();
@@ -693,12 +701,28 @@ function renderKanban(){
   bindFCI();
 }
 
-// ── LISTA ──
+// LISTA
 function renderLista(){
   viewMode="lista";var ce=perfil==="mestre"||perfil==="advogado";var filtered=getFiltered();
   var app=document.getElementById("app");app.className="page-mode";
-  var rows=filtered.length===0?'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma demanda</td></tr>':filtered.map(function(card){var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",badgeBg:"#f1f5f9",badgeText:"#475569",dot:"#94a3b8"};var sp='<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';"><span style="width:6px;height:6px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</span>';var nc=getCmts(card).length;var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"—");var ac=ce?'<button onclick="openCardModal(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;margin-right:3px;">Abrir</button><button onclick="confirmDelCard(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"—";return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'+'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+card.titulo+'</td>'+'<td style="padding:11px 14px;">'+sp+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"—")+'</td>'+'<td style="padding:11px 14px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"—")+'</td>'+'<td style="padding:11px 14px;font-size:12px;color:var(--text3);">'+(nc?'<span style="display:flex;align-items:center;gap:3px;">'+ic('comment')+' '+nc+'</span>':"—")+'</td>'+'<td style="padding:11px 14px;" onclick="event.stopPropagation()">'+ac+'</td></tr>';}).join("");
-  app.innerHTML=headerHTML("lista")+toolbarHTML(ce)+'<div style="padding:16px 16px 40px;max-width:1400px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Título','Status','C/C','Resp.','Tipos','Início','Encerramento','Com.','Ações'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+  var rows=filtered.length===0?'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);">Nenhuma demanda</td></tr>':filtered.map(function(card){
+    var col=COLS.find(function(c){return c.id===card.status;})||{label:"-",badgeBg:"#f1f5f9",badgeText:"#475569",dot:"#94a3b8"};
+    var sp='<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+col.badgeBg+';color:'+col.badgeText+';"><span style="width:6px;height:6px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</span>';
+    var nc=getCmts(card).length;
+    var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"-");
+    var ac=ce?'<button onclick="openCardModal(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;margin-right:3px;">Abrir</button><button onclick="confirmDelCard(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"-";
+    return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'
+      +'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+card.titulo+_demandaListaResumo(card)+'</td>'
+      +'<td style="padding:11px 14px;">'+sp+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"-")+'</td>'
+      +'<td style="padding:11px 14px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"-")+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"-")+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"-")+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:var(--text3);">'+(nc?'<span style="display:flex;align-items:center;gap:3px;">'+ic('comment')+' '+nc+'</span>':"-")+'</td>'
+      +'<td style="padding:11px 14px;" onclick="event.stopPropagation()">'+ac+'</td></tr>';
+  }).join("");
+  app.innerHTML=headerHTML("lista")+toolbarHTML(ce)+'<div style="padding:16px 16px 40px;max-width:1400px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:900px;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Titulo','Status','C/C','Resp.','Tipos','Inicio','Encerramento','Com.','Acoes'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
   bindFCI();
 }
 
@@ -998,17 +1022,26 @@ async function saveCard(){
   var id=editingId||Date.now().toString();var existing=editingId?cards.find(function(c){return c.id===editingId;}):null;
   var cliVal=document.getElementById("f-cli").value;var casoEl=document.getElementById("f-caso");var casoVal=casoEl?casoEl.value:"";
   var card={id,titulo,clienteNum:cliVal?parseInt(cliVal):null,casoNum:casoVal?parseInt(casoVal):null,responsavel:document.getElementById("f-resp").value,status:document.getElementById("f-status").value,email:document.getElementById("f-email").value,dataInicio:document.getElementById("f-di").value,dataFim:document.getElementById("f-df").value,horas:document.getElementById("f-horas").value,obs:document.getElementById("f-obs").value,tipos:formTipos.slice(),comentarios:existing?existing.comentarios||[]:[]};
-  if(existing){card.modelo_snapshot=existing.modelo_snapshot||null;card.campos_valores=existing.campos_valores||{};}
+  if(existing){card.modelo_snapshot=existing.modelo_snapshot||_snapshotDemandaModelo();card.campos_valores=existing.campos_valores||{};}
   else{card.modelo_snapshot=_snapshotDemandaModelo();card.campos_valores={};}
   if(existing)card.ordem=existing.ordem||0;else{var cc=cards.filter(function(c){return c.status===card.status;});card.ordem=cc.length;}
   try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(!editingId&&equipeAtiva){await dbUpsertDemandaEquipe({demanda_id:id,equipe_id:equipeAtiva.id});if(!demandaEquipesDB[id])demandaEquipesDB[id]=[];if(!demandaEquipesDB[id].includes(equipeAtiva.id))demandaEquipesDB[id].push(equipeAtiva.id);}if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");editingId=null;document.getElementById("modal-container").innerHTML="";renderView();}catch(e){toast("Erro",true);}
 }
 
 // ── INIT ──
+async function ensureDemandaSnapshots(){
+  var alterados=cards.filter(function(c){return c.id!=="__cols__"&&!c.modelo_snapshot;});
+  if(!alterados.length)return;
+  for(var i=0;i<alterados.length;i++){
+    alterados[i].modelo_snapshot=_snapshotDemandaModelo();
+    alterados[i].campos_valores=alterados[i].campos_valores||{};
+    try{await dbUpsert(alterados[i]);}catch(_){}
+  }
+}
 async function init(){
   var app=document.getElementById("app");app.className="kanban-mode";
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;"><div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#fff;">BT</span></div><div style="width:28px;height:3px;background:linear-gradient(90deg,#ff8204,#e20500);border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div><style>@keyframes pulse{0%,100%{opacity:.4;transform:scaleX(.8)}50%{opacity:1;transform:scaleX(1)}}</style><div style="font-size:13px;color:rgba(255,255,255,.35);">Carregando BTDesk...</div></div>';
-  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes(),loadTarefaStatus(),loadDemandaModelo(),loadSubtarefaModelo()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await verificarAlertasPrazos();}catch(e){toast("Erro ao carregar",true);}
+  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes(),loadTarefaStatus(),loadDemandaModelo(),loadSubtarefaModelo()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await ensureDemandaSnapshots();await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await verificarAlertasPrazos();}catch(e){toast("Erro ao carregar",true);}
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   loadEtq();renderKanban();
 }

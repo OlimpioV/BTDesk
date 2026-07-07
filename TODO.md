@@ -76,7 +76,7 @@ Roadmap consolidado:
   `tarefas.campos_valores jsonb` (PATCH parcial); células `.tcol` no card com
   edição inline por tipo. As colunas intrínsecas (título, status, responsável,
   datas) permanecem, pois movem progresso/atraso/avatars (mesmo desenho do
-  Monday). Subtarefas não recebem colunas custom nesta fase.
+  Monday). Subtarefas passaram a receber campos customizados em fase posterior.
 - [x] **Fase 4 — duplicação universal com diálogo** (concluída): diálogo
   genérico (`_abrirDialogoDuplicar`) no modal-container2. Tarefa: opções
   Subtarefas / Valores das colunas / Comentários. Subtarefa: opção Comentários.
@@ -84,8 +84,10 @@ Roadmap consolidado:
   preenchidos / Comentários da reunião. Nome ganha sufixo " (cópia)";
   permissão mestre+advogado; subtarefas remapeiam parent_id. Falta estender a
   demandas quando elas chegarem ao motor (Fase 5).
-- [ ] **Fase 5 — modelos de demanda no kanban** (campos custom no card,
-  snapshot, backfill "Demanda padrão"; adapta kanban, lista e modal)
+- [x] **Fase 5 - modelos de demanda no kanban** (concluida): modelo de
+  demanda configuravel na Administracao, snapshot em demandas novas,
+  backfill automatico para demandas antigas sem snapshot, edicao inline no
+  modal do card e resumo dos campos preenchidos na visualizacao em lista.
 - [x] **Fase 6 — projetos reconectados** (concluída): seção "Projetos internos"
   no detalhe da reunião (entre Pautas e Comentários), listando projetos da
   equipe ativa em cartões com checklist, comentários, sinalizar, novo/editar/
@@ -171,6 +173,6 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
   de modelos (openGerenciarModelos, openFormModelo, _mf*, _campo*, _tcol*) e o
   bloco CSS `.tcard*`/`.tcols` agora sem uso.
 
-- [ ] **Acentuar títulos de reuniões existentes** (dados do banco)
-  Títulos como "Reuniao semanal" estão sem acento na tabela `reunioes` (campo
-  `titulo`). Corrigir via UPDATE no Supabase ou deixar o usuário editar pela UI.
+- [x] **Acentuar títulos de reuniões existentes** (dados do banco)
+  Verificado em 07/07/2026: não há registros com "Reuniao semanal" sem acento
+  na tabela `reunioes`; os títulos semanais atuais estão como "Reunião semanal".
