@@ -32,6 +32,9 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
   `ui.js`, cobrindo helpers visuais/filtros e toolbar (`cliNome`, `casoDesc`,
   `casosDoCliente`, `getFiltered`, `coverColor`, `tipoTagsHTML`, `ccHTML`,
   `buildAcList`, `toolbarHTML`, `bindFCI`). Não mexeu no modelo de tarefas.
+- Progresso em 07/07/2026: segundo lote seguro movido de `app.js` para
+  `kanban.js`, cobrindo drag and drop de cards e colunas (`onDragStart`,
+  `onDragEnd`, `onColDrop`, `onColHeaderDrop` e auxiliares).
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
