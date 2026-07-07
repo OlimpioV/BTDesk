@@ -65,6 +65,9 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
   `kanban.js`, cobrindo renderização principal do kanban e da lista
   (`renderView`, `taskChipHTML`, `buildCardHTML`, `renderKanban`,
   `renderLista`).
+- Progresso em 07/07/2026: décimo terceiro lote movido de `app.js` para
+  `pages.js`, cobrindo formulário de criação/edição de demanda e salvamento
+  (`openCardFormModal`, `renderForm`, `fAc*`, `openNew`, `saveCard`).
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
