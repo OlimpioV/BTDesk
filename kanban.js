@@ -1,6 +1,6 @@
 // ── KANBAN ──
-// Etapa 2: drag and drop e gestao de colunas voltaram para este modulo.
-// Etiquetas, comentarios de card, edicao inline, renderView, taskChipHTML,
+// Etapa 2: drag and drop, gestao de colunas e etiquetas voltaram para este
+// modulo. Comentarios de card, edicao inline, renderView, taskChipHTML,
 // buildCardHTML, renderKanban e renderLista ainda ficam em app.js ate os
 // proximos lotes.
 //
@@ -63,6 +63,8 @@ function toggleCP(colId,e){e.stopPropagation();if(cpOpen===colId){cpOpen=null;va
 async function applyColColor(colId,idx,e){e.stopPropagation();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;var cc=COL_COLORS[idx];col.dot=cc.dot;col.cover=cc.cover;cpOpen=null;var p=document.getElementById("cp-"+colId);if(p)p.remove();try{await dbSaveCols();}catch(err){}renderKanban();}
 function addColuna(){modalInput("Nova coluna","Nome da coluna...",function(nome){var id="col_"+uid();var cc=COL_COLORS[COLS.length%COL_COLORS.length];COLS.push({id,label:nome,dot:cc.dot,cover:cc.cover,badgeBg:"#f1f5f9",badgeText:"#475569",ordem:COLS.length});dbSaveCols().then(function(){toast("Coluna criada!");}).catch(function(){toast("Erro",true);});renderKanban();});}
 function delColuna(colId,e){e.stopPropagation();var col=COLS.find(function(c){return c.id===colId;});if(!col)return;if(cards.filter(function(c){return c.status===colId;}).length>0){toast("A coluna precisa estar vazia",true);return;}modalConfirm('Excluir a coluna "'+col.label+'"?',function(){COLS=COLS.filter(function(c){return c.id!==colId;});dbSaveCols().then(function(){toast("Coluna excluída!");}).catch(function(){});renderKanban();});}
+function toggleLabels(cardId,e){e.stopPropagation();labelsGlobalExp=!labelsGlobalExp;cards.forEach(function(card){labelsExp[card.id]=labelsGlobalExp;var el=document.getElementById("clb-"+card.id);if(el)el.innerHTML=buildLabels(card);});}
+function buildLabels(card){if(!card.tipos||!card.tipos.length)return "";var exp=!!labelsExp[card.id];return card.tipos.map(function(t){var c=TC[t]||PALETA[0];if(exp)return '<span class="lbar exp" style="background:'+c.border+';" onclick="toggleLabels(\''+card.id+'\',event)">'+t+'</span>';return '<span class="lbar" style="background:'+c.border+';" title="'+t+'" onclick="toggleLabels(\''+card.id+'\',event)"></span>';}).join("");}
 
 function toggleListaRow(cardId){
   var row=document.getElementById("lista-expand-"+cardId);
