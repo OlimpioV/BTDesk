@@ -61,6 +61,10 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: décimo primeiro lote movido de `app.js` para
   `modal.js`, cobrindo campos customizados de demanda (`_demCampo*`,
   `_demanda*`, `_snapshotDemandaModelo`).
+- Progresso em 07/07/2026: décimo segundo lote movido de `app.js` para
+  `kanban.js`, cobrindo renderização principal do kanban e da lista
+  (`renderView`, `taskChipHTML`, `buildCardHTML`, `renderKanban`,
+  `renderLista`).
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
