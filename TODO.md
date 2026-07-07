@@ -20,13 +20,14 @@ funções exclusivas de cada arquivo:
 
 Validação: `node --check` em todos os JS OK; nenhuma função definida em 2+ arquivos.
 
-### Etapa 2 — Reorganizar nos módulos (PENDENTE, mais arriscado)
+### Etapa 2 — Reorganizar nos módulos (CONCLUÍDA)
 
-Tornar os módulos a fonte da verdade (como o CLAUDE.md descreve), movendo as
+Objetivo: tornar os módulos a fonte da verdade (como o CLAUDE.md descreve), movendo as
 funções de `app.js` de volta para o arquivo da responsabilidade correta e
-esvaziando `app.js`. Exige rodar e testar o app a cada passo.
+esvaziando `app.js`.
 
-Divergências a reconciliar ANTES de mover (versões diferiram):
+Resultado: `app.js` ficou restrito ao núcleo de autenticação, login, snapshot
+inicial de demandas e `init()`. As divergências conhecidas foram reconciliadas.
 
 - Progresso em 07/07/2026: primeiro lote seguro movido de `app.js` para
   `ui.js`, cobrindo helpers visuais/filtros e toolbar (`cliNome`, `casoDesc`,
@@ -84,6 +85,8 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: subtarefas dos cards migradas para a tabela
   `tarefas`. O módulo agora lê, cria, edita e exclui subtarefas pelo banco, com
   compatibilidade para JSON antigo e migração automática no `init()`.
+- Validação em 07/07/2026: banco verificado, sem demandas restantes com
+  `data.tarefas` em JSON; 60 subtarefas estão na tabela `tarefas`.
 
 - **Tarefas dos cards:** decidido manter a tabela `tarefas` como fonte ativa.
   O JSON antigo serve apenas como origem de migração automática.

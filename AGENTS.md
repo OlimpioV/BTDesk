@@ -120,7 +120,6 @@ Antes de rodar qualquer SQL de criação de tabela, verificar se a tabela já ex
 
 - Segurança: RLS real no Supabase e Supabase Auth (autenticação atual via tabela usuarios com senha em texto plano)
 - Visibilidade por área: substituída pelo sistema de equipes descrito abaixo
-- Tarefas antigas salvas no JSON dos cards não foram migradas para a tabela tarefas
 
 ---
 
