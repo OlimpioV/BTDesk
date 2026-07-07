@@ -76,6 +76,9 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
   `tasks.js`, cobrindo alertas de prazo, notificações de tarefas e página
   "Minhas tarefas" (`verificarAlertasPrazos`, `_mt*`, `abrirNotificacao`,
   `renderMinhasTarefas`).
+- Progresso em 07/07/2026: décimo sexto lote movido de `app.js` para
+  `pages.js`, cobrindo modal de perfil do usuário (`openMyProfile`,
+  `saveMyProfile`).
 
 - **Tarefas dos cards:** a versão ativa, agora em `tasks.js`, usa o modelo ANTIGO
   (tarefas no JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a
