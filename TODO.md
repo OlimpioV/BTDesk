@@ -68,11 +68,15 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: décimo terceiro lote movido de `app.js` para
   `pages.js`, cobrindo formulário de criação/edição de demanda e salvamento
   (`openCardFormModal`, `renderForm`, `fAc*`, `openNew`, `saveCard`).
+- Progresso em 07/07/2026: décimo quarto lote movido de `app.js` para
+  `tasks.js`, cobrindo o fluxo ativo de subtarefas dos cards em JSON
+  (`getTarefas`, CRUD inline, formulário e `buildTarefasHTML`). A reconciliação
+  JSON versus tabela segue pendente.
 
-- **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
-  JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
-  `tarefas`. Decidir qual modelo manter. Hoje o módulo de tarefas-por-tabela dos
-  cards está inativo (bate com a pendência "tarefas antigas no JSON não migradas").
+- **Tarefas dos cards:** a versão ativa, agora em `tasks.js`, usa o modelo ANTIGO
+  (tarefas no JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a
+  TABELA `tarefas`. Decidir qual modelo manter. Hoje o módulo de tarefas-por-tabela
+  dos cards está inativo (bate com a pendência "tarefas antigas no JSON não migradas").
 - **`confirmDelCard`:** a versão de `modal.js` apagava tarefas da tabela
   (`dbDelTarefasDoCard`); a ativa (app.js) não.
 - **`getFiltered` / `checkAuth`:** a versão ativa (app.js) é a mais nova (com filtro
