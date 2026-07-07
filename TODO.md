@@ -48,6 +48,9 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
   cobrindo edição inline do modal (`icCell`, `openIcell`, `saveIcell`,
   autocomplete de cliente, título e observações inline). Não mexeu no modelo de
   tarefas dos cards.
+- Progresso em 07/07/2026: sétimo lote movido de `app.js` para `modal.js`,
+  cobrindo fechamento do modal, ações de comentários, etiquetas/status do modal
+  e exclusão de demanda.
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
