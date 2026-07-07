@@ -515,6 +515,41 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .reun-sectitles{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .reun-wrap .reun-sec-eye{font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.1em;}
 .reun-wrap .reun-sec-ttl{font-family:var(--font-titulo);font-size:17px;font-weight:600;color:var(--bt-navy);letter-spacing:.01em;}
+.reun-wrap .rbtn-count{margin-left:4px;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.22);font-size:10px;font-weight:800;}
+.icon-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text3);cursor:pointer;transition:background .15s,border-color .15s,color .15s;}
+.icon-btn:hover{background:#fff;border-color:#cbd5e1;color:var(--bt-navy);}
+
+/* Pendencias anteriores e pool */
+.reun-wrap .pend-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.reun-wrap .pend-help{font-size:12px;color:var(--text3);line-height:1.4;}
+.reun-wrap .pend-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.reun-wrap .pend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+.reun-wrap .pend-group{min-width:0;}
+.reun-wrap .pend-group-hdr{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+.reun-wrap .pend-group-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.reun-wrap .pend-group-title{font-size:12px;font-weight:750;color:var(--bt-navy);}
+.reun-wrap .pend-group-count{font-size:10px;font-weight:800;color:var(--text3);background:var(--surface2);border:1px solid var(--border-soft);border-radius:999px;padding:1px 6px;}
+.reun-wrap .pend-card,.pend-pool-item{border:1px solid var(--border);border-left:4px solid #2b76e5;border-radius:8px;background:#fff;padding:10px 11px;margin-bottom:8px;}
+.reun-wrap .pend-card{transition:box-shadow .14s,border-color .14s;}
+.reun-wrap .pend-card:hover{box-shadow:var(--shadow);border-color:#d7e0ea;}
+.reun-wrap .pend-title,.pend-pool-item .pend-title{font-size:13px;font-weight:650;color:var(--bt-navy);line-height:1.28;overflow-wrap:anywhere;}
+.reun-wrap .pend-meta,.pend-pool-item .pend-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--text3);line-height:1.35;}
+.reun-wrap .pend-empty,.pend-modal .pend-empty{font-size:12px;color:var(--text3);padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fff;}
+.reun-wrap .pend-empty.wide,.pend-modal .pend-empty.wide{text-align:center;padding:18px;margin-bottom:14px;font-style:italic;}
+.pend-modal{width:min(96vw,760px);max-height:86vh;display:flex;flex-direction:column;padding:0;overflow:hidden;}
+.pend-modal-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.pend-modal-title{font-size:16px;font-weight:800;color:var(--bt-navy);font-family:var(--font-titulo);}
+.pend-modal-sub{font-size:12px;color:var(--text3);margin-top:3px;}
+.pend-modal-body{padding:16px 20px;overflow-y:auto;background:var(--surface2);}
+.pend-modal-group{margin-bottom:16px;}
+.pend-modal-group-title{font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.pend-modal-group-title span{font-size:10px;padding:1px 6px;border-radius:999px;background:#fff;border:1px solid var(--border-soft);}
+.pend-pool-item{display:flex;gap:10px;align-items:flex-start;cursor:pointer;transition:box-shadow .14s,border-color .14s,background .14s;}
+.pend-pool-item:hover{box-shadow:var(--shadow);border-color:#d7e0ea;}
+.pend-pool-item.marcado{background:#f7fff9;border-color:#cdebd6;}
+.pend-pool-item input{margin-top:2px;accent-color:var(--bt-orange);flex-shrink:0;}
+.pend-pool-content{min-width:0;display:flex;flex-direction:column;gap:4px;}
+.pend-marked{font-size:11px;color:#16a34a;font-weight:750;}
 
 /* Participantes como chips com avatar + primeiro nome */
 .reun-wrap .reun-parts{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}

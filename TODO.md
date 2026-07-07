@@ -146,20 +146,17 @@ Roadmap consolidado:
   demanda configuravel na Administracao, snapshot em demandas novas,
   backfill automatico para demandas antigas sem snapshot, edicao inline no
   modal do card e resumo dos campos preenchidos na visualizacao em lista.
-- [x] **Fase 6 — projetos reconectados** (concluída): seção "Projetos internos"
-  no detalhe da reunião (entre Pautas e Comentários), listando projetos da
-  equipe ativa em cartões com checklist, comentários, sinalizar, novo/editar/
-  arquivar. Tudo já existia em `_buildProjetosSection` e nas funções db; faltava
-  plugar no `_buildReuniaoDetalhe` e corrigir o id de `_loadProjetosArea`
-  (reuniao-projetos-area → reun-projetos-area). `sinalizarProjeto` robustecido
-  (registra comentário sinalizado + notificação; e-mail via Edge Function fica
-  em try/catch, sem quebrar). Pendente/opcional: campos customizados por
+- [x] **Fase 6: projetos reconectados** (concluída): "Projetos de equipe"
+  deixou de ser uma seção duplicada no detalhe da reunião e passou a entrar como
+  pauta automática quando uma subtarefa de projeto é marcada no pool de
+  pendências. A tabela técnica continua `projetos_internos`, mas a interface usa
+  o rótulo "Projetos de equipe". Pendente/opcional: campos customizados por
   projeto (modularização plena) e aba "Projetos" própria.
 - [x] **Pool de subtarefas abertas nas reuniões** (concluído): "Pendências
   anteriores" agora mostra um botão que abre modal com subtarefas abertas de
-  demandas, reuniões anteriores e projetos internos. Ao marcar subtarefa de
+  demandas, reuniões anteriores e projetos de equipe. Ao marcar subtarefa de
   demanda, a demanda entra automaticamente na pauta "Atualização de demandas";
-  ao marcar item de projeto, a pauta "Projetos" é garantida.
+  ao marcar item de projeto, a pauta "Projetos de equipe" é garantida.
 - Futuro: vistas novas (calendário de demandas, tabela de reuniões);
   auditoria leve de edições estruturais.
 
@@ -221,8 +218,8 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
   Feito: marcação de tabela virou cartão .tcard (barra lateral por status, chip
   no topo, barra de progresso segmentada, checklist .cl, comentários .cmts),
   com toda a edição inline preservada e verificada (dev=sonnet, qa=haiku).
-  Nota: o sistema de cards alternativo (`_loadReuniaoPautas`) continua
-  desconectado dos dados reais (ver Etapa 2 da consolidação).
+  Nota atualizada em 07/07/2026: o carregador alternativo `_loadReuniaoPautas`
+  foi removido. O fluxo ativo é `_loadPautasSection`.
 
 - [x] **Board de pautas estilo Monday** (commits d480170, d3c7eed)
   Feito: `_loadPautasSection` e `_buildTarefaCard` reescritos de cartões para um

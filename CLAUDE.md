@@ -187,7 +187,7 @@ alter table tarefas add column equipe_id uuid references equipes(id);
 
 ### Conceito
 
-Módulo de gestão de reuniões semanais. Reuniões criadas automaticamente toda terça às 9h30 via Supabase cron job, ajustáveis manualmente. Pautas são entidades independentes reutilizáveis entre reuniões, com snapshot do estado preservado por reunião (quando você abre uma reunião antiga, vê o estado como estava naquele momento). Projetos internos são entidades de gestão interna (não são demandas do kanban) com responsável, tarefas por membro, comentários e sinalizações por e-mail via Supabase Edge Functions. O módulo é filtrado pela equipe ativa, igual às demandas.
+Módulo de gestão de reuniões semanais. Reuniões são criadas e ajustadas manualmente, sem geração automática semanal. Pautas são entidades independentes reutilizáveis entre reuniões, com snapshot do estado preservado por reunião (quando você abre uma reunião antiga, vê o estado como estava naquele momento). Projetos de equipe são entidades de gestão interna (não são demandas do kanban) com responsável, subtarefas por membro, comentários e sinalizações. O módulo é filtrado pela equipe ativa, igual às demandas.
 
 ### Interface
 
@@ -263,6 +263,8 @@ create table notificacoes (
 );
 ```
 
+Observação: a tabela mantém o nome técnico `projetos_internos` por compatibilidade, mas a interface deve usar o rótulo "Projetos de equipe".
+
 ### Alterações em tabelas existentes
 
 ```sql
@@ -284,10 +286,10 @@ alter table tarefas add column projeto_interno_id uuid references projetos_inter
 
 ### Regras do módulo de reuniões
 
-- Reuniões geradas automaticamente toda terça via Supabase cron job (pg_cron)
+- Reuniões criadas manualmente pelo usuário, sem cron semanal automático
 - Pautas reutilizáveis: a pauta "vive" com histórico acumulado; cada reunião guarda snapshot_json do estado no momento
 - Ao abrir uma reunião passada, exibir o snapshot, não o estado atual
-- Projetos internos com tarefas por membro, comentários e botão "Sinalizar" que dispara e-mail via Supabase Edge Functions para todos os participantes
+- Projetos de equipe com subtarefas por membro, comentários e botão "Sinalizar" para notificar participantes
 - Notificações internas mostradas ao logar e no badge do sino
 
 ---
@@ -298,9 +300,8 @@ alter table tarefas add column projeto_interno_id uuid references projetos_inter
 2. Criar todas as tabelas novas no Supabase via Management API (rodar os SQLs das features abaixo, um por vez, verificando sucesso)
 3. Implementar Feature 1 (Equipes) primeiro, pois as reuniões dependem de equipe_id
 4. Implementar Feature 2 (Reuniões) depois, com equipe_id já disponível
-5. Configurar Supabase cron job para criação automática de reuniões
-6. Configurar Supabase Edge Function para disparo de e-mail nas sinalizações
-7. Fazer commit e push de todas as alterações ao final de cada feature
+5. Configurar Supabase Edge Function para disparo de e-mail nas sinalizações
+6. Fazer commit e push de todas as alterações ao final de cada feature
 
 ---
 

@@ -1995,9 +1995,9 @@ function _getReuniaoAnterior(r){
 }
 function _buildPendenciaItem(t,cor){
   var prazo=t.data_fim?_fmtDateBrShort(t.data_fim):"Sem prazo";
-  return '<div style="border:1px solid var(--border);border-left:4px solid '+cor+';border-radius:7px;background:#fff;padding:9px 10px;margin-bottom:7px;">'
-    +'<div style="font-size:13px;font-weight:650;color:var(--bt-navy);line-height:1.25;">'+trunc(t.texto||"Tarefa sem titulo",90)+'</div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--text3);">'
+  return '<div class="pend-card" style="border-left-color:'+cor+';">'
+    +'<div class="pend-title">'+trunc(t.texto||"Tarefa sem titulo",90)+'</div>'
+    +'<div class="pend-meta">'
     +'<span>Responsavel: '+(t.responsavel||"Sem responsavel")+'</span>'
     +'<span>Prazo: '+prazo+'</span>'
     +'<span>Status: '+statusTarefaLabel(t.status)+'</span>'
@@ -2011,23 +2011,23 @@ function _buildPendenciaPoolItem(item,marcado){
   if(item.responsavel)meta.push("Resp.: "+item.responsavel);
   if(item.prazo)meta.push("Prazo: "+_fmtDateBrShort(item.prazo));
   if(item.status)meta.push(statusTarefaLabel(item.status));
-  return '<label class="pend-pool-item" style="display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid '+cor+';border-radius:7px;background:#fff;padding:9px 10px;margin-bottom:7px;cursor:pointer;">'
-    +'<input type="checkbox" '+(marcado?'checked':'')+' onchange="_togglePendenciaPool(\''+item.key+'\',this.checked)" style="margin-top:2px;accent-color:var(--bt-orange);">'
-    +'<span style="min-width:0;display:flex;flex-direction:column;gap:4px;">'
-    +'<span style="font-size:13px;font-weight:650;color:var(--bt-navy);line-height:1.25;">'+trunc(item.texto||"Tarefa sem titulo",100)+'</span>'
-    +'<span style="font-size:11px;color:var(--text3);line-height:1.35;">'+meta.join(" · ")+'</span>'
-    +(marcado?'<span style="font-size:11px;color:#16a34a;font-weight:700;">Marcada nesta reuniao</span>':'')
+  return '<label class="pend-pool-item'+(marcado?' marcado':'')+'" style="border-left-color:'+cor+';">'
+    +'<input type="checkbox" '+(marcado?'checked':'')+' onchange="_togglePendenciaPool(\''+item.key+'\',this.checked)">'
+    +'<span class="pend-pool-content">'
+    +'<span class="pend-title">'+trunc(item.texto||"Tarefa sem titulo",100)+'</span>'
+    +'<span class="pend-meta">'+meta.join(" · ")+'</span>'
+    +(marcado?'<span class="pend-marked">Marcada nesta reunião</span>':'')
     +'</span>'
     +'</label>';
 }
 function _buildPendenciaGrupo(titulo,itens,cor){
-  return '<div style="min-width:0;">'
-    +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
-    +'<span style="width:8px;height:8px;border-radius:50%;background:'+cor+';display:inline-block;"></span>'
-    +'<span style="font-size:12px;font-weight:750;color:var(--bt-navy);">'+titulo+'</span>'
-    +'<span style="font-size:11px;color:var(--text3);">('+itens.length+')</span>'
+  return '<div class="pend-group">'
+    +'<div class="pend-group-hdr">'
+    +'<span class="pend-group-dot" style="background:'+cor+';"></span>'
+    +'<span class="pend-group-title">'+titulo+'</span>'
+    +'<span class="pend-group-count">'+itens.length+'</span>'
     +'</div>'
-    +(itens.length?itens.map(function(t){return _buildPendenciaItem(t,cor);}).join(""):'<div style="font-size:12px;color:var(--text3);padding:10px;border:1px dashed var(--border);border-radius:7px;background:#fff;">Nenhuma.</div>')
+    +(itens.length?itens.map(function(t){return _buildPendenciaItem(t,cor);}).join(""):'<div class="pend-empty">Nenhuma.</div>')
     +'</div>';
 }
 var _pendenciasPoolCache={};
@@ -2089,19 +2089,19 @@ async function _loadPendenciasAnteriores(reuniaoId){
     var pool=await _coletarPendenciasPool(reuniaoId,anterior,tarefas);
     var marcadas=await _pendenciasMarcadasReuniao(reuniaoId);
     var marcadasCount=pool.filter(function(item){return !!marcadas[item.key];}).length;
-    var html='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
-      +'<div style="font-size:12px;color:var(--text3);">Selecione subtarefas abertas para discutir nesta reunião.</div>'
-      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
-      +'<button onclick="abrirPendenciasPoolModal(\''+reuniaoId+'\')" class="rbtn rbtn-accent rbtn-sm">'+ic("check")+' Pool de subtarefas abertas'+(pool.length?' ('+(pool.length-marcadasCount)+'/'+pool.length+')':'')+'</button>'
+    var html='<div class="pend-head">'
+      +'<div class="pend-help">Selecione subtarefas abertas para discutir nesta reunião.</div>'
+      +'<div class="pend-actions">'
+      +'<button onclick="abrirPendenciasPoolModal(\''+reuniaoId+'\')" class="rbtn rbtn-accent rbtn-sm">'+ic("list")+' Pool de subtarefas abertas'+(pool.length?' <span class="rbtn-count">'+(pool.length-marcadasCount)+'/'+pool.length+'</span>':'')+'</button>'
       +(anterior?'<button onclick="selecionarReuniao(\''+anterior.id+'\')" class="rbtn rbtn-sm">Abrir anterior</button>':'')
       +'</div>'
       +'</div>';
-    if(!pool.length)html+='<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:14px;">Nenhuma subtarefa aberta encontrada em demandas, reunioes anteriores ou projetos.</div>';
+    if(!pool.length)html+='<div class="pend-empty wide">Nenhuma subtarefa aberta encontrada em demandas, reuniões anteriores ou projetos.</div>';
     if(tarefas.length){
-      html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">'
+      html+='<div class="pend-grid">'
         +_buildPendenciaGrupo("Atrasadas",atrasadas,"#dc2626")
         +_buildPendenciaGrupo("Abertas",abertasNoPrazo,"#2b76e5")
-        +_buildPendenciaGrupo("Concluidas",concluidas,"#16a34a")
+        +_buildPendenciaGrupo("Concluídas",concluidas,"#16a34a")
         +'</div>';
     }
     el.innerHTML=html;
@@ -2127,20 +2127,20 @@ async function abrirPendenciasPoolModal(reuniaoId){
   pool.forEach(function(item){(grupos[item.origem]||grupos.reuniao).push(item);});
   function bloco(titulo,itens){
     if(!itens.length)return "";
-    return '<div style="margin-bottom:16px;">'
-      +'<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;">'+titulo+' · '+itens.length+'</div>'
+    return '<div class="pend-modal-group">'
+      +'<div class="pend-modal-group-title">'+titulo+' <span>'+itens.length+'</span></div>'
       +itens.map(function(item){return _buildPendenciaPoolItem(item,!!marcadas[item.key]);}).join("")
       +'</div>';
   }
   var html='<div class="modal-overlay" onclick="_mc2Close()" style="z-index:320;">'
-    +'<div class="modal-box" onclick="event.stopPropagation()" style="width:min(96vw,760px);max-height:86vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">'
-    +'<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">'
-    +'<div><div style="font-size:16px;font-weight:800;color:var(--bt-navy);font-family:var(--font-titulo);">Pool de subtarefas abertas</div>'
-    +'<div style="font-size:12px;color:var(--text3);margin-top:3px;">'+abertas+' pendente'+(abertas===1?'':'s')+' para marcar nesta reunião</div></div>'
-    +'<button onclick="_mc2Close()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'<div class="modal-box pend-modal" onclick="event.stopPropagation()">'
+    +'<div class="pend-modal-hdr">'
+    +'<div><div class="pend-modal-title">Pool de subtarefas abertas</div>'
+    +'<div class="pend-modal-sub">'+abertas+' pendente'+(abertas===1?'':'s')+' para marcar nesta reunião</div></div>'
+    +'<button onclick="_mc2Close()" class="icon-btn" title="Fechar">'+ic("close")+'</button>'
     +'</div>'
-    +'<div id="pend-pool-modal-body" style="padding:16px 20px;overflow-y:auto;">';
-  if(!pool.length)html+='<div style="font-size:12px;color:var(--text3);padding:24px;text-align:center;border:1px dashed var(--border);border-radius:8px;">Nenhuma subtarefa aberta encontrada.</div>';
+    +'<div id="pend-pool-modal-body" class="pend-modal-body">';
+  if(!pool.length)html+='<div class="pend-empty wide">Nenhuma subtarefa aberta encontrada.</div>';
   else html+=bloco("Demandas",grupos.demanda)+bloco("Reuniões anteriores",grupos.reuniao)+bloco("Projetos de equipe",grupos.projeto);
   html+='</div></div></div>';
   _mc2().innerHTML=html;
