@@ -3,7 +3,7 @@
 var _demCampoEditando={};
 function _snapshotDemandaModelo(){
   var m=demandaModeloDB||{nome:"Demanda padrão",campos:[]};
-  return {nome:m.nome||"Demanda padrão",campos:JSON.parse(JSON.stringify(m.campos||[]))};
+  return snapshotModeloConfig(m,"Demanda padrão");
 }
 function _demandaCampos(card){
   if(card&&card.modelo_snapshot&&card.modelo_snapshot.campos)return card.modelo_snapshot.campos||[];

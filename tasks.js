@@ -20,7 +20,7 @@ async function loadTodasTarefas(){
 
 function _snapshotSubtarefaModelo(){
   var m=subtarefaModeloDB||{nome:"Subtarefa padrão",campos:[]};
-  return {nome:m.nome||"Subtarefa padrão",campos:JSON.parse(JSON.stringify(m.campos||[]))};
+  return snapshotModeloConfig(m,"Subtarefa padrão");
 }
 function _subtarefaCampos(t){
   if(t&&t.modelo_snapshot&&t.modelo_snapshot.campos)return t.modelo_snapshot.campos||[];

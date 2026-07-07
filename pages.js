@@ -294,7 +294,7 @@ async function renderEstrutura(){
       +'</tr></thead><tbody>'+modeloRows+'</tbody></table></div>'
       +'<div style="font-size:12px;color:var(--text3);margin-top:12px;line-height:1.5;">As altera\u00e7\u00f5es em modelos valem para reuni\u00f5es novas. Reuni\u00f5es antigas preservam o snapshot da estrutura que tinham.</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 12px;gap:12px;">'
-      +'<div><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelo de projetos</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Campos extras exibidos nos projetos internos.</div></div>'
+      +'<div><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Modelo de projetos</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Campos extras exibidos nos projetos de equipe.</div></div>'
       +'<button class="btn btn-accent" onclick="openAdminProjetoModelo()" style="display:flex;align-items:center;gap:5px;border-radius:8px;">'+ic("edit")+' Editar campos</button>'
       +'</div>'
       +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow-md);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">'
@@ -420,7 +420,7 @@ function _renderEmailsPagina(logs,config){
       +['Data','Tipo','Assunto','Destinatarios','Status'].map(function(h){return '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;">'+h+'</th>';}).join("")
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   } else {
-    var tipoLabel={'projeto_sinalizado':'Sinalizar projeto (botao manual)','reuniao_criada':'Reuniao criada automaticamente','tarefa_atrasada':'Tarefa em atraso'};
+    var tipoLabel={'projeto_sinalizado':'Sinalizar projeto (botao manual)','reuniao_criada':'Reuniao criada manualmente','tarefa_atrasada':'Tarefa em atraso'};
     conteudo='<div style="display:flex;flex-direction:column;gap:14px;">'
       +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;font-size:13px;color:#92400e;">'
       +'Para ativar o envio, voce precisa: <br/>1. Criar uma conta em <strong>resend.com</strong> e gerar uma API key<br/>'
@@ -479,7 +479,7 @@ var _catItensCache={};
 async function renderPautaCategorias(){
   if(perfil!=="mestre"){renderView();return;}
   var app=document.getElementById("app");app.className="page-mode";
-  app.innerHTML=headerHTML("reun")+'<div style="padding:24px;max-width:1100px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
+  app.innerHTML=headerHTML("pautas")+'<div style="padding:24px;max-width:1100px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
   try{
     var eqId=equipeAtiva?equipeAtiva.id:null;
     var cats=await dbFetchPautaCategorias(eqId);
@@ -501,7 +501,7 @@ function _renderCatPagina(cats){
         +'<button onclick="_delCat(\''+c.id+'\',\''+c.nome.replace(/'/g,"\\'")+'\')\" style="font-size:10px;padding:2px 6px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;">'+ic('trash')+'</button>'
         +'</div></div>';
     }).join("");
-  app.innerHTML=headerHTML("reun")
+  app.innerHTML=headerHTML("pautas")
     +'<div style="padding:24px;max-width:1100px;margin:0 auto;">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
     +'<div style="font-size:18px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Categorias de pauta</div>'

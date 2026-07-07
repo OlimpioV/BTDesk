@@ -79,6 +79,16 @@ function statusTarefaOptions(selected,includeInactive){
 function statusTarefaOrdem(){
   return statusTarefaList(false).map(function(s){return s.id;});
 }
+function cloneEstrutura(v){
+  return JSON.parse(JSON.stringify(v||[]));
+}
+function snapshotModeloConfig(modelo,nomePadrao,extras){
+  var m=modelo||{};
+  var out=Object.assign({},extras||{});
+  out.nome=m.nome||nomePadrao;
+  out.campos=cloneEstrutura(m.campos||[]);
+  return out;
+}
 
 // Helpers compartilhados. Auth e perfil ainda ficam em app.js.
 function cliNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
@@ -167,7 +177,7 @@ function switchEquipe(equipeId){
 }
 
 function _isAdminAba(aba){
-  return aba==="admin"||aba==="estrutura"||aba==="usr"||aba==="eq"||aba==="imp"||aba==="etq"||aba==="logs";
+  return aba==="admin"||aba==="estrutura"||aba==="usr"||aba==="eq"||aba==="pautas"||aba==="emails"||aba==="imp"||aba==="etq"||aba==="logs";
 }
 
 function _adminMenuHTML(aba){
@@ -175,6 +185,8 @@ function _adminMenuHTML(aba){
     {id:"estrutura",label:"Estrutura",icon:"kanban",fn:"renderEstrutura()"},
     {id:"usr",label:"Usu\u00e1rios",icon:"users",fn:"renderUsers()"},
     {id:"eq",label:"Equipes",icon:"group",fn:"renderEquipes()"},
+    {id:"pautas",label:"Pautas",icon:"meeting",fn:"renderPautaCategorias()"},
+    {id:"emails",label:"E-mails",icon:"bell",fn:"renderEmails()"},
     {id:"imp",label:"Importa\u00e7\u00e3o",icon:"upload",fn:"renderImp()"},
     {id:"etq",label:"Etiquetas",icon:"tag",fn:"renderEtq()"},
     {id:"logs",label:"Hist\u00f3rico",icon:"clock",fn:"renderLogs()"}
@@ -198,6 +210,8 @@ function renderAdministracao(sec){
   var destino=sec||"usr";
   if(destino==="estrutura")renderEstrutura();
   else if(destino==="eq")renderEquipes();
+  else if(destino==="pautas")renderPautaCategorias();
+  else if(destino==="emails")renderEmails();
   else if(destino==="imp")renderImp();
   else if(destino==="etq")renderEtq();
   else if(destino==="logs")renderLogs();
