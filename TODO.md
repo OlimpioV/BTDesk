@@ -141,10 +141,11 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
 
 ## Layout / UI
 
-- [ ] **Botões que saem do lugar ou se sobrepõem ao serem alterados** (em investigação)
+- [x] **Botões que saem do lugar ou se sobrepõem ao serem alterados** (concluída)
   Relato: ao trocar o estilo de um botão, ele desloca ou sobrepõe outro elemento.
-  Provável causa: containers flex sem `flex-wrap`/`min-width:0` ou botões sem
-  `flex-shrink:0`. Padronizar os grupos de botões com um padrão de layout robusto.
+  Feito: botões globais e botões do módulo de reuniões agora têm base flex
+  estável, sem encolher de forma imprevisível; cabeçalhos de pautas e projetos
+  passam a quebrar linha quando falta espaço.
 
 - [x] **Redesign visual do módulo de Reuniões** (parcial, mock em `mock-reunioes.html`)
   Feito: fonte Oxanium nos títulos, eyebrows + títulos de seção em dois níveis,
