@@ -173,7 +173,11 @@ function switchEquipe(equipeId){
   if(equipeId===null){equipeAtiva=null;}
   else{equipeAtiva=equipesDB.find(function(e){return e.id===equipeId;})||null;}
   sessionStorage.setItem("bari_equipe",equipeAtiva?JSON.stringify(equipeAtiva):"");
-  renderView();
+  var app=document.getElementById("app");
+  var atual=app?app.getAttribute("data-btdesk-view"):"";
+  if(atual==="projetos"&&typeof renderProjetosEquipe==="function")renderProjetosEquipe();
+  else if(atual==="reunioes"&&typeof renderReunioes==="function")renderReunioes();
+  else renderView();
 }
 
 function _isAdminAba(aba){
@@ -222,6 +226,7 @@ headerHTML=function(aba){
   var ce=perfil==="mestre"||perfil==="advogado";
   var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
   if(ce)tabs+='<button class="tab '+(aba==="minhas-tarefas"?"active":"")+'" onclick="renderMinhasTarefas()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("check")+' Minhas tarefas</button>';
+  tabs+='<button class="tab '+(aba==="projetos"?"active":"")+'" onclick="renderProjetosEquipe()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("briefcase")+' Projetos</button>';
   if(ce)tabs+='<button class="tab '+(aba==="reunioes"?"active":"")+'" onclick="renderReunioes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("meeting")+' Reuni\u00f5es</button>';
   if(perfil==="mestre")tabs+='<button class="tab '+(_isAdminAba(aba)?"active":"")+'" onclick="renderAdministracao(\'usr\')" style="display:inline-flex;align-items:center;gap:5px;">'+ic("users")+' Administra\u00e7\u00e3o</button>';
   var logoSide='<div style="display:flex;align-items:center;padding:0 14px;border-right:1px solid rgba(255,255,255,.07);flex-shrink:0;background:rgba(0,0,0,.12);"><img src="logo-branco-negativo.png" style="height:68px;object-fit:contain;" onerror="this.style.display=\'none\'"/></div>';
