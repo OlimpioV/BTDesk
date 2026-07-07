@@ -146,23 +146,41 @@ function _filtrarProjetosTarefas(tarefas){
 function _renderProjetosEquipePage(cats){
   var app=document.getElementById("app");
   var ce=_canEditConteudo();
-  var tarefas=_filtrarProjetosTarefas(_tarefasPautaCache[_tarefaCacheKey()]||[]);
+  var todasTarefas=_tarefasPautaCache[_tarefaCacheKey()]||[];
+  var tarefas=_filtrarProjetosTarefas(todasTarefas);
+  var abertas=todasTarefas.filter(function(t){return !statusTarefaFinalizador(t.status);}).length;
+  var concluidas=todasTarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
+  var atrasadas=todasTarefas.filter(function(t){return _isAtrasado(t.data_fim,t.status);}).length;
+  var subtTotal=0,subConcl=0;
+  todasTarefas.forEach(function(t){
+    var subs=_subtarefasCache[t.id]||[];
+    subtTotal+=subs.length;
+    subConcl+=subs.filter(function(s){return statusTarefaFinalizador(s.status);}).length;
+  });
   var stOpts='<option value="">Todos os status</option>'+statusTarefaList(false).map(function(s){return '<option value="'+s.id+'"'+(_projetosPageStatus===s.id?' selected':'')+'>'+s.nome+'</option>';}).join("");
   var respOpts='<option value="">Todos os responsaveis</option>'+(responsaveis||[]).map(function(r){return '<option value="'+r+'"'+(_projetosPageResp===r?' selected':'')+'>'+r+'</option>';}).join("");
   var html=headerHTML("projetos");
-  html+='<main style="padding:22px 28px 36px;background:var(--surface);min-height:calc(100vh - 105px);">';
-  html+='<section style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px;">';
-  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">'
-    +'<div><div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);">Gest\u00e3o de equipe</div>'
-    +'<h1 style="font-family:var(--font-titulo);font-size:24px;color:var(--bt-navy);margin:4px 0 2px;">Projetos de equipe</h1>'
-    +'<div style="font-size:12px;color:var(--text3);">Projetos usados nas pautas, com subtarefas, status, respons\u00e1veis, prazos e coment\u00e1rios.</div></div>'
-    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+  html+='<main class="reun-wrap projetos-wrap">';
+  html+='<section class="projetos-page">';
+  html+='<div class="projetos-head">'
+    +'<div><div class="projetos-eye">Gest\u00e3o de equipe</div>'
+    +'<h1 class="projetos-title">Projetos de equipe</h1>'
+    +'<div class="projetos-sub">Projetos usados nas pautas, com subtarefas, status, respons\u00e1veis, prazos e coment\u00e1rios.</div></div>'
+    +'<div class="projetos-actions">'
     +(ce?'<button class="btn btn-primary" onclick="openNovoProjetoPauta()">'+ic("plus")+' Novo projeto</button>':'')
     +'</div></div>';
-  html+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;">'
-    +'<input value="'+_inlineHtml(_projetosPageBusca)+'" placeholder="Buscar projeto..." onkeydown="if(event.key===\'Enter\'){_projetosPageBusca=this.value;_renderProjetosEquipePage();}" onblur="_projetosPageBusca=this.value;_renderProjetosEquipePage()" style="min-width:220px;flex:1;font-size:13px;">'
-    +'<select onchange="_projetosPageStatus=this.value;_renderProjetosEquipePage()" style="font-size:13px;">'+stOpts+'</select>'
-    +'<select onchange="_projetosPageResp=this.value;_renderProjetosEquipePage()" style="font-size:13px;">'+respOpts+'</select>'
+  html+='<div class="projetos-stats">'
+    +'<div class="projetos-stat"><span>Total</span><b>'+todasTarefas.length+'</b></div>'
+    +'<div class="projetos-stat"><span>Abertos</span><b>'+abertas+'</b></div>'
+    +'<div class="projetos-stat warn"><span>Atrasados</span><b>'+atrasadas+'</b></div>'
+    +'<div class="projetos-stat ok"><span>Conclu\u00eddos</span><b>'+concluidas+'</b></div>'
+    +'<div class="projetos-stat"><span>Subtarefas</span><b>'+subConcl+'/'+subtTotal+'</b></div>'
+    +'</div>';
+  html+='<div class="projetos-filtros">'
+    +'<input value="'+_inlineHtml(_projetosPageBusca)+'" placeholder="Buscar projeto..." onkeydown="if(event.key===\'Enter\'){_projetosPageBusca=this.value;_renderProjetosEquipePage();}" onblur="_projetosPageBusca=this.value;_renderProjetosEquipePage()">'
+    +'<select onchange="_projetosPageStatus=this.value;_renderProjetosEquipePage()">'+stOpts+'</select>'
+    +'<select onchange="_projetosPageResp=this.value;_renderProjetosEquipePage()">'+respOpts+'</select>'
+    +'<button class="rbtn rbtn-sm" onclick="_projetosPageBusca=\'\';_projetosPageStatus=\'\';_projetosPageResp=\'\';_renderProjetosEquipePage()">Limpar filtros</button>'
     +'</div>';
   html+='<div class="bgroup"><div class="bgroup-hd"><span class="bgroup-nm">Projetos ativos</span><span class="bgroup-ct">'+tarefas.length+' '+(tarefas.length===1?'projeto':'projetos')+'</span></div>';
   html+='<div class="board"><div class="bcols"><span></span><span>Projeto</span><span>Respons\u00e1vel</span><span>Status</span><span>Prazo</span><span>Progresso</span></div>';
@@ -190,7 +208,13 @@ async function openNovoProjetoPauta(){
   if(!_requireEditConteudo())return;
   var mc=document.getElementById("modal-container");
   var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join("");
-  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,520px);">'
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var hoje=new Date().toISOString().slice(0,10);
+  var futuras=(reunioesDB||[]).filter(function(r){return (!eqId||!r.equipe_id||r.equipe_id===eqId)&&r.data>=hoje;}).sort(function(a,b){return a.data.localeCompare(b.data);});
+  var reuniaoOpts=futuras.map(function(r){
+    return '<option value="'+r.id+'">'+(r.titulo||"Reuni\u00e3o semanal")+' · '+_fmtDateBrShort(r.data)+' '+String(r.hora||"09:30").slice(0,5)+'</option>';
+  }).join("");
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,560px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Novo projeto de equipe</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo *</label><input id="npp-titulo"/></div>'
     +'<div class="field"><label>Descricao</label><textarea id="npp-desc" rows="4" style="resize:vertical;"></textarea></div>'
@@ -198,9 +222,21 @@ async function openNovoProjetoPauta(){
     +'<div><label class="icell-label">Responsavel</label><select id="npp-resp" style="width:100%;">'+respOpts+'</select></div>'
     +'<div><label class="icell-label">Status</label><select id="npp-status" style="width:100%;">'+statusTarefaOptions("em_andamento",false)+'</select></div>'
     +'</div>'
+    +'<div class="field"><label>V\u00ednculo com reuni\u00f5es</label><select id="npp-vinculo" onchange="_toggleProjetoPautaVinculo()" style="width:100%;">'
+    +'<option value="area">S\u00f3 na \u00e1rea Projetos</option>'
+    +'<option value="proxima" selected>Tamb\u00e9m na pr\u00f3xima reuni\u00e3o</option>'
+    +'<option value="reuniao">Tamb\u00e9m em reuni\u00e3o espec\u00edfica</option>'
+    +'</select></div>'
+    +'<div id="npp-reuniao-wrap" class="field" style="display:none;"><label>Reuni\u00e3o</label><select id="npp-reuniao" style="width:100%;"><option value="">Selecione...</option>'+reuniaoOpts+'</select></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarNovoProjetoPauta()">Salvar</button></div>'
     +'</div></div>';
   setTimeout(function(){var el=document.getElementById("npp-titulo");if(el)el.focus();},30);
+}
+
+function _toggleProjetoPautaVinculo(){
+  var v=document.getElementById("npp-vinculo");
+  var w=document.getElementById("npp-reuniao-wrap");
+  if(w)w.style.display=(v&&v.value==="reuniao")?"block":"none";
 }
 
 async function salvarNovoProjetoPauta(){
@@ -215,8 +251,16 @@ async function salvarNovoProjetoPauta(){
     var cats=await dbFetchPautaCategorias(eqId);
     var cat=cats.find(function(c){return _isProjetosCategoria(c.nome);});
     if(!cat){toast("Categoria Projetos de equipe nao encontrada",true);return;}
-    var hoje=new Date().toISOString().slice(0,10);
-    var reuniao=(reunioesDB||[]).filter(function(r){return (!eqId||!r.equipe_id||r.equipe_id===eqId)&&r.data>=hoje;}).sort(function(a,b){return a.data.localeCompare(b.data);})[0]||null;
+    var vinculo=document.getElementById("npp-vinculo").value||"area";
+    var reuniao=null;
+    if(vinculo==="proxima"){
+      var hoje=new Date().toISOString().slice(0,10);
+      reuniao=(reunioesDB||[]).filter(function(r){return (!eqId||!r.equipe_id||r.equipe_id===eqId)&&r.data>=hoje;}).sort(function(a,b){return a.data.localeCompare(b.data);})[0]||null;
+    } else if(vinculo==="reuniao"){
+      var reuniaoId=document.getElementById("npp-reuniao").value||"";
+      if(!reuniaoId){toast("Selecione a reuni\u00e3o",true);return;}
+      reuniao=(reunioesDB||[]).find(function(r){return r.id===reuniaoId;})||{id:reuniaoId};
+    }
     var payload=normalizarStatusTarefa({id:uid(),texto:titulo,descricao:desc,responsavel:resp,status:status,pauta_categoria_id:cat.id,equipe_id:eqId,criado_em:new Date().toISOString()},status);
     if(reuniao)payload.reuniao_id=reuniao.id;
     await dbUpsertTarefa(payload);
