@@ -3106,15 +3106,26 @@ function _cmtKeydown(evt,tarefaId,ehPassado){
 
 // ── EDICAO INLINE DE TITULO ──
 var _tituloEsc=false;
+function _inlineHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function _inlineActions(saveCall,cancelCall){
+  return '<span class="rt-inline-actions inline-edit-hit">'
+    +'<button type="button" class="rt-inline-action rt-inline-save" onmousedown="event.preventDefault()" onclick="event.stopPropagation();'+saveCall+'" title="Salvar">'+ic("check")+'</button>'
+    +'<button type="button" class="rt-inline-action rt-inline-cancel" onmousedown="event.preventDefault()" onclick="event.stopPropagation();'+cancelCall+'" title="Cancelar">'+ic("close")+'</button>'
+    +'</span>';
+}
 function _iniciarEdicaoTitulo(tarefaId,isSub,parentId,ehPassado){
   var elId=isSub?'tp-stxt-'+tarefaId:'tp-txt-'+tarefaId;
   var el=document.getElementById(elId);if(!el)return;
   var tex=(el.innerText||el.textContent||'').replace(/\n/g,'').trim();
   _tituloEsc=false;
-  el.innerHTML='<input id="tp-tit-inp-'+tarefaId+'" type="text" value="'+tex.replace(/"/g,'&quot;')+'"'
-    +' style="width:100%;display:block;font-size:inherit;font-weight:inherit;font-family:inherit;border:2px solid #3B82F6;border-radius:4px;padding:2px 6px;box-sizing:border-box;box-shadow:0 0 0 3px rgba(59,130,246,0.1);"'
+  el.innerHTML='<span class="rt-inline-editor rt-inline-title inline-edit-hit">'
+    +'<input id="tp-tit-inp-'+tarefaId+'" type="text" value="'+_inlineHtml(tex)+'" class="rt-inline-control"'
     +' onkeydown="_tituloKeydown(event,\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')"'
-    +' onblur="_salvarTituloInline(\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')" />';
+    +' />'
+    +_inlineActions("_doSaveTitulo('"+tarefaId+"',"+!!isSub+",'"+(parentId||"")+"',"+!!ehPassado+")","_cancelarTituloInline('"+tarefaId+"',"+!!isSub+",'"+(parentId||"")+"',"+!!ehPassado+")")
+    +'</span>';
   var inp=document.getElementById('tp-tit-inp-'+tarefaId);
   if(inp){inp.focus();inp.select();}
 }
@@ -3163,10 +3174,12 @@ function _iniciarEdicaoDescricaoSub(subId,parentId,ehPassado){
   var el=document.getElementById('tp-sdesc-'+subId);if(!el)return;
   var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
   _descEsc=false;
-  el.innerHTML='<textarea id="tp-sdesc-ta-'+subId+'" rows="3"'
-    +' style="width:100%;display:block;min-height:72px;font-size:11px;font-family:inherit;border:1.5px solid var(--bt-orange);border-radius:4px;padding:6px 8px;box-sizing:border-box;resize:vertical;"'
+  el.innerHTML='<span class="rt-inline-editor rt-inline-desc inline-edit-hit">'
+    +'<textarea id="tp-sdesc-ta-'+subId+'" rows="3" class="rt-inline-control"'
     +' onkeydown="_descKeydown(event,\''+subId+'\',\''+parentId+'\','+!!ehPassado+')"'
-    +' onblur="_salvarDescricaoSub(\''+subId+'\',\''+parentId+'\','+!!ehPassado+')">'+tex+'</textarea>';
+    +'>'+_inlineHtml(tex)+'</textarea>'
+    +_inlineActions("_doSaveDescricaoSub('"+subId+"','"+parentId+"',"+!!ehPassado+")","_cancelarDescricaoSub('"+subId+"','"+parentId+"',"+!!ehPassado+")")
+    +'</span>';
   var ta=document.getElementById('tp-sdesc-ta-'+subId);
   if(ta){ta.focus();var l=ta.value.length;ta.setSelectionRange(l,l);}
 }
@@ -3200,10 +3213,12 @@ function _iniciarEdicaoDescricaoMain(tarefaId,ehPassado){
   var el=document.getElementById('tp-desc-'+tarefaId);if(!el)return;
   var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
   _descMainEsc=false;
-  el.innerHTML='<textarea id="tp-desc-ta-'+tarefaId+'" rows="4"'
-    +' style="width:100%;display:block;min-height:96px;font-size:12px;font-family:inherit;border:1.5px solid var(--bt-orange);border-radius:4px;padding:7px 9px;box-sizing:border-box;resize:vertical;"'
+  el.innerHTML='<div class="rt-inline-editor rt-inline-desc rt-inline-desc-main inline-edit-hit">'
+    +'<textarea id="tp-desc-ta-'+tarefaId+'" rows="4" class="rt-inline-control"'
     +' onkeydown="_descMainKeydown(event,\''+tarefaId+'\','+!!ehPassado+')"'
-    +' onblur="_salvarDescricaoMain(\''+tarefaId+'\','+!!ehPassado+')">'+tex+'</textarea>';
+    +'>'+_inlineHtml(tex)+'</textarea>'
+    +_inlineActions("_doSaveDescricaoMain('"+tarefaId+"',"+!!ehPassado+")","_cancelarDescricaoMain('"+tarefaId+"',"+!!ehPassado+")")
+    +'</div>';
   var ta=document.getElementById('tp-desc-ta-'+tarefaId);
   if(ta){ta.focus();var l=ta.value.length;ta.setSelectionRange(l,l);}
 }
@@ -3254,10 +3269,12 @@ function _abrirRespInline(tarefaId,isSub,parentId,ehPassado){
   el.removeAttribute("onclick");
   el.removeAttribute("title");
   var opts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
-  el.innerHTML='<select id="tp-resp-sel-'+tarefaId+'" class="inline-edit-hit"'
-    +' style="width:100%;min-width:86px;font-size:12px;border:1.5px solid var(--bt-orange);border-radius:6px;padding:5px 7px;background:#fff;"'
-    +' onclick="event.stopPropagation()" onchange="_salvarRespInline(\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')"'
-    +' onkeydown="_respInlineKey(event,\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')">'+opts+'</select>';
+  el.innerHTML='<div class="rt-inline-editor rt-inline-select inline-edit-hit">'
+    +'<select id="tp-resp-sel-'+tarefaId+'" class="rt-inline-control"'
+    +' onclick="event.stopPropagation()"'
+    +' onkeydown="_respInlineKey(event,\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')">'+opts+'</select>'
+    +_inlineActions("_salvarRespInline('"+tarefaId+"',"+!!isSub+",'"+(parentId||"")+"',"+!!ehPassado+")","_reloadTarefaOuSub('"+tarefaId+"',"+!!isSub+",'"+(parentId||"")+"',"+!!ehPassado+")")
+    +'</div>';
   var sel=document.getElementById('tp-resp-sel-'+tarefaId);if(sel)sel.focus();
 }
 function _respInlineKey(e,tarefaId,isSub,parentId,ehPassado){
@@ -3283,10 +3300,12 @@ function _abrirPrazoInline(tarefaId,isSub,parentId,ehPassado){
   var t=_getTarefaBoardCache(tarefaId,isSub,parentId)||{};
   el.removeAttribute("onclick");
   el.removeAttribute("title");
-  el.innerHTML='<input id="tp-date-inp-'+tarefaId+'" class="inline-edit-hit" type="date" value="'+(t.data_fim||'')+'"'
-    +' style="width:100%;min-width:112px;font-size:12px;border:1.5px solid var(--bt-orange);border-radius:6px;padding:5px 7px;background:#fff;box-sizing:border-box;"'
-    +' onclick="event.stopPropagation()" onblur="_salvarPrazoInline(\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')"'
-    +' onkeydown="_prazoInlineKey(event,\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')">';
+  el.innerHTML='<div class="rt-inline-editor rt-inline-date inline-edit-hit">'
+    +'<input id="tp-date-inp-'+tarefaId+'" class="rt-inline-control" type="date" value="'+(t.data_fim||'')+'"'
+    +' onclick="event.stopPropagation()"'
+    +' onkeydown="_prazoInlineKey(event,\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')">'
+    +_inlineActions("_salvarPrazoInline('"+tarefaId+"',"+!!isSub+",'"+(parentId||"")+"',"+!!ehPassado+")","_reloadTarefaOuSub('"+tarefaId+"',"+!!isSub+",'"+(parentId||"")+"',"+!!ehPassado+")")
+    +'</div>';
   var inp=document.getElementById('tp-date-inp-'+tarefaId);if(inp)inp.focus();
 }
 function _prazoInlineKey(e,tarefaId,isSub,parentId,ehPassado){
