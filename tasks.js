@@ -11,14 +11,12 @@ async function loadTodasTarefas(){
   try{
     var rows=await dbFetchTodasTarefas();
     tarefasDB={};
-    rows.forEach(function(t){if(!tarefasDB[t.card_id])tarefasDB[t.card_id]=[];tarefasDB[t.card_id].push(t);});
+    rows.forEach(function(t){if(t.card_id){if(!tarefasDB[t.card_id])tarefasDB[t.card_id]=[];tarefasDB[t.card_id].push(t);}});
   }catch(e){}
 }
 
-// Etapa 2: o fluxo ativo de subtarefas dos cards voltou para este modulo, ainda
-// usando o modelo antigo de tarefas embutidas no JSON do card. Os loaders da
-// TABELA de tarefas permanecem para reunioes, projetos e caches auxiliares.
-// Pendencia: reconciliar definitivamente JSON versus tabela.
+// Etapa 2: o fluxo ativo de subtarefas dos cards usa a tabela tarefas. O JSON
+// antigo dos cards e migrado no init quando encontrado.
 
 function _snapshotSubtarefaModelo(){
   var m=subtarefaModeloDB||{nome:"Subtarefa padrão",campos:[]};
@@ -87,7 +85,45 @@ function _subtarefaCamposColetar(tarefaId,campos,atual){
 }
 
 // ── TAREFAS ──
-function getTarefas(card){return card.tarefas||[];}
+function _taskDbToCard(t){
+  return {
+    id:t.id,
+    texto:t.texto||"",
+    responsavel:t.responsavel||"",
+    dataInicio:t.data_inicio||"",
+    dataFim:t.data_fim||"",
+    status:t.status||"",
+    criado:t.criado_em||"",
+    campos_valores:t.campos_valores||{}
+  };
+}
+function _taskCardToDb(cardId,t,base){
+  var st=t.status||(statusTarefaList(false)[0]&&statusTarefaList(false)[0].id)||"pendente";
+  var norm=normalizarStatusTarefa(Object.assign({},t,{status:st}),st);
+  var out={
+    id:norm.id||uid(),
+    card_id:cardId,
+    texto:norm.texto||"",
+    responsavel:norm.responsavel||null,
+    data_inicio:norm.dataInicio||null,
+    data_fim:norm.dataFim||null,
+    status:norm.status,
+    campos_valores:norm.campos_valores||{}
+  };
+  if(base&&base.equipe_id)out.equipe_id=base.equipe_id;
+  else if(equipeAtiva&&equipeAtiva.id)out.equipe_id=equipeAtiva.id;
+  else if(demandaEquipesDB&&demandaEquipesDB[cardId]&&demandaEquipesDB[cardId][0])out.equipe_id=demandaEquipesDB[cardId][0];
+  return out;
+}
+function _taskDbRow(cardId,tarefaId){
+  return (tarefasDB[cardId]||[]).find(function(t){return t.id===tarefaId;})||null;
+}
+function getTarefas(card){
+  if(!card)return [];
+  var rows=tarefasDB[card.id]||[];
+  if(rows.length)return rows.map(_taskDbToCard);
+  return card.tarefas||[];
+}
 function refreshTarefasPanel(cardId){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   var ce=perfil==="mestre"||perfil==="advogado";
@@ -98,23 +134,23 @@ async function addTarefa(cardId,texto,resp,di,df,st){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   var stList=statusTarefaList(false);
   var t={id:uid(),texto:texto,responsavel:resp||"",dataInicio:di||"",dataFim:df||"",status:st||(stList[0]?stList[0].id:"pendente"),criado:new Date().toISOString(),modelo_snapshot:_snapshotSubtarefaModelo(),campos_valores:{}};
-  t=normalizarStatusTarefa(t,t.status);
-  card.tarefas=getTarefas(card);card.tarefas.push(t);
-  await dbUpsert(card);toast("Subtarefa adicionada!");refreshTarefasPanel(cardId);
+  await dbUpsertTarefa(_taskCardToDb(cardId,t,null));
+  await loadTarefasDoCard(cardId);
+  toast("Subtarefa adicionada!");refreshTarefasPanel(cardId);
 }
 async function updateTarefa(cardId,tarefaId,fields){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  card.tarefas=(card.tarefas||[]).map(function(t){
-    if(t.id!==tarefaId)return t;
-    var next=Object.assign({},t,fields);
-    return normalizarStatusTarefa(next,next.status);
-  });
-  await dbUpsert(card);refreshTarefasPanel(cardId);
+  var atual=getTarefas(card).find(function(t){return t.id===tarefaId;})||{id:tarefaId};
+  var next=Object.assign({},atual,fields);
+  await dbUpsertTarefa(_taskCardToDb(cardId,next,_taskDbRow(cardId,tarefaId)));
+  await loadTarefasDoCard(cardId);
+  refreshTarefasPanel(cardId);
 }
 async function delTarefa(cardId,tarefaId){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  card.tarefas=(card.tarefas||[]).filter(function(t){return t.id!==tarefaId;});
-  await dbUpsert(card);toast("Subtarefa excluída!");refreshTarefasPanel(cardId);
+  await dbDelTarefa(tarefaId);
+  await loadTarefasDoCard(cardId);
+  toast("Subtarefa excluída!");refreshTarefasPanel(cardId);
 }
 function _mc2(){var el=document.getElementById("modal-container2");if(!el){el=document.createElement("div");el.id="modal-container2";document.body.appendChild(el);}return el;}
 function _mc2Close(){var el=document.getElementById("modal-container2");if(el)el.innerHTML="";}
@@ -167,7 +203,7 @@ function _buildTarefaForm(cardId,t){
 function openAddTarefa(cardId){_buildTarefaForm(cardId,null);}
 function openEditTarefa(cardId,tarefaId){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  var t=(card.tarefas||[]).find(function(x){return x.id===tarefaId;});if(!t)return;
+  var t=getTarefas(card).find(function(x){return x.id===tarefaId;});if(!t)return;
   _buildTarefaForm(cardId,t);
 }
 function toggleTarefaEdit(tid){
@@ -181,7 +217,7 @@ function toggleTarefaEdit(tid){
 }
 async function saveTarefaInline(cardId,tarefaId){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  var atual=(card.tarefas||[]).find(function(t){return t.id===tarefaId;})||null;
+  var atual=getTarefas(card).find(function(t){return t.id===tarefaId;})||null;
   var texto=(document.getElementById("ti-txt-"+tarefaId).value||"").trim();
   if(!texto){toast("Informe a descrição",true);return;}
   var camposModelo=_subtarefaCampos(atual);
@@ -194,12 +230,12 @@ async function saveTarefaInline(cardId,tarefaId){
     modelo_snapshot:(atual&&atual.modelo_snapshot)||_snapshotSubtarefaModelo(),
     campos_valores:_subtarefaCamposColetar(tarefaId,camposModelo,atual?atual.campos_valores:{})
   };
-  card.tarefas=(card.tarefas||[]).map(function(t){
-    if(t.id!==tarefaId)return t;
-    var next=Object.assign({},t,fields);
-    return normalizarStatusTarefa(next,next.status);
-  });
-  try{await dbUpsert(card);toast("Salvo!");refreshTarefasPanel(cardId);}catch(e){toast("Erro",true);}
+  try{
+    var next=Object.assign({},atual||{id:tarefaId},fields);
+    await dbUpsertTarefa(_taskCardToDb(cardId,next,_taskDbRow(cardId,tarefaId)));
+    await loadTarefasDoCard(cardId);
+    toast("Salvo!");refreshTarefasPanel(cardId);
+  }catch(e){toast("Erro",true);}
 }
 function buildTarefasHTML(card,ce){
   var tarefas=getTarefas(card);
@@ -266,6 +302,25 @@ function buildTarefasHTML(card,ce){
   return html;
 }
 
+async function migrarTarefasCardsParaTabela(){
+  var cardsComJson=(cards||[]).filter(function(card){return card.id!=="__cols__"&&Array.isArray(card.tarefas)&&card.tarefas.length;});
+  if(!cardsComJson.length)return;
+  for(var i=0;i<cardsComJson.length;i++){
+    var card=cardsComJson[i];
+    var existentes={};
+    (tarefasDB[card.id]||[]).forEach(function(t){existentes[t.id]=true;});
+    for(var j=0;j<card.tarefas.length;j++){
+      var t=card.tarefas[j];
+      if(t&&t.id&&!existentes[t.id]){
+        await dbUpsertTarefa(_taskCardToDb(card.id,t,null));
+      }
+    }
+    delete card.tarefas;
+    try{await dbUpsert(card);}catch(_){}
+    await loadTarefasDoCard(card.id);
+  }
+}
+
 // ── MODAL ──
 // ── KANBAN ──
 
@@ -284,7 +339,7 @@ async function verificarAlertasPrazos(){
     if(!existentes[msg]){existentes[msg]=true;novas.push({usuario_id:userDbId,tipo:tipo==="atrasada"?"tarefa_atrasada":"tarefa_vencendo",mensagem:msg});}
   }
   getFiltered().forEach(function(card){
-    (card.tarefas||[]).forEach(function(t){
+    getTarefas(card).forEach(function(t){
       if(t.responsavel!==sigla||_mtIsDone(t)||!t.dataFim)return;
       if(t.dataFim<hoje)addAviso("atrasada",t.texto,card.titulo||"Demanda",t.dataFim);
       else if(t.dataFim===hoje||t.dataFim===amanha)addAviso("vencendo",t.texto,card.titulo||"Demanda",t.dataFim);
@@ -366,7 +421,7 @@ async function abrirNotificacao(id){
   if(txt){
     var cardMatch=null;
     getFiltered().some(function(card){
-      var ok=(card.tarefas||[]).some(function(t){return (t.texto||"").indexOf(txt)>=0||txt.indexOf(t.texto||"")>=0;});
+      var ok=getTarefas(card).some(function(t){return (t.texto||"").indexOf(txt)>=0||txt.indexOf(t.texto||"")>=0;});
       if(ok){cardMatch=card;return true;}
       return false;
     });
@@ -390,7 +445,7 @@ async function renderMinhasTarefas(){
   var eqId=equipeAtiva?equipeAtiva.id:null;
   var itens=[];
   getFiltered().forEach(function(card){
-    (card.tarefas||[]).forEach(function(t){
+    getTarefas(card).forEach(function(t){
       if(sigla&&t.responsavel!==sigla)return;
       itens.push({origem:"Demanda",texto:t.texto||"Subtarefa sem descricao",contexto:card.titulo||"Demanda",status:t.status,prazo:t.dataFim,acao:'<button onclick="openCardModal(\''+card.id+'\')" class="rbtn rbtn-sm">Abrir</button>'});
     });

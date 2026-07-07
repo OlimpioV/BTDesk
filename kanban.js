@@ -66,7 +66,7 @@ function buildLabels(card){if(!card.tipos||!card.tipos.length)return "";var exp=
 
 function renderView(){if(viewMode==="lista")renderLista();else renderKanban();}
 function taskChipHTML(card){
-  var tarefas=card.tarefas||[];if(!tarefas.length)return "";
+  var tarefas=getTarefas(card);if(!tarefas.length)return "";
   var today=new Date().toISOString().split("T")[0];
   var total=tarefas.length;
   var done=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
