@@ -10,8 +10,8 @@ async function dbDelUser(id){await fetch(SB+"/rest/v1/usuarios?id=eq."+id,{metho
 async function dbSaveCols(){var data={colunas:COLS};await fetch(SB+"/rest/v1/demandas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id:"__cols__",data})});}
 async function dbLoadCols(){var r=await fetch(SB+"/rest/v1/demandas?id=eq.__cols__&select=data",{headers:H});if(!r.ok)return;var rows=await r.json();if(rows&&rows[0]&&rows[0].data&&rows[0].data.colunas)COLS=rows[0].data.colunas;}
 async function loadResp(){try{var r=await fetch(SB+"/rest/v1/usuarios?ativo=eq.true&select=id,sigla,nome,perfil",{headers:H});if(!r.ok)return;var rows=await r.json();var filtered=rows.filter(function(u){return u.sigla&&(u.perfil==="advogado"||u.perfil==="mestre");});responsaveis=filtered.map(function(u){return u.sigla;});usuariosFullDB=filtered;}catch(e){}}
-async function loadClientes(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/clientes?select=*&order=numero&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}clientesDB=all;}catch(e){}}
-async function loadCasos(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/casos?select=*&order=numero&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}casosDB=all;}catch(e){}}
+async function loadClientes(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/clientes?select=*&order=numero",{headers:Object.assign({"Range-Unit":"items","Range":from+"-"+(from+chunk-1)},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}clientesDB=all;}catch(e){}}
+async function loadCasos(){try{var all=[],from=0,chunk=1000;while(true){var r=await fetch(SB+"/rest/v1/casos?select=*&order=numero",{headers:Object.assign({"Range-Unit":"items","Range":from+"-"+(from+chunk-1)},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}casosDB=all;}catch(e){}}
 
 // ── TAREFAS DB ──
 async function dbFetchTarefas(cardId){
@@ -22,7 +22,7 @@ async function dbFetchTarefas(cardId){
 async function dbFetchTodasTarefas(){
   var all=[],from=0,chunk=1000;
   while(true){
-    var r=await fetch(SB+"/rest/v1/tarefas?select=*&order=criado_em&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});
+    var r=await fetch(SB+"/rest/v1/tarefas?select=*&order=criado_em",{headers:Object.assign({"Range-Unit":"items","Range":from+"-"+(from+chunk-1)},H)});
     if(!r.ok)break;
     var rows=await r.json();all=all.concat(rows);
     if(rows.length<chunk)break;from+=chunk;
@@ -80,7 +80,7 @@ async function loadEquipes(){
 async function loadDemandaEquipes(){
   try{
     var all=[],from=0,chunk=1000;
-    while(true){var r=await fetch(SB+"/rest/v1/demanda_equipes?select=demanda_id,equipe_id&limit="+chunk+"&offset="+from,{headers:Object.assign({"Range-Unit":"items"},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}
+    while(true){var r=await fetch(SB+"/rest/v1/demanda_equipes?select=demanda_id,equipe_id",{headers:Object.assign({"Range-Unit":"items","Range":from+"-"+(from+chunk-1)},H)});if(!r.ok)break;var rows=await r.json();all=all.concat(rows);if(rows.length<chunk)break;from+=chunk;}
     demandaEquipesDB={};
     all.forEach(function(x){if(!demandaEquipesDB[x.demanda_id])demandaEquipesDB[x.demanda_id]=[];demandaEquipesDB[x.demanda_id].push(x.equipe_id);});
   }catch(e){}
