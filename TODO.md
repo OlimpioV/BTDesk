@@ -155,6 +155,11 @@ Roadmap consolidado:
   (registra comentário sinalizado + notificação; e-mail via Edge Function fica
   em try/catch, sem quebrar). Pendente/opcional: campos customizados por
   projeto (modularização plena) e aba "Projetos" própria.
+- [x] **Pool de subtarefas abertas nas reuniões** (concluído): "Pendências
+  anteriores" agora mostra um botão que abre modal com subtarefas abertas de
+  demandas, reuniões anteriores e projetos internos. Ao marcar subtarefa de
+  demanda, a demanda entra automaticamente na pauta "Atualização de demandas";
+  ao marcar item de projeto, a pauta "Projetos" é garantida.
 - Futuro: vistas novas (calendário de demandas, tabela de reuniões);
   auditoria leve de edições estruturais.
 

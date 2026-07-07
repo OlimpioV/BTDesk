@@ -266,7 +266,7 @@ function _buildReuniaoDetalhe(r){
   // Participantes agora ficam no rodape do hero (cabecalho da reuniao).
   html+='<div class="reun-section">'
     +'<div class="reun-sechdr">'
-    +'<div class="reun-sectitles"><span class="reun-sec-eye">Acompanhamento</span><span class="reun-sec-ttl">Pendencias anteriores</span></div>'
+    +'<div class="reun-sectitles"><span class="reun-sec-eye">Acompanhamento</span><span class="reun-sec-ttl">Pendências anteriores</span></div>'
     +'</div>'
     +'<div id="reun-pendencias-area">Carregando...</div>'
     +'</div>';
@@ -2077,6 +2077,18 @@ async function _coletarPendenciasPool(reuniaoId,anterior,tarefasAnterior){
   (tarefasAnterior||[]).filter(function(t){return !statusTarefaFinalizador(t.status);}).forEach(function(t){
     pool.push({key:"tarefa:"+t.id,origem:"reuniao",id:t.id,texto:t.texto,status:t.status,responsavel:t.responsavel,prazo:t.data_fim,campos_valores:t.campos_valores||{},contexto:anterior?(anterior.titulo||("Reuniao de "+_fmtData(anterior.data))):"Reuniao anterior"});
   });
+  try{
+    if(!tarefasDB||!Object.keys(tarefasDB).length)await loadTodasTarefas();
+  }catch(_){}
+  (cards||[]).filter(function(card){
+    if(!card||card.id==="__cols__")return false;
+    if(equipeAtiva&&!(demandaEquipesDB[card.id]||[]).includes(equipeAtiva.id))return false;
+    return true;
+  }).forEach(function(card){
+    (tarefasDB[card.id]||[]).filter(function(t){return !statusTarefaFinalizador(t.status);}).forEach(function(t){
+      pool.push({key:"demanda:"+card.id+":"+t.id,origem:"demanda",id:t.id,card_id:card.id,texto:t.texto,status:t.status,responsavel:t.responsavel,prazo:t.data_fim,campos_valores:t.campos_valores||{},contexto:"Demanda: "+(card.titulo||"Demanda")});
+    });
+  });
   var projetos=(projetosDB||[]).filter(function(p){return !p.arquivado&&(!equipeAtiva||!p.equipe_id||p.equipe_id===equipeAtiva.id);});
   for(var i=0;i<projetos.length;i++){
     var p=projetos[i];
@@ -2117,15 +2129,15 @@ async function _loadPendenciasAnteriores(reuniaoId){
     var concluidas=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);});
     var pool=await _coletarPendenciasPool(reuniaoId,anterior,tarefas);
     var marcadas=await _pendenciasMarcadasReuniao(reuniaoId);
+    var marcadasCount=pool.filter(function(item){return !!marcadas[item.key];}).length;
     var html='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
-      +'<div style="font-size:12px;color:var(--text3);">Pool de tarefas abertas para marcar nesta reuniao</div>'
+      +'<div style="font-size:12px;color:var(--text3);">Selecione subtarefas abertas para discutir nesta reunião.</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+      +'<button onclick="abrirPendenciasPoolModal(\''+reuniaoId+'\')" class="rbtn rbtn-accent rbtn-sm">'+ic("check")+' Pool de subtarefas abertas'+(pool.length?' ('+(pool.length-marcadasCount)+'/'+pool.length+')':'')+'</button>'
       +(anterior?'<button onclick="selecionarReuniao(\''+anterior.id+'\')" class="rbtn rbtn-sm">Abrir anterior</button>':'')
+      +'</div>'
       +'</div>';
-    if(pool.length){
-      html+='<div style="margin-bottom:14px;">'+pool.map(function(item){return _buildPendenciaPoolItem(item,!!marcadas[item.key]);}).join("")+'</div>';
-    } else {
-      html+='<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:14px;">Nenhuma tarefa aberta encontrada em reunioes anteriores ou projetos.</div>';
-    }
+    if(!pool.length)html+='<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:14px;">Nenhuma subtarefa aberta encontrada em demandas, reunioes anteriores ou projetos.</div>';
     if(tarefas.length){
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">'
         +_buildPendenciaGrupo("Atrasadas",atrasadas,"#dc2626")
@@ -2140,6 +2152,71 @@ async function _loadPendenciasAnteriores(reuniaoId){
 }
 
 // ── GERAR ATA ──
+async function abrirPendenciasPoolModal(reuniaoId){
+  reuniaoId=reuniaoId||(reuniaoAtiva&&reuniaoAtiva.id);
+  if(!reuniaoId)return;
+  var pool=_pendenciasPoolCache[reuniaoId]||[];
+  if(!pool.length){
+    var atual=(reunioesDB||[]).find(function(r){return r.id===reuniaoId;})||reuniaoAtiva;
+    var anterior=_getReuniaoAnterior(atual);
+    var tarefas=anterior?await dbFetchTarefasReuniao(anterior.id):[];
+    pool=await _coletarPendenciasPool(reuniaoId,anterior,tarefas);
+  }
+  var marcadas=await _pendenciasMarcadasReuniao(reuniaoId);
+  var abertas=pool.filter(function(item){return !marcadas[item.key];}).length;
+  var grupos={demanda:[],reuniao:[],projeto:[]};
+  pool.forEach(function(item){(grupos[item.origem]||grupos.reuniao).push(item);});
+  function bloco(titulo,itens){
+    if(!itens.length)return "";
+    return '<div style="margin-bottom:16px;">'
+      +'<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;">'+titulo+' · '+itens.length+'</div>'
+      +itens.map(function(item){return _buildPendenciaPoolItem(item,!!marcadas[item.key]);}).join("")
+      +'</div>';
+  }
+  var html='<div class="modal-overlay" onclick="_mc2Close()" style="z-index:320;">'
+    +'<div class="modal-box" onclick="event.stopPropagation()" style="width:min(96vw,760px);max-height:86vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">'
+    +'<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+    +'<div><div style="font-size:16px;font-weight:800;color:var(--bt-navy);font-family:var(--font-titulo);">Pool de subtarefas abertas</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:3px;">'+abertas+' pendente'+(abertas===1?'':'s')+' para marcar nesta reunião</div></div>'
+    +'<button onclick="_mc2Close()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
+    +'</div>'
+    +'<div id="pend-pool-modal-body" style="padding:16px 20px;overflow-y:auto;">';
+  if(!pool.length)html+='<div style="font-size:12px;color:var(--text3);padding:24px;text-align:center;border:1px dashed var(--border);border-radius:8px;">Nenhuma subtarefa aberta encontrada.</div>';
+  else html+=bloco("Demandas",grupos.demanda)+bloco("Reuniões anteriores",grupos.reuniao)+bloco("Projetos internos",grupos.projeto);
+  html+='</div></div></div>';
+  _mc2().innerHTML=html;
+}
+async function _garantirPautaDemandasNaReuniao(reuniaoId,cardId){
+  var eqId=equipeAtiva?equipeAtiva.id:null;
+  var pauta=null;
+  try{
+    var pautas=await dbFetchPautas(eqId);
+    pauta=(pautas||[]).find(function(p){return p.tipo==="atualizacao_demandas";})||null;
+  }catch(_){}
+  if(!pauta){
+    pauta=await dbUpsertPauta({titulo:"Atualização de demandas",tipo:"atualizacao_demandas",descricao:"Demandas com subtarefas selecionadas para a reunião",recorrente:true,equipe_id:eqId,criado_por:userDbId||null});
+  }
+  if(!pauta||!pauta.id)return null;
+  var rps=[];
+  try{rps=await dbFetchReuniaoPautas(reuniaoId);}catch(_){rps=[];}
+  var rp=(rps||[]).find(function(x){return x.pauta_id===pauta.id;});
+  if(!rp){
+    await dbUpsertReuniaoPauta({reuniao_id:reuniaoId,pauta_id:pauta.id,ordem:(rps||[]).length,snapshot_json:{notas:null,demandas:[]}});
+    try{rps=await dbFetchReuniaoPautas(reuniaoId);}catch(_){rps=[];}
+    rp=(rps||[]).find(function(x){return x.pauta_id===pauta.id;});
+  }
+  if(cardId&&rp){
+    var snap=Object.assign({},rp.snapshot_json||{});
+    var demandas=Array.isArray(snap.demandas)?snap.demandas.slice():[];
+    if(!demandas.find(function(d){return d.card_id===cardId;})){
+      var card=(cards||[]).find(function(c){return c.id===cardId;})||{};
+      demandas.push({card_id:cardId,titulo:card.titulo||cardId,obs:"Subtarefa selecionada para esta reunião"});
+      snap.demandas=demandas;
+      await dbUpsertReuniaoPauta(Object.assign({},rp,{snapshot_json:snap}));
+    }
+  }
+  return pauta;
+}
 async function _garantirPautaProjetosNaReuniao(reuniaoId){
   var eqId=equipeAtiva?equipeAtiva.id:null;
   var pauta=null;
@@ -2172,6 +2249,11 @@ async function _marcarPendenciaPool(key){
       var cache=(_tarefasPautaCache[reuniaoId]||[]).find(function(t){return t.id===item.id;})||{};
       await dbUpsertTarefa({id:item.id,reuniao_id:reuniaoId,equipe_id:eqId,campos_valores:Object.assign({},item.campos_valores||{},cache.campos_valores||{},{pendencia_origem_key:key})});
       await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:item.id});
+    }else if(item.origem==="demanda"){
+      await _garantirPautaDemandasNaReuniao(reuniaoId,item.card_id);
+      var cacheDem=(_tarefasPautaCache[reuniaoId]||[]).find(function(t){return t.id===item.id;})||{};
+      await dbUpsertTarefa({id:item.id,reuniao_id:reuniaoId,equipe_id:eqId,campos_valores:Object.assign({},item.campos_valores||{},cacheDem.campos_valores||{},{pendencia_origem_key:key,demanda_card_id:item.card_id,demanda_titulo:item.contexto})});
+      await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:item.id});
     }else if(item.origem==="projeto"){
       await _garantirPautaProjetosNaReuniao(reuniaoId);
       var novoId=uid();
@@ -2191,6 +2273,7 @@ async function _marcarPendenciaPool(key){
     await _loadPendenciasAnteriores(reuniaoId);
     await _loadPautasSection(reuniaoId);
     _loadProjetosArea(reuniaoId);
+    if(document.getElementById("pend-pool-modal-body"))await abrirPendenciasPoolModal(reuniaoId);
     toast("Pendencia marcada na reuniao!");
   }catch(_){
     toast("Erro ao marcar pendencia",true);
