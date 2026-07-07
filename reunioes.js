@@ -518,47 +518,6 @@ async function _campoSalvar(campoId,valor){
   _campoFechar(campoId);
 }
 
-async function _loadReuniaoPautas(reuniaoId){
-  var el=document.getElementById("reun-pautas-area");if(!el)return;
-  var ce=perfil==="mestre"||perfil==="advogado";
-  var hoje=new Date().toISOString().slice(0,10);
-  var reuniao=reunioesDB.find(function(r){return r.id===reuniaoId;})||reuniaoAtiva||{};
-  var ehPassado=!!(reuniao.data&&reuniao.data<hoje);
-  try{
-    var rps=await dbFetchReuniaoPautas(reuniaoId);
-    var addBtn=(ce&&!ehPassado)?'<button onclick="openAdicionarPauta(\''+reuniaoId+'\')" class="rbtn rbtn-accent" style="margin-bottom:14px;">'+ic("plus")+' Adicionar pauta</button>':"";
-    if(!rps.length){
-      el.innerHTML=addBtn
-        +'<div class="reun-empty" style="padding:28px 20px;">'
-        +'<div class="reun-empty-icon">'+ic("meeting")+'</div>'
-        +'<div class="reun-empty-msg">Nenhuma pauta adicionada a esta reuniao</div>'
-        +'</div>';
-      return;
-    }
-    var tipoCor={'seminario':'#7c3aed','projeto':'#2563eb','atualizacao_demandas':'#d97706','livre':'#64748b','avisos_gerais':'#16a34a'};
-    var html='';
-    rps.forEach(function(rp){
-      var pauta=pautasDB.find(function(p){return p.id===rp.pauta_id;})||{titulo:"Pauta",tipo:"livre"};
-      var snap=rp.snapshot_json||{};
-      var cor=tipoCor[pauta.tipo]||'#64748b';
-      html+='<div class="pauta" id="pauta-card-'+rp.id+'">';
-      html+='<div class="pauta-hdr"><div class="left"><span class="pauta-tipo-bar" style="background:'+cor+';"></span><span class="pauta-t">'+pauta.titulo+'</span></div>';
-      html+='<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">';
-      html+='<span class="reun-status-chip" style="background:'+cor+'1f;color:'+cor+';">'+_labelTipoPauta(pauta.tipo)+'</span>';
-      if(ehPassado)html+='<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surface);color:var(--text3);">snapshot</span>';
-      html+='</div></div>';
-      html+='<div id="pb-'+rp.id+'" class="pauta-body">'+_renderPautaView(pauta,snap,ce,ehPassado)+'</div>';
-      var foot='';
-      if(ce&&!ehPassado)foot+='<button onclick="_editPautaInline(\''+rp.id+'\',\''+reuniaoId+'\',\''+pauta.tipo+'\')" class="rbtn rbtn-sm">'+ic("edit")+' Editar notas</button>';
-      if(pauta.tipo==='livre'||pauta.tipo==='avisos_gerais'||pauta.tipo==='atualizacao_demandas')foot+='<button onclick="openHistoricoPauta(\''+rp.pauta_id+'\',\''+reuniaoId+'\')" class="rbtn rbtn-sm">Histórico</button>';
-      if(ce&&!ehPassado)foot+='<button onclick="removerPautaDaReuniao(\''+rp.id+'\')" class="rbtn rbtn-sm rbtn-danger" style="margin-left:auto;">Remover</button>';
-      if(foot)html+='<div class="pauta-foot">'+foot+'</div>';
-      html+='</div>';
-    });
-    el.innerHTML=addBtn+html;
-  }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar pautas.</div>';}
-}
-
 function _renderPautaView(pauta,snap,ce,ehPassado){
   var tipo=pauta.tipo;
   var html='';
@@ -1620,7 +1579,7 @@ async function adicionarPautaExistenteReuniao(reuniaoId,pautaId){
     var rps=await dbFetchReuniaoPautas(reuniaoId);
     if(rps.find(function(rp){return rp.pauta_id===pautaId;})){toast("Pauta ja adicionada a esta reuniao",true);return;}
     await dbUpsertReuniaoPauta({reuniao_id:reuniaoId,pauta_id:pautaId,ordem:rps.length,snapshot_json:{notas:null}});
-    closeModal();_loadReuniaoPautas(reuniaoId);toast("Pauta adicionada!");
+    closeModal();_loadPautasSection(reuniaoId);toast("Pauta adicionada!");
   }catch(e){toast("Erro ao adicionar pauta",true);}
 }
 async function delPautaDoModal(pautaId,reuniaoId){
@@ -1648,7 +1607,7 @@ async function salvarNovaPautaReuniao(reuniaoId){
     pautasDB.push(pauta);
     var rps=await dbFetchReuniaoPautas(reuniaoId);
     await dbUpsertReuniaoPauta({reuniao_id:reuniaoId,pauta_id:pauta.id,ordem:rps.length,snapshot_json:{notas:null}});
-    closeModal();_loadReuniaoPautas(reuniaoId);toast("Pauta criada e adicionada!");
+    closeModal();_loadPautasSection(reuniaoId);toast("Pauta criada e adicionada!");
   }catch(e){toast("Erro ao criar pauta",true);}
 }
 async function _editPautaInline(rpId,reuniaoId,tipo){
@@ -1720,12 +1679,12 @@ async function _savePautaInline(rpId,reuniaoId,tipo){
   rp=Object.assign({},rp,{snapshot_json:snap});
   try{
     await dbUpsertReuniaoPauta(rp);
-    _loadReuniaoPautas(reuniaoId);toast("Notas salvas!");
+    _loadPautasSection(reuniaoId);toast("Notas salvas!");
   }catch(e){toast("Erro ao salvar",true);}
 }
 function _cancelPautaEdit(rpId,reuniaoId){
   window._pbiDemandas=null;
-  _loadReuniaoPautas(reuniaoId);
+  _loadPautasSection(reuniaoId);
 }
 function _filtrarCardsInline(){
   var q=(document.getElementById("pbi-busca-card").value||"").toLowerCase().trim();
@@ -1817,7 +1776,7 @@ async function removerPautaDaReuniao(rpId){
   modalConfirm("Remover pauta desta reuniao?",async function(){
     try{
       await dbDelReuniaoPauta(rpId);
-      if(reuniaoAtiva)_loadReuniaoPautas(reuniaoAtiva.id);
+      if(reuniaoAtiva)_loadPautasSection(reuniaoAtiva.id);
       toast("Pauta removida!");
     }catch(e){toast("Erro",true);}
   });
@@ -2225,7 +2184,9 @@ async function _garantirPautaProjetosNaReuniao(reuniaoId){
     pauta=(pautas||[]).find(function(p){return p.tipo==="projeto";})||null;
   }catch(_){}
   if(!pauta){
-    pauta=await dbUpsertPauta({titulo:"Projetos",tipo:"projeto",descricao:"Acompanhamento de projetos internos",recorrente:true,equipe_id:eqId,criado_por:userDbId||null});
+    pauta=await dbUpsertPauta({titulo:"Projetos de equipe",tipo:"projeto",descricao:"Acompanhamento de projetos de equipe",recorrente:true,equipe_id:eqId,criado_por:userDbId||null});
+  }else if(pauta.titulo==="Projetos"){
+    try{pauta=await dbUpsertPauta(Object.assign({},pauta,{titulo:"Projetos de equipe",descricao:pauta.descricao||"Acompanhamento de projetos de equipe"}));}catch(_){}
   }
   if(!pauta||!pauta.id)return null;
   var rps=[];
