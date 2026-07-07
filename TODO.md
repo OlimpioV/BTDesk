@@ -79,6 +79,10 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: décimo sexto lote movido de `app.js` para
   `pages.js`, cobrindo modal de perfil do usuário (`openMyProfile`,
   `saveMyProfile`).
+- Estado em 07/07/2026: `app.js` ficou restrito ao núcleo de autenticação,
+  login, snapshot inicial de demandas e `init()`. A pendência estrutural que
+  permanece é decidir a migração definitiva das subtarefas dos cards de JSON
+  para a tabela `tarefas`.
 
 - **Tarefas dos cards:** a versão ativa, agora em `tasks.js`, usa o modelo ANTIGO
   (tarefas no JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a

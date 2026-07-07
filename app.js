@@ -19,7 +19,6 @@ function renderLogin(erro){
   setTimeout(function(){var el=document.getElementById("login-email");if(el)el.focus();},100);
 }
 
-// ── HELPERS ──
 // ── INIT ──
 async function ensureDemandaSnapshots(){
   var alterados=cards.filter(function(c){return c.id!=="__cols__"&&!c.modelo_snapshot;});
