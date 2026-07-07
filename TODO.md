@@ -72,6 +72,10 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
   `tasks.js`, cobrindo o fluxo ativo de subtarefas dos cards em JSON
   (`getTarefas`, CRUD inline, formulário e `buildTarefasHTML`). A reconciliação
   JSON versus tabela segue pendente.
+- Progresso em 07/07/2026: décimo quinto lote movido de `app.js` para
+  `tasks.js`, cobrindo alertas de prazo, notificações de tarefas e página
+  "Minhas tarefas" (`verificarAlertasPrazos`, `_mt*`, `abrirNotificacao`,
+  `renderMinhasTarefas`).
 
 - **Tarefas dos cards:** a versão ativa, agora em `tasks.js`, usa o modelo ANTIGO
   (tarefas no JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a
