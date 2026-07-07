@@ -170,9 +170,11 @@ Faseamento acordado (Fase 0 primeiro, resto planejado):
   linha "Nova tarefa". Edição inline 100% preservada. Bloco expandido
   (descrição, form, checklist, comentários) vira `.brow-exp` abaixo da linha.
   Validado via `node --check` + probe de grid no preview. Referência:
-  `mock-reuniao-v2.html`. Limpeza pendente: remover funções mortas do construtor
-  de modelos (openGerenciarModelos, openFormModelo, _mf*, _campo*, _tcol*) e o
-  bloco CSS `.tcard*`/`.tcols` agora sem uso.
+  `mock-reuniao-v2.html`. Reavaliado em 07/07/2026: `_campo*`, `_tcol*`,
+  `_mf*`, `openGerenciarModelos`, `openFormModelo` e `.tcols` continuam ativos
+  nos modelos, campos customizados e Administração. Não remover sem a Etapa 2 de
+  reorganização dos módulos. Apenas `.tcard*` parece legado visual, mas precisa
+  de revisão junto com a limpeza maior para evitar perda de fallback.
 
 - [x] **Acentuar títulos de reuniões existentes** (dados do banco)
   Verificado em 07/07/2026: não há registros com "Reuniao semanal" sem acento
