@@ -278,17 +278,11 @@ function _buildReuniaoDetalhe(r){
     +'<div id="reun-pautas-area">Carregando...</div>'
     +'</div>';
   html+='<div class="reun-section">'
-    +'<div class="reun-sechdr">'
-    +'<div class="reun-sectitles"><span class="reun-sec-eye">Gestão da equipe</span><span class="reun-sec-ttl">Projetos internos</span></div>'
-    +'</div>'
-    +'<div id="reun-projetos-area">Carregando...</div>'
-    +'</div>';
-  html+='<div class="reun-section">'
     +'<div class="reun-sechdr"><div class="reun-sectitles"><span class="reun-sec-eye">Discussão geral</span><span class="reun-sec-ttl">Comentários</span></div></div>'
     +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadPendenciasAnteriores(r.id);_loadPautasSection(r.id);_loadProjetosArea(r.id);_loadReuniaoComentários(r.id);},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);_loadPendenciasAnteriores(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
   return html;
 }
 
@@ -616,6 +610,10 @@ function _buildProjetosSection(snap,ce,ehPassado){
   if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);"><div class="cl-lbl">Notas da reuniao</div><div class="notas">'+snap.notas+'</div></div>';
   return html;
 }
+async function _refreshProjetosNaReuniao(){
+  if(reuniaoAtiva)await _loadPautasSection(reuniaoAtiva.id);
+  if(reuniaoAtiva&&document.getElementById("reun-projetos-area"))_loadProjetosArea(reuniaoAtiva.id);
+}
 function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   var corSt={'em_andamento':'#3b82f6','concluida':'#22c55e','pausado':'#a855f7','concluido':'#22c55e'};
   var lblSt={'em_andamento':'Em andamento','concluida':'Concluido','pausado':'Pausado','concluido':'Concluido'};
@@ -868,6 +866,7 @@ async function arquivarProjeto(projetoId){
       projetosDB=projetosDB.map(function(p){return p.id===projetoId?Object.assign({},p,{arquivado:true}):p;});
       var el=document.getElementById("proj-item-"+projetoId);
       if(el)el.remove();
+      await _refreshProjetosNaReuniao();
       toast("Projeto arquivado!");
     }catch(e){toast("Erro ao arquivar",true);}
   });
@@ -1060,6 +1059,7 @@ async function _saveProjetoInline(projetoId,ehPassado){
     var salvo=await dbUpsertProjeto(obj);
     projetosDB=projetosDB.map(function(x){return x.id===projetoId?Object.assign({},x,salvo||obj):x;});
     if(_checklistCache[projetoId])delete _checklistCache[projetoId];
+    await _refreshProjetosNaReuniao();
     _reloadProjetoCard(projetoId,!!ehPassado);toast("Projeto salvo!");
   }catch(e){toast("Erro ao salvar",true);}
 }
@@ -1833,7 +1833,7 @@ async function openEditProjeto(id){
   var advs=todosUsers.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});
   var respOpts=advs.map(function(u){return '<option value="'+u.id+'"'+(p&&p.responsavel_id===u.id?' selected':'')+'>'+((u.sigla||"")||(u.nome||u.email||""))+'</option>';}).join("");
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,500px);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(p?"Editar projeto":"Novo projeto interno")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(p?"Editar projeto":"Novo projeto de equipe")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
     +'<div class="field"><label>Titulo *</label><input id="proj-titulo" value="'+(p?p.titulo:'')+'"/></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="field">'
     +'<div><label>Tipo</label><select id="proj-tipo"><option value="continuo"'+((!p||p.tipo==="continuo"||!p.tipo)?" selected":"")+'>Continuo</option><option value="pontual"'+((p&&p.tipo==="pontual")?" selected":"")+'>Pontual (subtarefas)</option></select></div>'
@@ -1865,7 +1865,7 @@ async function salvarProjeto(id){
     projetosDB=await dbFetchProjetos(eqId);
     if(id&&_checklistCache[id])delete _checklistCache[id];
     closeModal();
-    if(reuniaoAtiva)_loadProjetosArea(reuniaoAtiva.id);
+    await _refreshProjetosNaReuniao();
     toast("Projeto salvo!");
   }catch(e){toast("Erro ao salvar",true);}
 }
@@ -1876,7 +1876,7 @@ async function delProjeto(id){
       await dbDelProjeto(id);
       projetosDB=projetosDB.filter(function(p){return p.id!==id;});
       delete _projExpanded[id];delete _checklistCache[id];
-      if(reuniaoAtiva)_loadProjetosArea(reuniaoAtiva.id);
+      await _refreshProjetosNaReuniao();
       toast("Projeto excluido!");
     }catch(e){toast("Erro",true);}
   });
@@ -2182,7 +2182,7 @@ async function abrirPendenciasPoolModal(reuniaoId){
     +'</div>'
     +'<div id="pend-pool-modal-body" style="padding:16px 20px;overflow-y:auto;">';
   if(!pool.length)html+='<div style="font-size:12px;color:var(--text3);padding:24px;text-align:center;border:1px dashed var(--border);border-radius:8px;">Nenhuma subtarefa aberta encontrada.</div>';
-  else html+=bloco("Demandas",grupos.demanda)+bloco("Reuniões anteriores",grupos.reuniao)+bloco("Projetos internos",grupos.projeto);
+  else html+=bloco("Demandas",grupos.demanda)+bloco("Reuniões anteriores",grupos.reuniao)+bloco("Projetos de equipe",grupos.projeto);
   html+='</div></div></div>';
   _mc2().innerHTML=html;
 }
@@ -2241,7 +2241,6 @@ async function _refreshPendenciasPoolUI(reuniaoId){
   _tarefasPautaCache[reuniaoId]=await dbFetchTarefasReuniao(reuniaoId);
   await _loadPendenciasAnteriores(reuniaoId);
   await _loadPautasSection(reuniaoId);
-  _loadProjetosArea(reuniaoId);
   if(document.getElementById("pend-pool-modal-body"))await abrirPendenciasPoolModal(reuniaoId);
 }
 async function _togglePendenciaPool(key,checked){
