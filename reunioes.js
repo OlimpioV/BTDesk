@@ -2053,7 +2053,7 @@ function _buildPendenciaPoolItem(item,marcado){
   if(item.prazo)meta.push("Prazo: "+_fmtDateBrShort(item.prazo));
   if(item.status)meta.push(statusTarefaLabel(item.status));
   return '<label class="pend-pool-item" style="display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-left:4px solid '+cor+';border-radius:7px;background:#fff;padding:9px 10px;margin-bottom:7px;cursor:pointer;">'
-    +'<input type="checkbox" '+(marcado?'checked disabled':'')+' onchange="_marcarPendenciaPool(\''+item.key+'\')" style="margin-top:2px;accent-color:var(--bt-orange);">'
+    +'<input type="checkbox" '+(marcado?'checked':'')+' onchange="_togglePendenciaPool(\''+item.key+'\',this.checked)" style="margin-top:2px;accent-color:var(--bt-orange);">'
     +'<span style="min-width:0;display:flex;flex-direction:column;gap:4px;">'
     +'<span style="font-size:13px;font-weight:650;color:var(--bt-navy);line-height:1.25;">'+trunc(item.texto||"Tarefa sem titulo",100)+'</span>'
     +'<span style="font-size:11px;color:var(--text3);line-height:1.35;">'+meta.join(" · ")+'</span>'
@@ -2237,6 +2237,52 @@ async function _garantirPautaProjetosNaReuniao(reuniaoId){
   return pauta;
 }
 
+async function _refreshPendenciasPoolUI(reuniaoId){
+  _tarefasPautaCache[reuniaoId]=await dbFetchTarefasReuniao(reuniaoId);
+  await _loadPendenciasAnteriores(reuniaoId);
+  await _loadPautasSection(reuniaoId);
+  _loadProjetosArea(reuniaoId);
+  if(document.getElementById("pend-pool-modal-body"))await abrirPendenciasPoolModal(reuniaoId);
+}
+async function _togglePendenciaPool(key,checked){
+  if(checked)await _marcarPendenciaPool(key);
+  else await _desmarcarPendenciaPool(key);
+}
+async function _desmarcarPendenciaPool(key){
+  var reuniaoId=reuniaoAtiva?reuniaoAtiva.id:null;
+  if(!reuniaoId)return;
+  var pool=_pendenciasPoolCache[reuniaoId]||[];
+  var item=pool.find(function(x){return x.key===key;});
+  try{
+    var tarefas=await dbFetchTarefasReuniao(reuniaoId);
+    var tarefa=null;
+    if(item&&item.origem==="projeto"){
+      tarefa=(tarefas||[]).find(function(t){return t.campos_valores&&t.campos_valores.pendencia_origem_key===key;})||null;
+      if(tarefa){
+        await dbDelReuniaoTarefa(reuniaoId,tarefa.id);
+        await dbDelTarefa(tarefa.id);
+      }
+    }else{
+      var tarefaId=(item&&item.id)||null;
+      tarefa=(tarefas||[]).find(function(t){
+        return (tarefaId&&t.id===tarefaId)||(t.campos_valores&&t.campos_valores.pendencia_origem_key===key);
+      })||null;
+      if(tarefa){
+        await dbDelReuniaoTarefa(reuniaoId,tarefa.id);
+        var campos=Object.assign({},tarefa.campos_valores||{});
+        delete campos.pendencia_origem_key;
+        delete campos.demanda_card_id;
+        delete campos.demanda_titulo;
+        await dbUpsertTarefa({id:tarefa.id,reuniao_id:null,campos_valores:campos});
+      }
+    }
+    await _refreshPendenciasPoolUI(reuniaoId);
+    toast("Pendencia removida da reuniao!");
+  }catch(_){
+    toast("Erro ao desmarcar pendencia",true);
+    await _loadPendenciasAnteriores(reuniaoId);
+  }
+}
 async function _marcarPendenciaPool(key){
   var reuniaoId=reuniaoAtiva?reuniaoAtiva.id:null;
   if(!reuniaoId)return;
@@ -2269,11 +2315,7 @@ async function _marcarPendenciaPool(key){
       });
       await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:novoId});
     }
-    _tarefasPautaCache[reuniaoId]=await dbFetchTarefasReuniao(reuniaoId);
-    await _loadPendenciasAnteriores(reuniaoId);
-    await _loadPautasSection(reuniaoId);
-    _loadProjetosArea(reuniaoId);
-    if(document.getElementById("pend-pool-modal-body"))await abrirPendenciasPoolModal(reuniaoId);
+    await _refreshPendenciasPoolUI(reuniaoId);
     toast("Pendencia marcada na reuniao!");
   }catch(_){
     toast("Erro ao marcar pendencia",true);
@@ -2714,7 +2756,8 @@ function _buildTarefaCard(t,ce,ehPassado){
     +((t.descricao&&!subExp)?'<span class="bsub">'+trunc(t.descricao,64)+'</span>':'')
     +'</div></div>';
   // coluna 3: responsavel
-  html+='<div class="bc bc-resp">';
+  html+='<div id="tp-resp-'+t.id+'" class="bc bc-resp'+(canEdit?' inline-edit-hit':'')+'"'
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar responsavel"':'')+'>';
   if(t.responsavel){
     var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
     html+='<span class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';font-size:9px;width:24px;height:24px;min-width:24px;flex-shrink:0;">'+t.responsavel.slice(0,2).toUpperCase()+'</span><span class="bresp-nm">'+t.responsavel+'</span>';
@@ -2726,7 +2769,9 @@ function _buildTarefaCard(t,ce,ehPassado){
     +'>'+lbl+(ce&&!ehPassado?' <span class="cv">&#9660;</span>':'')+'</span></div>';
   // coluna 5: prazo
   var atrasado=t.data_fim&&_isAtrasado(t.data_fim,t.status);
-  html+='<div class="bc bc-date'+(atrasado?' late':'')+'">'+(t.data_fim?_fmtDateBrShort(t.data_fim)+(atrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>')+'</div>';
+  html+='<div id="tp-date-'+t.id+'" class="bc bc-date'+(atrasado?' late':'')+(canEdit?' inline-edit-hit':'')+'"'
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirPrazoInline(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar prazo"':'')+'>'
+    +(t.data_fim?_fmtDateBrShort(t.data_fim)+(atrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>')+'</div>';
   // coluna 6: progresso + menu de acoes
   html+='<div class="bc bc-prog">';
   if(subtarefas&&subtarefas.length>0){
@@ -2839,7 +2884,8 @@ function _buildTarefaCard(t,ce,ehPassado){
             html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descricao</span>';
           }
           html+='</div></div>';
-          html+='<div class="subcell subcell-resp">';
+          html+='<div id="tp-sresp-'+s.id+'" class="subcell subcell-resp'+(canEdit?' inline-edit-hit':'')+'"'
+            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar responsavel"':'')+'>';
           if(s.responsavel){
             var su=(usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{};
             html+='<span class="av av-sm" style="background:'+_avCor(su.id||s.responsavel)+';font-size:9px;width:22px;height:22px;min-width:22px;flex-shrink:0;">'+s.responsavel.slice(0,2).toUpperCase()+'</span><span class="subresp-nm">'+s.responsavel+'</span>';
@@ -2848,7 +2894,9 @@ function _buildTarefaCard(t,ce,ehPassado){
           html+='<div class="subcell subcell-status"><span class="substat" style="background:'+sBar+';'+(canEdit?'cursor:pointer;':'')+'"'+(canEdit?' onclick="_abrirStatusDropdown(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')+'>'+sLbl+(canEdit?' <span class="cv">&#9660;</span>':'')+'</span></div>';
           var sAtrasado=s.data_fim&&_isAtrasado(s.data_fim,s.status);
           var sConcEm=statusTarefaConclusaoEm(s);
-          html+='<div class="subcell subcell-date'+(sAtrasado?' late':'')+'">'+(sConcEm?'<span style="color:#16a34a;font-weight:700;">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>'))+'</div>';
+          html+='<div id="tp-sdate-'+s.id+'" class="subcell subcell-date'+(sAtrasado?' late':'')+(canEdit?' inline-edit-hit':'')+'"'
+            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirPrazoInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar prazo"':'')+'>'
+            +(sConcEm?'<span style="color:#16a34a;font-weight:700;">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>'))+'</div>';
           html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>':'')+'</div>';
           html+='</div>';
           var subCols=_colunasTarefaSnapshot();
@@ -3115,8 +3163,8 @@ function _iniciarEdicaoDescricaoSub(subId,parentId,ehPassado){
   var el=document.getElementById('tp-sdesc-'+subId);if(!el)return;
   var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
   _descEsc=false;
-  el.innerHTML='<textarea id="tp-sdesc-ta-'+subId+'" rows="2"'
-    +' style="width:100%;display:block;font-size:11px;font-family:inherit;border:1.5px solid var(--bt-orange);border-radius:4px;padding:3px 6px;box-sizing:border-box;resize:vertical;"'
+  el.innerHTML='<textarea id="tp-sdesc-ta-'+subId+'" rows="3"'
+    +' style="width:100%;display:block;min-height:72px;font-size:11px;font-family:inherit;border:1.5px solid var(--bt-orange);border-radius:4px;padding:6px 8px;box-sizing:border-box;resize:vertical;"'
     +' onkeydown="_descKeydown(event,\''+subId+'\',\''+parentId+'\','+!!ehPassado+')"'
     +' onblur="_salvarDescricaoSub(\''+subId+'\',\''+parentId+'\','+!!ehPassado+')">'+tex+'</textarea>';
   var ta=document.getElementById('tp-sdesc-ta-'+subId);
@@ -3152,8 +3200,8 @@ function _iniciarEdicaoDescricaoMain(tarefaId,ehPassado){
   var el=document.getElementById('tp-desc-'+tarefaId);if(!el)return;
   var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
   _descMainEsc=false;
-  el.innerHTML='<textarea id="tp-desc-ta-'+tarefaId+'" rows="2"'
-    +' style="width:100%;display:block;font-size:12px;font-family:inherit;border:1.5px solid var(--bt-orange);border-radius:4px;padding:3px 6px;box-sizing:border-box;resize:vertical;"'
+  el.innerHTML='<textarea id="tp-desc-ta-'+tarefaId+'" rows="4"'
+    +' style="width:100%;display:block;min-height:96px;font-size:12px;font-family:inherit;border:1.5px solid var(--bt-orange);border-radius:4px;padding:7px 9px;box-sizing:border-box;resize:vertical;"'
     +' onkeydown="_descMainKeydown(event,\''+tarefaId+'\','+!!ehPassado+')"'
     +' onblur="_salvarDescricaoMain(\''+tarefaId+'\','+!!ehPassado+')">'+tex+'</textarea>';
   var ta=document.getElementById('tp-desc-ta-'+tarefaId);
@@ -3185,6 +3233,80 @@ function _cancelarDescricaoMain(tarefaId,ehPassado){
 }
 
 // ── STATUS DROPDOWN DE TAREFA ──
+// Edicao direta de campos simples no board de tarefas
+function _getTarefaBoardCache(tarefaId,isSub,parentId){
+  if(isSub&&parentId)return (_subtarefasCache[parentId]||[]).find(function(s){return s.id===tarefaId;})||null;
+  var rId=reuniaoAtiva?reuniaoAtiva.id:'';
+  return (_tarefasPautaCache[rId]||[]).find(function(t){return t.id===tarefaId;})||null;
+}
+function _patchTarefaBoardCache(tarefaId,isSub,parentId,patch){
+  var item=_getTarefaBoardCache(tarefaId,isSub,parentId);
+  if(item)Object.assign(item,patch);
+}
+function _reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado){
+  if(isSub&&parentId)_reloadTarefaCard(parentId,ehPassado);
+  else _reloadTarefaCard(tarefaId,ehPassado);
+}
+function _abrirRespInline(tarefaId,isSub,parentId,ehPassado){
+  if(ehPassado)return;
+  var el=document.getElementById(isSub?'tp-sresp-'+tarefaId:'tp-resp-'+tarefaId);if(!el)return;
+  var t=_getTarefaBoardCache(tarefaId,isSub,parentId)||{};
+  el.removeAttribute("onclick");
+  el.removeAttribute("title");
+  var opts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
+  el.innerHTML='<select id="tp-resp-sel-'+tarefaId+'" class="inline-edit-hit"'
+    +' style="width:100%;min-width:86px;font-size:12px;border:1.5px solid var(--bt-orange);border-radius:6px;padding:5px 7px;background:#fff;"'
+    +' onclick="event.stopPropagation()" onchange="_salvarRespInline(\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')"'
+    +' onkeydown="_respInlineKey(event,\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')">'+opts+'</select>';
+  var sel=document.getElementById('tp-resp-sel-'+tarefaId);if(sel)sel.focus();
+}
+function _respInlineKey(e,tarefaId,isSub,parentId,ehPassado){
+  if(e.key==='Enter'){e.preventDefault();_salvarRespInline(tarefaId,isSub,parentId,ehPassado);}
+  else if(e.key==='Escape'){e.preventDefault();_reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);}
+}
+async function _salvarRespInline(tarefaId,isSub,parentId,ehPassado){
+  var sel=document.getElementById('tp-resp-sel-'+tarefaId);if(!sel)return;
+  var resp=sel.value||null;
+  try{
+    await dbUpsertTarefa({id:tarefaId,responsavel:resp});
+    _patchTarefaBoardCache(tarefaId,isSub,parentId,{responsavel:resp});
+    _reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);
+    toast("Responsavel salvo!");
+  }catch(_){
+    toast("Erro ao salvar responsavel",true);
+    _reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);
+  }
+}
+function _abrirPrazoInline(tarefaId,isSub,parentId,ehPassado){
+  if(ehPassado)return;
+  var el=document.getElementById(isSub?'tp-sdate-'+tarefaId:'tp-date-'+tarefaId);if(!el)return;
+  var t=_getTarefaBoardCache(tarefaId,isSub,parentId)||{};
+  el.removeAttribute("onclick");
+  el.removeAttribute("title");
+  el.innerHTML='<input id="tp-date-inp-'+tarefaId+'" class="inline-edit-hit" type="date" value="'+(t.data_fim||'')+'"'
+    +' style="width:100%;min-width:112px;font-size:12px;border:1.5px solid var(--bt-orange);border-radius:6px;padding:5px 7px;background:#fff;box-sizing:border-box;"'
+    +' onclick="event.stopPropagation()" onblur="_salvarPrazoInline(\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')"'
+    +' onkeydown="_prazoInlineKey(event,\''+tarefaId+'\','+!!isSub+',\''+(parentId||'')+'\','+!!ehPassado+')">';
+  var inp=document.getElementById('tp-date-inp-'+tarefaId);if(inp)inp.focus();
+}
+function _prazoInlineKey(e,tarefaId,isSub,parentId,ehPassado){
+  if(e.key==='Enter'){e.preventDefault();_salvarPrazoInline(tarefaId,isSub,parentId,ehPassado);}
+  else if(e.key==='Escape'){e.preventDefault();_reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);}
+}
+async function _salvarPrazoInline(tarefaId,isSub,parentId,ehPassado){
+  var inp=document.getElementById('tp-date-inp-'+tarefaId);if(!inp)return;
+  var data=inp.value||null;
+  try{
+    await dbUpsertTarefa({id:tarefaId,data_fim:data});
+    _patchTarefaBoardCache(tarefaId,isSub,parentId,{data_fim:data});
+    _reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);
+    toast("Prazo salvo!");
+  }catch(_){
+    toast("Erro ao salvar prazo",true);
+    _reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);
+  }
+}
+
 var _dragTarefaState=null;
 function _tarefaStatusAtual(tarefaId,isSub,parentId){
   if(isSub&&parentId){
@@ -3207,7 +3329,7 @@ function _statusPorArrasto(status,delta){
 function _tarefaDragStart(ev,tarefaId,isSub,parentId,ehPassado){
   if(ehPassado)return;
   var alvo=ev.target;
-  if(alvo&&alvo.closest&&alvo.closest("button,input,textarea,select,a,.statcell,.substat,.rt-menu-btn"))return;
+  if(alvo&&alvo.closest&&alvo.closest("button,input,textarea,select,a,.statcell,.substat,.rt-menu-btn,.inline-edit-hit"))return;
   var row=alvo&&alvo.closest?(alvo.closest(".brow")||alvo.closest(".subrow")):null;
   if(!row)return;
   _dragTarefaState={id:tarefaId,isSub:!!isSub,parentId:parentId||null,ehPassado:!!ehPassado,startX:ev.clientX,row:row,moved:false};
