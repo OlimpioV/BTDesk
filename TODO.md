@@ -35,6 +35,9 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: segundo lote seguro movido de `app.js` para
   `kanban.js`, cobrindo drag and drop de cards e colunas (`onDragStart`,
   `onDragEnd`, `onColDrop`, `onColHeaderDrop` e auxiliares).
+- Progresso em 07/07/2026: terceiro lote seguro movido de `app.js` para
+  `kanban.js`, cobrindo gestão de colunas (`colTitleInner`, `startRenameCol`,
+  `saveRenameCol`, `toggleCP`, `applyColColor`, `addColuna`, `delColuna`).
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
