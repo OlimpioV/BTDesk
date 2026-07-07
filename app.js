@@ -364,40 +364,6 @@ function buildTarefasHTML(card,ce){
   return html;
 }
 
-// ── COVER COLOR ──
-function openCoverPicker(cardId){
-  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  var mc=_mc2();mc.innerHTML="";
-  var ov=document.createElement("div");ov.className="modal-overlay";ov.style.zIndex="300";
-  ov.onclick=function(e){if(e.target===ov)_mc2Close();};
-  var box=document.createElement("div");box.className="modal-box";box.style.cssText="width:min(95vw,320px);";
-  box.onclick=function(e){e.stopPropagation();};
-  var hdr=document.createElement("div");hdr.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;";
-  var htitle=document.createElement("div");htitle.style.cssText="font-size:15px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);";htitle.textContent="Cor do card";
-  var hclose=document.createElement("button");hclose.style.cssText="background:none;border:none;cursor:pointer;color:var(--text3);";hclose.innerHTML=ic("close");hclose.onclick=_mc2Close;
-  hdr.appendChild(htitle);hdr.appendChild(hclose);box.appendChild(hdr);
-  var swRow=document.createElement("div");swRow.style.cssText="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;";
-  COL_COLORS.forEach(function(cc){
-    var sw=document.createElement("div");var sel=card.coverColor===cc.cover;
-    sw.style.cssText="width:28px;height:28px;border-radius:50%;background:"+cc.cover+";cursor:pointer;border:2px solid "+(sel?"#253f4f":"transparent")+";transition:transform .12s;";
-    sw.onmouseover=function(){this.style.transform="scale(1.2)";};sw.onmouseout=function(){this.style.transform="scale(1)";};
-    sw.onclick=function(){_mc2Close();applyCoverColor(cardId,cc.cover);};
-    swRow.appendChild(sw);
-  });
-  box.appendChild(swRow);
-  var btnRem=document.createElement("button");btnRem.className="btn";btnRem.style.cssText="width:100%;font-size:12px;";btnRem.textContent="Remover cor personalizada";
-  btnRem.onclick=function(){_mc2Close();applyCoverColor(cardId,null);};
-  box.appendChild(btnRem);ov.appendChild(box);mc.appendChild(ov);
-}
-async function applyCoverColor(cardId,color){
-  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  card.coverColor=color||null;
-  var mcover=document.getElementById("mcover");if(mcover)mcover.style.background=coverColor(card);
-  var faceCard=document.getElementById("card-"+cardId);
-  if(faceCard){var fc=faceCard.querySelector(".card-cover");if(fc)fc.style.background=coverColor(card);}
-  try{await dbUpsert(card);}catch(e){toast("Erro",true);}
-}
-
 // ── MODAL ──
 function openCardModal(id){modalCardId=id;editingCmtId=null;_ef=null;_ecid=null;renderModal();}
 function renderModal(){

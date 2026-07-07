@@ -53,6 +53,8 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
   e exclusão de demanda.
 - Progresso em 07/07/2026: oitavo lote movido de `app.js` para `pages.js`,
   cobrindo páginas administrativas de importação, etiquetas, logs e usuários.
+- Progresso em 07/07/2026: nono lote movido de `app.js` para `modal.js`,
+  cobrindo seletor de cor do card (`openCoverPicker`, `applyCoverColor`).
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
