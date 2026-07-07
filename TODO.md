@@ -41,6 +41,9 @@ Divergências a reconciliar ANTES de mover (versões diferiram):
 - Progresso em 07/07/2026: quarto lote seguro movido de `app.js` para
   `kanban.js`, cobrindo etiquetas visuais dos cards (`toggleLabels`,
   `buildLabels`).
+- Progresso em 07/07/2026: quinto lote seguro movido de `app.js` para
+  `modal.js`, cobrindo helpers de comentários de card (`getCmts`, `addCmt`,
+  `editCmt`, `delCmt`, `canEditCmt`, `canComment`).
 
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA

@@ -184,14 +184,6 @@ function _subtarefaCamposColetar(tarefaId,campos,atual){
   return novo;
 }
 
-// ── COMENTÁRIOS ──
-function getCmts(card){return card.comentarios||[];}
-async function addCmt(cardId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;var cmts=getCmts(card);cmts.push({id:Date.now().toString(),texto,autor:emailUser,data:new Date().toISOString()});card.comentarios=cmts;await dbUpsert(card);await dbLog("Comentou",card.titulo);}
-async function editCmt(cardId,cmtId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getCmts(card).map(function(c){return c.id===cmtId?Object.assign({},c,{texto,editado:true}):c;});await dbUpsert(card);}
-async function delCmt(cardId,cmtId){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getCmts(card).filter(function(c){return c.id!==cmtId;});await dbUpsert(card);}
-function canEditCmt(autor){return perfil==="mestre"||(emailUser===autor&&perfil==="advogado");}
-function canComment(){return perfil==="mestre"||perfil==="advogado";}
-
 // ── INLINE EDIT ──
 function icCell(cardId,field,label,displayVal,canEdit,type,extraOpts){
   if(!canEdit)return '<div class="icell" style="cursor:default;"><div class="icell-label">'+label+'</div><div class="icell-val">'+displayVal+'</div></div>';
