@@ -28,6 +28,11 @@ esvaziando `app.js`. Exige rodar e testar o app a cada passo.
 
 Divergências a reconciliar ANTES de mover (versões diferiram):
 
+- Progresso em 07/07/2026: primeiro lote seguro movido de `app.js` para
+  `ui.js`, cobrindo helpers visuais/filtros e toolbar (`cliNome`, `casoDesc`,
+  `casosDoCliente`, `getFiltered`, `coverColor`, `tipoTagsHTML`, `ccHTML`,
+  `buildAcList`, `toolbarHTML`, `bindFCI`). Não mexeu no modelo de tarefas.
+
 - **Tarefas dos cards:** a versão ativa (app.js) usa o modelo ANTIGO (tarefas no
   JSON do card). As versões mortas em `tasks.js`/`modal.js` usavam a TABELA
   `tarefas`. Decidir qual modelo manter. Hoje o módulo de tarefas-por-tabela dos

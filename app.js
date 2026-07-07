@@ -33,15 +33,6 @@ async function saveMyProfile(){
 }
 
 // ── HELPERS ──
-function cliNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
-function casoDesc(num,cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return "";var ca=casosDB.find(function(c){return c.numero===num&&c.cliente_id===cl.id;});return ca?ca.descricao:"";}
-function casosDoCliente(cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return [];return casosDB.filter(function(c){return c.cliente_id===cl.id;});}
-function getFiltered(){return cards.filter(function(c){var equipeOk=!equipeAtiva||(demandaEquipesDB[c.id]||[]).includes(equipeAtiva.id);return equipeOk&&(!filterResp||c.responsavel===filterResp)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus)&&(!filterCliente||String(c.clienteNum)===String(filterCliente))&&(!filterCaso||String(c.casoNum)===String(filterCaso));}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});}
-function coverColor(card){if(card.coverColor)return card.coverColor;var col=COLS.find(function(c){return c.id===card.status;});return col?col.cover:"#e2e8f0";}
-function tipoTagsHTML(tipos){if(!tipos||!tipos.length)return "";return tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("");}
-function ccHTML(card){if(card.clienteNum&&card.casoNum)return '<span class="cc">'+card.clienteNum+'/'+card.casoNum+'</span>';if(card.clienteNum)return '<span class="cc">'+card.clienteNum+'</span>';return "";}
-function buildAcList(q){if(!q||q.length<1)return [];var ql=q.toLowerCase();return clientesDB.filter(function(c){return String(c.numero).startsWith(ql)||(c.nome&&c.nome.toLowerCase().includes(ql));}).slice(0,8);}
-
 var _demCampoEditando={};
 function _snapshotDemandaModelo(){
   var m=demandaModeloDB||{nome:"Demanda padrão",campos:[]};
@@ -192,18 +183,6 @@ function _subtarefaCamposColetar(tarefaId,campos,atual){
   });
   return novo;
 }
-
-// ── TOOLBAR ──
-function toolbarHTML(ce){
-  var th=cards.reduce(function(s,c){return s+(parseFloat(c.horas)||0);},0);
-  var rO=responsaveis.map(function(r){return '<option value="'+r+'"'+(filterResp===r?' selected':'')+'>'+r+'</option>';}).join("");
-  var tO=TIPOS.map(function(t){return '<option value="'+t+'"'+(filterTipo===t?' selected':'')+'>'+t+'</option>';}).join("");
-  var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(filterStatus===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
-  var caList=filterCliente?casosDoCliente(parseInt(filterCliente)):[];
-  var casoField=!filterCliente?'<input placeholder="Caso" disabled value="" style="width:72px;opacity:.4;cursor:not-allowed;"/>':caList.length>0?'<select onchange="filterCaso=this.value;renderView()" style="width:84px;"><option value="">Caso</option>'+caList.map(function(c){return '<option value="'+c.numero+'"'+(String(filterCaso)===String(c.numero)?' selected':'')+'>'+c.numero+'</option>';}).join("")+'</select>':'<input placeholder="Caso" value="'+filterCaso+'" oninput="filterCaso=this.value;renderView()" style="width:72px;" type="number" min="1"/>';
-  return '<div class="toolbar"><div style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.45);">'+ic('clock')+' <span style="font-weight:700;color:rgba(255,255,255,.8);">'+th.toFixed(1)+'h</span></div><div style="display:flex;gap:5px;align-items:center;padding:4px 0;flex-wrap:wrap;"><select onchange="filterStatus=this.value;renderView()"><option value="">Status</option>'+sO+'</select><select onchange="filterTipo=this.value;renderView()"><option value="">Tipo</option>'+tO+'</select><select onchange="filterResp=this.value;renderView()"><option value="">Resp.</option>'+rO+'</select><input id="fci" placeholder="Cliente" value="'+filterCliente+'" style="width:72px;" type="number" min="1" max="9999"/>'+casoField+'<div style="display:flex;gap:3px;"><button class="view-btn '+(viewMode==="kanban"?"active":"")+'" onclick="viewMode=\'kanban\';renderView()">'+ic("kanban")+'</button><button class="view-btn '+(viewMode==="lista"?"active":"")+'" onclick="viewMode=\'lista\';renderView()">'+ic("list")+'</button></div>'+(ce?'<button class="btn btn-accent" onclick="openNew()" style="display:flex;align-items:center;gap:5px;font-size:12px;padding:5px 13px;border-radius:8px;">'+ic('plus')+' Nova demanda</button>':"")+'</div></div>';
-}
-function bindFCI(){var el=document.getElementById("fci");if(!el)return;el.addEventListener("change",function(){filterCliente=this.value;filterCaso="";renderView();});el.addEventListener("keydown",function(e){if(e.key==="Enter"){filterCliente=this.value;filterCaso="";renderView();}});}
 
 // ── DRAG & DROP (cards) ──
 function onDragStart(e,id){dragCardId=id;e.dataTransfer.effectAllowed="move";setTimeout(function(){var el=document.getElementById("card-"+id);if(el)el.classList.add("dragging");},0);}
