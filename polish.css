@@ -434,6 +434,44 @@ td div[style*="display:flex;gap:5px"] {
   min-width: 0;
 }
 
+.reun-wrap .inline-edit-hit {
+  border-radius: 6px;
+}
+
+.reun-wrap .inline-edit-hit:hover {
+  outline: 1px solid #d8e1ea;
+  outline-offset: 3px;
+  background: rgba(241, 245, 249, .72);
+}
+
+.reun-wrap .rt-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #d8e1ea;
+  border-radius: 7px;
+  background: #fff;
+  color: #475569;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reun-wrap .rt-edit-btn:hover {
+  border-color: #b8c5d3;
+  color: var(--bt-navy);
+  background: #f8fafc;
+}
+
+.reun-wrap .rt-edit-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
 .projetos-wrap {
   padding: 20px 22px 32px;
 }

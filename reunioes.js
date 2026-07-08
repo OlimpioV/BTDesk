@@ -3157,8 +3157,8 @@ function _buildTarefaCard(t,ce,ehPassado){
   // coluna 1: expandir
   html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="'+(subExp?'Ocultar subtarefas':'Ver subtarefas')+'">'+ic("chevdown")+'</button></div>';
   // coluna 2: tarefa (titulo editavel)
-  html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(statusTarefaFinalizador(t.status)?' done':'')+'"'
-    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>'
+  html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(statusTarefaFinalizador(t.status)?' done':'')+(canEdit?' inline-edit-hit':'')+'"'
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar o t\u00edtulo"':'')+'>'+t.texto+'</span>'
     +(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
     +(t.campos_valores&&t.campos_valores.projeto_titulo?'<span class="bsub">Projeto: '+trunc(t.campos_valores.projeto_titulo,64)+'</span>':'')
     +(_isProjetosPage()?'<span class="projeto-links">'+(_projetoReunioes(t.id).length?_projetoReunioes(t.id).slice(0,3).map(function(r){return '<span class="projeto-link-chip" title="'+_inlineHtml(_reuniaoResumoLabel(r))+'">'+_inlineHtml(_reuniaoResumoLabel(r))+'</span>';}).join(""):'<span class="projeto-link-empty">Sem reuni\u00e3o vinculada</span>')+(_projetoReunioes(t.id).length>3?'<span class="projeto-link-more">+'+(_projetoReunioes(t.id).length-3)+'</span>':'')+'</span>':'')
@@ -3194,6 +3194,7 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='<button class="baddsub" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Adicionar subtarefa">'+ic("plus")+'<span>subtarefa</span></button>';
   } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   if(ce&&!ehPassado){
+    html+='<button onclick="event.stopPropagation();_editarTarefaPauta(\''+t.id+'\')" class="rt-edit-btn inline-edit-hit" title="Editar projeto">'+ic("edit")+'<span>Editar</span></button>';
     html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>';
   }
   html+='</div>';
@@ -3218,7 +3219,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   // descricao (exibida so quando expandido, dentro do bloco expandido)
   if(subExp){
     if(t.descricao){
-      html+='<div id="tp-desc-'+t.id+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
+      html+='<div id="tp-desc-'+t.id+'" class="'+(canEdit?'inline-edit-hit':'')+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
         +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
     } else if(canEdit&&!(subtarefas&&subtarefas.length)){
       html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descri\u00e7\u00e3o...</div>';
@@ -3287,11 +3288,11 @@ function _buildTarefaCard(t,ce,ehPassado){
         } else {
           html+='<div class="subrow"'+(canEdit?' onpointerdown="_tarefaDragStart(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Arraste para o lado para alterar status"':'')+'>';
           html+='<div class="subcell subcell-name"><span class="subdot" style="background:'+sBar+';"></span><div class="subname-wrap">';
-          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(statusTarefaFinalizador(s.status)?' done':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar"':'')+'>'+s.texto+'</span>';
+          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(statusTarefaFinalizador(s.status)?' done':'')+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar a subtarefa"':'')+'>'+s.texto+'</span>';
           if(s.descricao){
-            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc"'+(canEdit?' style="cursor:text;" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
+            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc'+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:text;" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
           } else if(canEdit){
-          html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descri\u00e7\u00e3o</span>';
+          html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add inline-edit-hit" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descri\u00e7\u00e3o</span>';
           }
           html+='</div></div>';
           html+='<div id="tp-sresp-'+s.id+'" class="subcell subcell-resp'+(canEdit?' inline-edit-hit':'')+'"'
@@ -3437,7 +3438,7 @@ async function _showAddSubtarefaPauta(parentId,ehPassado){
   }
   var el=document.getElementById("tp-add-sub-"+parentId);if(!el)return;
   el.style.display='flex';
-  var respOptsSub='<option value="">Responsável...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
+  var respOptsSub='<option value="">Respons\u00e1vel...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
   el.innerHTML='<input id="tp-sub-titulo-'+parentId+'" placeholder="T\u00edtulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;min-width:100px;"/>'
     +'<select id="tp-sub-resp-'+parentId+'" style="font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;color:var(--text2);">'+respOptsSub+'</select>'
     +'<button onclick="_salvarSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" class="btn" style="font-size:11px;padding:3px 9px;">Ok</button>'
@@ -3758,7 +3759,7 @@ function _statusPorArrasto(status,delta){
 function _tarefaDragStart(ev,tarefaId,isSub,parentId,ehPassado){
   if(ehPassado)return;
   var alvo=ev.target;
-  if(alvo&&alvo.closest&&alvo.closest("button,input,textarea,select,a,.statcell,.substat,.rt-menu-btn,.inline-edit-hit"))return;
+  if(alvo&&alvo.closest&&alvo.closest("button,input,textarea,select,a,.statcell,.substat,.rt-menu-btn,.rt-edit-btn,.inline-edit-hit"))return;
   var row=alvo&&alvo.closest?(alvo.closest(".brow")||alvo.closest(".subrow")):null;
   if(!row)return;
   _dragTarefaState={id:tarefaId,isSub:!!isSub,parentId:parentId||null,ehPassado:!!ehPassado,startX:ev.clientX,row:row,moved:false};
@@ -3802,6 +3803,7 @@ function _tarefaDragCleanup(){
 }
 
 function _abrirStatusDropdown(ev,tarefaId,isSub,parentId,ehPassado){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
   var old=document.getElementById("status-dd-wrap");if(old)old.remove();
   var statusList=statusTarefaList(false);
   var top=120,left=120;
