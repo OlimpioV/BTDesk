@@ -19,13 +19,22 @@ var _tarefasContextOverride=null;
 var _projetosPageBusca="";
 var _projetosPageStatus="";
 var _projetosPageResp="";
+var _projetosPagePrazo="";
+var _projetosPageReuniao="";
 var _projetosPageArquivados=false;
+var _projetosReunioesCache={};
 function _canEditConteudo(){return perfil==="mestre"||perfil==="advogado";}
 function _requireEditConteudo(){if(!_canEditConteudo()){toast("Sem permiss\u00e3o para editar",true);return false;}return true;}
 function _tarefaCacheKey(){return _tarefasContextOverride!==null?_tarefasContextOverride:(reuniaoAtiva?reuniaoAtiva.id:'');}
 function _tarefaPayloadReuniaoId(){return _tarefasContextOverride!==null?null:(reuniaoAtiva?reuniaoAtiva.id:null);}
 function _textoNorm(v){return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
 function _isProjetosCategoria(nome){return _textoNorm(nome).indexOf("projetos de equipe")>=0||_textoNorm(nome)==="projetos";}
+function _projetoReunioes(tarefaId){return (_projetosReunioesCache&&_projetosReunioesCache[tarefaId])||[];}
+function _isProjetosPage(){return _tarefasContextOverride==="projetos_page";}
+function _reuniaoResumoLabel(r){
+  if(!r)return "Reuni\u00e3o";
+  return (r.titulo||"Reuni\u00e3o")+" \u00b7 "+_fmtDateBrShort(r.data||"");
+}
 // Tipos de reuniao (Fase 0). Slug salvo na coluna reunioes.tipo; label/cor/icone
 // definidos aqui. Vira configuravel pelo mestre no construtor (Fase 1).
 var REUNIAO_TIPOS={
@@ -85,8 +94,7 @@ async function renderReunioes(){
     reunioesDB=await dbFetchReunioes(eqId);
     pautasDB=await dbFetchPautas(eqId);
     await loadProjetoModelo();
-    projetosDB=await dbFetchProjetos(eqId);
-    await ensureProjetoSnapshots();
+    projetosDB=[];
     try{modelosDB=await dbFetchModelos();}catch(_){modelosDB=[];}
   }catch(e){toast("Erro ao carregar reunioes",true);}
   _renderReunioesPagina();
@@ -105,12 +113,17 @@ async function renderProjetosEquipe(){
     var cats=await dbFetchPautaCategorias(eqId);
     var catIds=cats.filter(function(c){return _isProjetosCategoria(c.nome);}).map(function(c){return c.id;});
     var tarefas=await dbFetchTarefasPorCategorias(catIds,eqId);
-    tarefas=tarefas.filter(function(t){return _projetosPageArquivados||!t.arquivado;});
+    tarefas=tarefas.filter(function(t){return _projetosPageArquivados?!!t.arquivado:!t.arquivado;});
     await _prepararProjetosTarefas(tarefas,true);
     _tarefasPautaCache[_tarefaCacheKey()]=tarefas;
-    var eqIdProj=equipeAtiva?equipeAtiva.id:null;
-    projetosDB=await dbFetchProjetos(eqIdProj);
-    await ensureProjetoSnapshots();
+    _projetosReunioesCache={};
+    try{
+      var links=await dbFetchReunioesPorTarefas(tarefas.map(function(t){return t.id;}));
+      links.forEach(function(l){
+        if(!_projetosReunioesCache[l.tarefa_id])_projetosReunioesCache[l.tarefa_id]=[];
+        if(l.reunioes)_projetosReunioesCache[l.tarefa_id].push(l.reunioes);
+      });
+    }catch(_){}
     _renderProjetosEquipePage(cats);
   }catch(e){
     app.innerHTML=headerHTML("projetos")+'<div style="padding:24px;max-width:960px;margin:0 auto;color:var(--text3);">Erro ao carregar projetos.</div>';
@@ -135,6 +148,10 @@ function _filtrarProjetosTarefas(tarefas){
   return (tarefas||[]).filter(function(t){
     if(_projetosPageStatus&&t.status!==_projetosPageStatus)return false;
     if(_projetosPageResp&&t.responsavel!==_projetosPageResp)return false;
+    if(_projetosPagePrazo==="atrasadas"&&!_isAtrasado(t.data_fim,t.status))return false;
+    if(_projetosPagePrazo==="sem_prazo"&&t.data_fim)return false;
+    if(_projetosPagePrazo==="com_prazo"&&!t.data_fim)return false;
+    if(_projetosPageReuniao&&!_projetoReunioes(t.id).some(function(r){return r.id===_projetosPageReuniao;}))return false;
     if(busca){
       var texto=_textoNorm((t.texto||"")+" "+(t.descricao||""));
       if(texto.indexOf(busca)<0)return false;
@@ -159,6 +176,19 @@ function _renderProjetosEquipePage(cats){
   });
   var stOpts='<option value="">Todos os status</option>'+statusTarefaList(false).map(function(s){return '<option value="'+s.id+'"'+(_projetosPageStatus===s.id?' selected':'')+'>'+s.nome+'</option>';}).join("");
   var respOpts='<option value="">Todos os responsaveis</option>'+(responsaveis||[]).map(function(r){return '<option value="'+r+'"'+(_projetosPageResp===r?' selected':'')+'>'+r+'</option>';}).join("");
+  var reuniaoIds={};
+  var reuniaoOpts='<option value="">Todas as reuni\u00f5es</option>';
+  Object.keys(_projetosReunioesCache||{}).forEach(function(tid){
+    (_projetoReunioes(tid)||[]).forEach(function(r){
+      if(!r||reuniaoIds[r.id])return;
+      reuniaoIds[r.id]=true;
+      reuniaoOpts+='<option value="'+r.id+'"'+(_projetosPageReuniao===r.id?' selected':'')+'>'+_inlineHtml((r.titulo||"Reuni\u00e3o")+' · '+_fmtDateBrShort(r.data||""))+'</option>';
+    });
+  });
+  var prazoOpts='<option value="">Todos os prazos</option>'
+    +'<option value="atrasadas"'+(_projetosPagePrazo==="atrasadas"?' selected':'')+'>Atrasados</option>'
+    +'<option value="com_prazo"'+(_projetosPagePrazo==="com_prazo"?' selected':'')+'>Com prazo</option>'
+    +'<option value="sem_prazo"'+(_projetosPagePrazo==="sem_prazo"?' selected':'')+'>Sem prazo</option>';
   var html=headerHTML("projetos");
   html+='<main class="reun-wrap projetos-wrap">';
   html+='<section class="projetos-page">';
@@ -167,10 +197,11 @@ function _renderProjetosEquipePage(cats){
     +'<h1 class="projetos-title">Projetos de equipe</h1>'
     +'<div class="projetos-sub">Projetos usados nas pautas, com subtarefas, status, respons\u00e1veis, prazos e coment\u00e1rios.</div></div>'
     +'<div class="projetos-actions">'
+    +'<button class="rbtn rbtn-sm" onclick="_projetosPageArquivados=!_projetosPageArquivados;renderProjetosEquipe()">'+(_projetosPageArquivados?'Ver ativos':'Ver arquivados')+'</button>'
     +(ce?'<button class="btn btn-primary" onclick="openNovoProjetoPauta()">'+ic("plus")+' Novo projeto</button>':'')
     +'</div></div>';
   html+='<div class="projetos-stats">'
-    +'<div class="projetos-stat"><span>Total</span><b>'+todasTarefas.length+'</b></div>'
+    +'<div class="projetos-stat"><span>'+(_projetosPageArquivados?'Arquivados':'Total')+'</span><b>'+todasTarefas.length+'</b></div>'
     +'<div class="projetos-stat"><span>Abertos</span><b>'+abertas+'</b></div>'
     +'<div class="projetos-stat warn"><span>Atrasados</span><b>'+atrasadas+'</b></div>'
     +'<div class="projetos-stat ok"><span>Conclu\u00eddos</span><b>'+concluidas+'</b></div>'
@@ -180,9 +211,11 @@ function _renderProjetosEquipePage(cats){
     +'<input value="'+_inlineHtml(_projetosPageBusca)+'" placeholder="Buscar projeto..." onkeydown="if(event.key===\'Enter\'){_projetosPageBusca=this.value;_renderProjetosEquipePage();}" onblur="_projetosPageBusca=this.value;_renderProjetosEquipePage()">'
     +'<select onchange="_projetosPageStatus=this.value;_renderProjetosEquipePage()">'+stOpts+'</select>'
     +'<select onchange="_projetosPageResp=this.value;_renderProjetosEquipePage()">'+respOpts+'</select>'
-    +'<button class="rbtn rbtn-sm" onclick="_projetosPageBusca=\'\';_projetosPageStatus=\'\';_projetosPageResp=\'\';_renderProjetosEquipePage()">Limpar filtros</button>'
+    +'<select onchange="_projetosPagePrazo=this.value;_renderProjetosEquipePage()">'+prazoOpts+'</select>'
+    +'<select onchange="_projetosPageReuniao=this.value;_renderProjetosEquipePage()">'+reuniaoOpts+'</select>'
+    +'<button class="rbtn rbtn-sm" onclick="_projetosPageBusca=\'\';_projetosPageStatus=\'\';_projetosPageResp=\'\';_projetosPagePrazo=\'\';_projetosPageReuniao=\'\';_renderProjetosEquipePage()">Limpar filtros</button>'
     +'</div>';
-  html+='<div class="bgroup"><div class="bgroup-hd"><span class="bgroup-nm">Projetos ativos</span><span class="bgroup-ct">'+tarefas.length+' '+(tarefas.length===1?'projeto':'projetos')+'</span></div>';
+  html+='<div class="bgroup"><div class="bgroup-hd"><span class="bgroup-nm">'+(_projetosPageArquivados?'Projetos arquivados':'Projetos ativos')+'</span><span class="bgroup-ct">'+tarefas.length+' '+(tarefas.length===1?'projeto':'projetos')+'</span></div>';
   html+='<div class="board"><div class="bcols"><span></span><span>Projeto</span><span>Respons\u00e1vel</span><span>Status</span><span>Prazo</span><span>Progresso</span></div>';
   if(!tarefas.length){
     html+='<div style="padding:26px;text-align:center;color:var(--text3);font-size:13px;">Nenhum projeto encontrado.</div>';
@@ -192,14 +225,6 @@ function _renderProjetosEquipePage(cats){
     });
   }
   html+='</div></div>';
-  var projs=(projetosDB||[]).filter(function(p){return !p.arquivado;});
-  if(projs.length){
-    html+='<div class="bgroup"><div class="bgroup-hd"><span class="bgroup-nm">Projetos internos</span><span class="bgroup-ct">'+projs.length+'</span></div><div style="display:flex;flex-direction:column;gap:8px;">';
-    projs.forEach(function(p){
-      html+='<div id="proj-item-'+p.id+'">'+_buildProjetoCardHTML(p,!!_projExpanded[p.id],_checklistCache[p.id]||null,_commentsCache[p.id]||null,ce,false)+'</div>';
-    });
-    html+='</div></div>';
-  }
   html+='</section></main>';
   app.innerHTML=html;
 }
@@ -269,6 +294,128 @@ async function salvarNovoProjetoPauta(){
     renderProjetosEquipe();
     toast("Projeto criado!");
   }catch(e){toast("Erro ao criar projeto",true);}
+}
+
+async function _toggleProjetoArquivado(tarefaId,arquivar){
+  if(!_requireEditConteudo())return;
+  var msg=arquivar?"Arquivar este projeto? Ele sai da lista de ativos e fica disponivel em Ver arquivados.":"Restaurar este projeto para a lista de ativos?";
+  if(!window.confirm(msg))return;
+  try{
+    await dbUpsertTarefa({
+      id:tarefaId,
+      arquivado:!!arquivar,
+      arquivado_em:arquivar?new Date().toISOString():null,
+      arquivado_por:arquivar?userDbId:null
+    });
+    toast(arquivar?"Projeto arquivado":"Projeto restaurado");
+    renderProjetosEquipe();
+  }catch(_){toast("Erro ao alterar arquivamento",true);}
+}
+
+async function openProjetoReunioes(tarefaId){
+  if(!_requireEditConteudo())return;
+  var tarefa=_getTarefaBoardCache(tarefaId,false,null)||{};
+  var mc=document.getElementById("modal-container");
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,680px);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div><div style="font-size:16px;font-weight:800;color:var(--bt-navy);font-family:var(--font-titulo);">Reuni\u00f5es vinculadas</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">'+_inlineHtml(tarefa.texto||"Projeto")+'</div></div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+    +'<div id="prj-reun-list" style="text-align:center;color:var(--text3);padding:28px;">Carregando...</div>'
+    +'</div></div>';
+  try{
+    var eqId=equipeAtiva?equipeAtiva.id:null;
+    reunioesDB=await dbFetchReunioes(eqId);
+    var atuais=await dbFetchReunioesPorTarefas([tarefaId]);
+    var marcadas={};
+    atuais.forEach(function(l){if(l.reunioes)marcadas[l.reunioes.id]=true;});
+    _projetosReunioesCache[tarefaId]=atuais.map(function(l){return l.reunioes;}).filter(Boolean);
+    var reunioes=(reunioesDB||[]).slice().sort(function(a,b){return (b.data||"").localeCompare(a.data||"");});
+    var html='';
+    if(!reunioes.length){
+      html='<div style="padding:26px;text-align:center;color:var(--text3);font-size:13px;">Nenhuma reuni\u00e3o cadastrada.</div>';
+    } else {
+      html+='<div class="projeto-reunioes-list">';
+      reunioes.forEach(function(r){
+        html+='<label class="projeto-reuniao-row">'
+          +'<input type="checkbox" value="'+r.id+'" '+(marcadas[r.id]?'checked':'')+'>'
+          +'<span><b>'+_inlineHtml(r.titulo||"Reuni\u00e3o")+'</b><small>'+_fmtDateBrShort(r.data||"")+' '+String(r.hora||"").slice(0,5)+' \u00b7 '+(r.status||"")+'</small></span>'
+          +'</label>';
+      });
+      html+='</div>';
+    }
+    html+='<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="salvarProjetoReunioes(\''+tarefaId+'\')">Salvar</button></div>';
+    var el=document.getElementById("prj-reun-list");if(el){el.style.padding="0";el.style.textAlign="left";el.innerHTML=html;}
+  }catch(_){
+    var err=document.getElementById("prj-reun-list");if(err)err.innerHTML='<div style="color:#dc2626;">Erro ao carregar reuni\u00f5es.</div>';
+  }
+}
+
+async function salvarProjetoReunioes(tarefaId){
+  if(!_requireEditConteudo())return;
+  var box=document.getElementById("prj-reun-list");if(!box)return;
+  var checks=box.querySelectorAll("input[type=checkbox]");
+  var desejadas={};
+  checks.forEach(function(cb){if(cb.checked)desejadas[cb.value]=true;});
+  try{
+    var atuais=await dbFetchReunioesPorTarefas([tarefaId]);
+    var atuaisMap={};
+    atuais.forEach(function(l){if(l.reunioes)atuaisMap[l.reunioes.id]=true;});
+    var ids=Object.keys(desejadas);
+    for(var i=0;i<ids.length;i++){
+      if(!atuaisMap[ids[i]])await dbUpsertReuniaoTarefa({reuniao_id:ids[i],tarefa_id:tarefaId});
+    }
+    var antigos=Object.keys(atuaisMap);
+    for(var j=0;j<antigos.length;j++){
+      if(!desejadas[antigos[j]])await dbDelReuniaoTarefa(antigos[j],tarefaId);
+    }
+    closeModal();
+    toast("V\u00ednculos salvos");
+    renderProjetosEquipe();
+  }catch(_){toast("Erro ao salvar v\u00ednculos",true);}
+}
+
+async function openProjetoHistorico(tarefaId){
+  var tarefa=_getTarefaBoardCache(tarefaId,false,null)||{};
+  var mc=document.getElementById("modal-container");
+  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,760px);max-height:88vh;overflow:auto;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div><div style="font-size:16px;font-weight:800;color:var(--bt-navy);font-family:var(--font-titulo);">Hist\u00f3rico do projeto</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">'+_inlineHtml(tarefa.texto||"Projeto")+'</div></div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+    +'<div id="prj-hist-list" style="text-align:center;color:var(--text3);padding:28px;">Carregando...</div>'
+    +'</div></div>';
+  try{
+    var links=await dbFetchReunioesPorTarefas([tarefaId]);
+    var reunioes=links.map(function(l){return l.reunioes;}).filter(Boolean).sort(function(a,b){return (b.data||"").localeCompare(a.data||"");});
+    var html='';
+    if(!reunioes.length){
+      html='<div style="padding:26px;text-align:center;color:var(--text3);font-size:13px;">Este projeto ainda n\u00e3o est\u00e1 vinculado a reuni\u00f5es.</div>';
+    } else {
+      html+='<div class="projeto-historico-list">';
+      for(var i=0;i<reunioes.length;i++){
+        var r=reunioes[i];
+        var snap=null;
+        try{snap=_getSnapshotTarefas(await dbFetchReuniaoPautas(r.id));}catch(_){snap=null;}
+        var stHtml='<div class="projeto-hist-empty">Sem snapshot salvo nesta reuni\u00e3o.</div>';
+        if(snap&&snap.tarefas){
+          var item=(snap.tarefas||[]).find(function(t){return t.id===tarefaId;});
+          if(item){
+            var subs=item.subtarefas||[];
+            var cmts=item.comentarios||[];
+            stHtml='<div class="projeto-hist-snap">'
+              +'<span>Status: <b>'+_inlineHtml(statusTarefaLabel(item.status))+'</b></span>'
+              +'<span>Resp.: <b>'+_inlineHtml(item.responsavel||"Sem respons\u00e1vel")+'</b></span>'
+              +'<span>Prazo: <b>'+(item.data_fim?_fmtDateBrShort(item.data_fim):"Sem prazo")+'</b></span>'
+              +'<span>Subtarefas: <b>'+subs.filter(function(s){return statusTarefaFinalizador(s.status);}).length+'/'+subs.length+'</b></span>'
+              +(cmts.length?'<span>Coment\u00e1rios: <b>'+cmts.length+'</b></span>':'')
+              +'</div>';
+          } else {
+            stHtml='<div class="projeto-hist-empty">Snapshot salvo, mas este projeto n\u00e3o fazia parte dele.</div>';
+          }
+        }
+        html+='<div class="projeto-hist-row"><div class="projeto-hist-head"><b>'+_inlineHtml(r.titulo||"Reuni\u00e3o")+'</b><span>'+_fmtDateBrShort(r.data||"")+' '+String(r.hora||"").slice(0,5)+' \u00b7 '+(r.status||"")+'</span></div>'+stHtml+'</div>';
+      }
+      html+='</div>';
+    }
+    var el=document.getElementById("prj-hist-list");if(el){el.style.padding="0";el.style.textAlign="left";el.innerHTML=html;}
+  }catch(_){
+    var err=document.getElementById("prj-hist-list");if(err)err.innerHTML='<div style="color:#dc2626;">Erro ao carregar hist\u00f3rico.</div>';
+  }
 }
 
 async function ensureProjetoSnapshots(){
@@ -764,22 +911,11 @@ function _renderPautaView(pauta,snap,ce,ehPassado){
 }
 
 function _buildProjetosSection(snap,ce,ehPassado){
-  var eqId=equipeAtiva?equipeAtiva.id:null;
-  var projs=projetosDB.filter(function(p){return(!eqId||p.equipe_id===eqId)&&!p.arquivado;});
-  var html='';
-  if(!projs.length){html+='<div class="pauta-empty">Nenhum projeto de equipe.</div>';}
-  else{
-    projs.forEach(function(p){
-      html+='<div id="proj-item-'+p.id+'">'+_buildProjetoCardHTML(p,!!_projExpanded[p.id],_checklistCache[p.id]||null,_commentsCache[p.id]||null,ce,ehPassado)+'</div>';
-    });
-  }
-  if(ce&&!ehPassado)html+='<button onclick="openNovoProjeto()" class="rbtn rbtn-sm" style="margin-top:6px;">'+ic("plus")+' Novo projeto</button>';
+  var html='<div class="pauta-empty">Projetos de equipe agora usam a estrutura de tarefas. Adicione ou vincule projetos pela tela Projetos e eles aparecer\u00e3o nas tarefas desta reuni\u00e3o com subtarefas, status, respons\u00e1veis e coment\u00e1rios.</div>';
   if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);"><div class="cl-lbl">Notas da reuniao</div><div class="notas">'+snap.notas+'</div></div>';
   return html;
 }
 async function _refreshProjetosNaReuniao(){
-  var eqId=equipeAtiva?equipeAtiva.id:null;
-  try{projetosDB=await dbFetchProjetos(eqId);await ensureProjetoSnapshots();}catch(_){}
   if(document.getElementById("app")&&document.getElementById("app").getAttribute("data-btdesk-view")==="projetos"){
     await renderProjetosEquipe();
     return;
@@ -2345,18 +2481,22 @@ async function _coletarPendenciasPool(reuniaoId,anterior,tarefasAnterior){
       pool.push({key:"demanda:"+card.id+":"+t.id,origem:"demanda",id:t.id,card_id:card.id,texto:t.texto,status:t.status,responsavel:t.responsavel,prazo:t.data_fim,campos_valores:t.campos_valores||{},contexto:"Demanda: "+(card.titulo||"Demanda")});
     });
   });
-  var projetos=(projetosDB||[]).filter(function(p){return !p.arquivado&&(!equipeAtiva||!p.equipe_id||p.equipe_id===equipeAtiva.id);});
-  for(var i=0;i<projetos.length;i++){
-    var p=projetos[i];
-    var checklist=[];
-    try{
-      checklist=_checklistCache[p.id]||await dbFetchChecklist(p.id);
-      _checklistCache[p.id]=checklist;
-    }catch(_){checklist=[];}
-    checklist.filter(function(it){return !statusTarefaFinalizador(it.status);}).forEach(function(it){
-      var resp=(it.usuarios&&(it.usuarios.sigla||it.usuarios.nome))||"";
-      pool.push({key:"projeto:"+p.id+":"+it.id,origem:"projeto",projeto_id:p.id,checklist_id:it.id,texto:it.titulo,status:it.status,responsavel:resp,prazo:null,contexto:"Projeto: "+(p.titulo||"Projeto")});
-    });
+  try{
+    var eqId=equipeAtiva?equipeAtiva.id:null;
+    var cats=await dbFetchPautaCategorias(eqId);
+    var catIds=(cats||[]).filter(function(c){return _isProjetosCategoria(c.nome);}).map(function(c){return c.id;});
+    var projetosTarefas=await dbFetchTarefasPorCategorias(catIds,eqId);
+    projetosTarefas=projetosTarefas.filter(function(p){return !p.arquivado;});
+    for(var i=0;i<projetosTarefas.length;i++){
+      var p=projetosTarefas[i];
+      var subtarefas=[];
+      try{subtarefas=await dbFetchSubtarefas(p.id);}catch(_){subtarefas=[];}
+      subtarefas.filter(function(it){return !statusTarefaFinalizador(it.status);}).forEach(function(it){
+        pool.push({key:"projeto:"+p.id+":"+it.id,origem:"projeto",id:it.id,projeto_tarefa_id:p.id,texto:it.texto,status:it.status,responsavel:it.responsavel,prazo:it.data_fim,campos_valores:it.campos_valores||{},contexto:"Projeto: "+(p.texto||"Projeto")});
+      });
+    }
+  }catch(_){
+    // Projetos de equipe sao opcionais no pool.
   }
   _pendenciasPoolCache[reuniaoId]=pool;
   return pool;
@@ -2514,10 +2654,17 @@ async function _desmarcarPendenciaPool(key){
     var tarefas=await dbFetchTarefasReuniao(reuniaoId);
     var tarefa=null;
     if(item&&item.origem==="projeto"){
-      tarefa=(tarefas||[]).find(function(t){return t.campos_valores&&t.campos_valores.pendencia_origem_key===key;})||null;
+      var projetoTarefaId=item.id||null;
+      tarefa=(tarefas||[]).find(function(t){
+        return (projetoTarefaId&&t.id===projetoTarefaId)||(t.campos_valores&&t.campos_valores.pendencia_origem_key===key);
+      })||null;
       if(tarefa){
         await dbDelReuniaoTarefa(reuniaoId,tarefa.id);
-        await dbDelTarefa(tarefa.id);
+        var camposProj=Object.assign({},tarefa.campos_valores||{});
+        delete camposProj.pendencia_origem_key;
+        delete camposProj.projeto_tarefa_id;
+        delete camposProj.projeto_titulo;
+        await dbUpsertTarefa({id:tarefa.id,reuniao_id:null,campos_valores:camposProj});
       }
     }else{
       var tarefaId=(item&&item.id)||null;
@@ -2559,18 +2706,9 @@ async function _marcarPendenciaPool(key){
       await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:item.id});
     }else if(item.origem==="projeto"){
       await _garantirPautaProjetosNaReuniao(reuniaoId);
-      var novoId=uid();
-      var projeto=(projetosDB||[]).find(function(p){return p.id===item.projeto_id;})||{};
-      await dbUpsertTarefa({
-        id:novoId,
-        texto:item.texto,
-        status:item.status||"pendente",
-        reuniao_id:reuniaoId,
-        equipe_id:eqId,
-        criado_em:new Date().toISOString(),
-        campos_valores:{pendencia_origem_key:key,projeto_id:item.projeto_id,checklist_item_id:item.checklist_id,projeto_titulo:projeto.titulo||"Projeto"}
-      });
-      await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:novoId});
+      var cacheProj=(_tarefasPautaCache[reuniaoId]||[]).find(function(t){return t.id===item.id;})||{};
+      await dbUpsertTarefa({id:item.id,reuniao_id:reuniaoId,equipe_id:eqId,campos_valores:Object.assign({},item.campos_valores||{},cacheProj.campos_valores||{},{pendencia_origem_key:key,projeto_tarefa_id:item.projeto_tarefa_id,projeto_titulo:item.contexto})});
+      await dbUpsertReuniaoTarefa({reuniao_id:reuniaoId,tarefa_id:item.id});
     }
     await _refreshPendenciasPoolUI(reuniaoId);
     toast("Pendencia marcada na reuniao!");
@@ -2587,7 +2725,13 @@ async function _coletarSnapshotTarefasReuniao(reuniaoId){
   var tarefas=[];
   try{tarefas=await dbFetchTarefasReuniao(reuniaoId);}catch(_){tarefas=[];}
   for(var i=0;i<tarefas.length;i++){
-    try{tarefas[i]=Object.assign({},tarefas[i],{subtarefas:await dbFetchSubtarefas(tarefas[i].id)});}catch(_){tarefas[i]=Object.assign({},tarefas[i],{subtarefas:[]});}
+    var subs=[],cmts=[];
+    try{subs=await dbFetchSubtarefas(tarefas[i].id);}catch(_){subs=[];}
+    try{cmts=await dbFetchTarefaComentarios(tarefas[i].id);}catch(_){cmts=[];}
+    for(var j=0;j<subs.length;j++){
+      try{subs[j]=Object.assign({},subs[j],{comentarios:await dbFetchTarefaComentarios(subs[j].id)});}catch(_){subs[j]=Object.assign({},subs[j],{comentarios:[]});}
+    }
+    tarefas[i]=Object.assign({},tarefas[i],{subtarefas:subs,comentarios:cmts});
   }
   return {criado_em:new Date().toISOString(),categorias:catMap,tarefas:tarefas};
 }
@@ -3017,6 +3161,8 @@ function _buildTarefaCard(t,ce,ehPassado){
     +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar"':'')+'>'+t.texto+'</span>'
     +(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
     +(t.campos_valores&&t.campos_valores.projeto_titulo?'<span class="bsub">Projeto: '+trunc(t.campos_valores.projeto_titulo,64)+'</span>':'')
+    +(_isProjetosPage()?'<span class="projeto-links">'+(_projetoReunioes(t.id).length?_projetoReunioes(t.id).slice(0,3).map(function(r){return '<span class="projeto-link-chip" title="'+_inlineHtml(_reuniaoResumoLabel(r))+'">'+_inlineHtml(_reuniaoResumoLabel(r))+'</span>';}).join(""):'<span class="projeto-link-empty">Sem reuni\u00e3o vinculada</span>')+(_projetoReunioes(t.id).length>3?'<span class="projeto-link-more">+'+(_projetoReunioes(t.id).length-3)+'</span>':'')+'</span>':'')
+    +(t.arquivado?'<span class="projeto-archived">Arquivado</span>':'')
     +((t.descricao&&!subExp)?'<span class="bsub">'+trunc(t.descricao,64)+'</span>':'')
     +'</div></div>';
   // coluna 3: responsavel
@@ -3715,6 +3861,14 @@ function _abrirMenuTarefa(evt,tarefaId,isSub,parentId,ehPassado){
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_editarTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Editar</div>';
     if(ce&&!ehPassado){
       html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();openDuplicarTarefa(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Duplicar</div>';
+    }
+    if(_isProjetosPage()){
+      var tarefaMenu=_getTarefaBoardCache(tarefaId,false,null)||{};
+      html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();openProjetoReunioes(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Reuni\u00f5es vinculadas</div>';
+      html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();openProjetoHistorico(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Hist\u00f3rico</div>';
+      if(ce&&!ehPassado){
+        html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_toggleProjetoArquivado(\''+tarefaId+'\','+(!tarefaMenu.arquivado)+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">'+(tarefaMenu.arquivado?'Restaurar':'Arquivar')+'</div>';
+      }
     }
     html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_excluirTarefaPauta(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:#dc2626;" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'">Excluir</div>';
   }

@@ -66,6 +66,13 @@ async function dbFetchTarefasPorCategorias(catIds,equipeId){
   if(!r.ok)return [];
   return r.json();
 }
+async function dbFetchReunioesPorTarefas(tarefaIds){
+  if(!tarefaIds||!tarefaIds.length)return [];
+  var ids=tarefaIds.map(function(id){return String(id).replace(/,/g,"");}).join(",");
+  var r=await fetch(SB+"/rest/v1/reuniao_tarefas?tarefa_id=in.("+ids+")&select=tarefa_id,reunioes(id,titulo,data,hora,status)&order=tarefa_id",{headers:H});
+  if(!r.ok)return [];
+  return r.json();
+}
 async function dbFetchReuniaoTarefas(reuniaoId){var r=await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefa_id",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertReuniaoTarefa(rt){var r=await fetch(SB+"/rest/v1/reuniao_tarefas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(rt)});if(!r.ok)throw new Error();}
 async function dbDelReuniaoTarefa(reuniaoId,tarefaId){await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&tarefa_id=eq."+tarefaId,{method:"DELETE",headers:H});}

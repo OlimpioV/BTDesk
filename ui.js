@@ -181,12 +181,13 @@ function switchEquipe(equipeId){
 }
 
 function _isAdminAba(aba){
-  return aba==="admin"||aba==="estrutura"||aba==="usr"||aba==="eq"||aba==="pautas"||aba==="emails"||aba==="imp"||aba==="etq"||aba==="logs";
+  return aba==="admin"||aba==="estrutura"||aba==="permissoes"||aba==="usr"||aba==="eq"||aba==="pautas"||aba==="emails"||aba==="imp"||aba==="etq"||aba==="logs";
 }
 
 function _adminMenuHTML(aba){
   var itens=[
     {id:"estrutura",label:"Estrutura",icon:"kanban",fn:"renderEstrutura()"},
+    {id:"permissoes",label:"Permiss\u00f5es",icon:"users",fn:"renderPermissoes()"},
     {id:"usr",label:"Usu\u00e1rios",icon:"users",fn:"renderUsers()"},
     {id:"eq",label:"Equipes",icon:"group",fn:"renderEquipes()"},
     {id:"pautas",label:"Pautas",icon:"meeting",fn:"renderPautaCategorias()"},
@@ -213,6 +214,7 @@ function renderAdministracao(sec){
   if(perfil!=="mestre"){renderView();return;}
   var destino=sec||"usr";
   if(destino==="estrutura")renderEstrutura();
+  else if(destino==="permissoes")renderPermissoes();
   else if(destino==="eq")renderEquipes();
   else if(destino==="pautas")renderPautaCategorias();
   else if(destino==="emails")renderEmails();

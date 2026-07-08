@@ -321,6 +321,51 @@ async function renderEstrutura(){
   }catch(e){toast("Erro ao carregar estrutura",true);}
 }
 
+function renderPermissoes(){
+  if(perfil!=="mestre"){renderView();return;}
+  var app=document.getElementById("app");app.className="page-mode";
+  var areas=[
+    {nome:"Administra\u00e7\u00e3o",mestre:"Configura estrutura, usu\u00e1rios, equipes, status, modelos, pautas, e-mails, importa\u00e7\u00e3o, etiquetas e hist\u00f3rico.",advogado:"Sem acesso.",cliente:"Sem acesso."},
+    {nome:"Demandas",mestre:"Cria, edita, move, exclui, comenta e ajusta estrutura.",advogado:"Cria, edita, move e comenta demandas da equipe ativa.",cliente:"Visualiza demandas permitidas."},
+    {nome:"Projetos",mestre:"Cria, edita, duplica, arquiva, restaura, vincula reuni\u00f5es e consulta hist\u00f3rico.",advogado:"Cria, edita, arquiva, restaura, vincula reuni\u00f5es e comenta projetos da equipe ativa.",cliente:"Visualiza projetos permitidos."},
+    {nome:"Reuni\u00f5es",mestre:"Cria, edita, gera ata, gerencia pautas, tarefas, participantes, snapshots e notificac\u00f5es.",advogado:"Edita conte\u00fado, tarefas, subtarefas, pautas e ata das reuni\u00f5es da equipe ativa.",cliente:"Visualiza quando houver libera\u00e7\u00e3o de acesso."},
+    {nome:"Estrutura modular",mestre:"Altera status, modelos de reuni\u00e3o, demandas, projetos e subtarefas.",advogado:"Usa a estrutura configurada.",cliente:"Somente leitura."}
+  ];
+  var cards=[
+    {perfil:"Mestre",desc:"Configura a estrutura do sistema e pode alterar qualquer conte\u00fado.",cor:"#185FA5"},
+    {perfil:"Advogado",desc:"Edita conte\u00fado operacional da equipe ativa, sem alterar a Administra\u00e7\u00e3o.",cor:"#2b76e5"},
+    {perfil:"Cliente",desc:"Acesso de leitura. N\u00e3o cria, edita, arquiva ou exclui itens.",cor:"#64748b"}
+  ];
+  var cardHtml=cards.map(function(c){
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow-md);">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:10px;height:10px;border-radius:50%;background:'+c.cor+';"></span><b style="font-size:14px;color:var(--bt-navy);">'+c.perfil+'</b></div>'
+      +'<div style="font-size:12px;line-height:1.5;color:var(--text2);">'+c.desc+'</div>'
+      +'</div>';
+  }).join("");
+  var rows=areas.map(function(a){
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      +'<td style="padding:13px 14px;font-size:13px;font-weight:800;color:var(--bt-navy);">'+a.nome+'</td>'
+      +'<td style="padding:13px 14px;font-size:12px;line-height:1.45;color:var(--text2);">'+a.mestre+'</td>'
+      +'<td style="padding:13px 14px;font-size:12px;line-height:1.45;color:var(--text2);">'+a.advogado+'</td>'
+      +'<td style="padding:13px 14px;font-size:12px;line-height:1.45;color:var(--text2);">'+a.cliente+'</td>'
+      +'</tr>';
+  }).join("");
+  app.innerHTML=headerHTML("permissoes")
+    +'<div style="padding:24px;max-width:1080px;margin:0 auto;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:12px;">'
+    +'<div><div style="font-size:18px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Permiss\u00f5es</div><div style="font-size:12px;color:var(--text3);margin-top:3px;">Regra consolidada por perfil e por \u00e1rea do sistema.</div></div>'
+    +'<span class="badge" style="background:#eef2ff;color:#3730a3;">Somente mestre altera</span>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:18px;">'+cardHtml+'</div>'
+    +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
+    +'<table style="width:100%;border-collapse:collapse;">'
+    +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
+    +['\u00c1rea','Mestre','Advogado','Cliente'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:12px;line-height:1.5;">Esta tela centraliza a pol\u00edtica funcional. A aplica\u00e7\u00e3o j\u00e1 bloqueia Administra\u00e7\u00e3o para n\u00e3o mestres e usa edi\u00e7\u00e3o de conte\u00fado apenas para mestre e advogado.</div>'
+    +'</div>';
+}
+
 function openEditTarefaStatus(id){
   var s=id?(_estruturaStatusCache||[]).find(function(x){return x.id===id;}):null;
   var isE=!!s;
