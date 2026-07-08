@@ -221,7 +221,7 @@ async function saveEquipeMembros(equipeId){
   }catch(e){toast("Erro",true);}
 }
 
-// â”€â”€ ESTRUTURA â”€â”€
+// Estrutura
 var _estruturaStatusCache=[];
 var _estruturaModelosCache=[];
 
@@ -438,7 +438,7 @@ function _renderEmailsPagina(logs,config){
   var app=document.getElementById("app");
   var abaAtiva=window._emailAba||"logs";
   var tabs='<div style="display:flex;gap:2px;margin-bottom:20px;">'
-    +['logs','config'].map(function(a){var lab={logs:'Historico de envios',config:'Configuracoes'}[a];return '<button onclick="window._emailAba=\''+a+'\';renderEmails()" style="font-size:12px;font-weight:600;padding:6px 16px;border-radius:7px;border:1px solid var(--border);background:'+(abaAtiva===a?'var(--bt-navy)':'#fff')+';color:'+(abaAtiva===a?'#fff':'var(--text2)')+';cursor:pointer;">'+lab+'</button>';}).join("")
+    +['logs','config'].map(function(a){var lab={logs:'Hist\u00f3rico de envios',config:'Configura\u00e7\u00f5es'}[a];return '<button onclick="window._emailAba=\''+a+'\';renderEmails()" style="font-size:12px;font-weight:600;padding:6px 16px;border-radius:7px;border:1px solid var(--border);background:'+(abaAtiva===a?'var(--bt-navy)':'#fff')+';color:'+(abaAtiva===a?'#fff':'var(--text2)')+';cursor:pointer;">'+lab+'</button>';}).join("")
     +'</div>';
 
   var conteudo="";
@@ -462,15 +462,15 @@ function _renderEmailsPagina(logs,config){
     conteudo='<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
       +'<table style="width:100%;border-collapse:collapse;">'
       +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
-      +['Data','Tipo','Assunto','Destinatarios','Status'].map(function(h){return '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;">'+h+'</th>';}).join("")
+      +['Data','Tipo','Assunto','Destinat\u00e1rios','Status'].map(function(h){return '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;">'+h+'</th>';}).join("")
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   } else {
-    var tipoLabel={'projeto_sinalizado':'Sinalizar projeto (botao manual)','reuniao_criada':'Reuniao criada manualmente','tarefa_atrasada':'Tarefa em atraso'};
+    var tipoLabel={'projeto_sinalizado':'Sinalizar projeto (bot\u00e3o manual)','reuniao_criada':'Reuni\u00e3o criada manualmente','tarefa_atrasada':'Tarefa em atraso'};
     conteudo='<div style="display:flex;flex-direction:column;gap:14px;">'
       +'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;font-size:13px;color:#92400e;">'
-      +'Para ativar o envio, voce precisa: <br/>1. Criar uma conta em <strong>resend.com</strong> e gerar uma API key<br/>'
+      +'Para ativar o envio, voc\u00ea precisa: <br/>1. Criar uma conta em <strong>resend.com</strong> e gerar uma API key<br/>'
       +'2. No painel Supabase, ir em <strong>Edge Functions > enviar-email > Secrets</strong> e adicionar: <code>RESEND_API_KEY</code> e <code>FROM_EMAIL</code><br/>'
-      +'3. Implantar a funcao: copie o codigo de <code>supabase/functions/enviar-email/index.ts</code> no dashboard do Supabase'
+      +'3. Implantar a fun\u00e7\u00e3o: copie o c\u00f3digo de <code>supabase/functions/enviar-email/index.ts</code> no dashboard do Supabase'
       +'</div>'
       +config.map(function(c){
         var lab=tipoLabel[c.tipo]||c.tipo;
@@ -483,7 +483,7 @@ function _renderEmailsPagina(logs,config){
           +'Ativo</label>'
           +'</div>'
           +'<div class="field" style="margin-bottom:0;">'
-          +'<label style="font-size:11px;">E-mails extras (alem dos participantes, separados por virgula)</label>'
+          +'<label style="font-size:11px;">E-mails extras (al\u00e9m dos participantes, separados por v\u00edrgula)</label>'
           +'<div style="display:flex;gap:6px;"><input id="nc-ext-'+c.id+'" value="'+extras+'" placeholder="email1@exemplo.com, email2@..." style="flex:1;"/>'
           +'<button onclick="salvarExtras(\''+c.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Salvar</button>'
           +'</div></div></div>';
@@ -494,7 +494,7 @@ function _renderEmailsPagina(logs,config){
   app.innerHTML=headerHTML("emails")
     +'<div style="padding:24px;max-width:1000px;margin:0 auto;">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
-    +'<div style="font-size:18px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Gestao de E-mails</div>'
+    +'<div style="font-size:18px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Gest\u00e3o de E-mails</div>'
     +(abaAtiva==="logs"?'<button onclick="renderEmails()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Atualizar</button>':"")
     +'</div>'
     +tabs+conteudo
@@ -502,7 +502,7 @@ function _renderEmailsPagina(logs,config){
 }
 
 async function toggleNotifConfig(id,ativo){
-  try{await dbUpsertNotifConfig({id,ativo});toast(ativo?"Notificacao ativada":"Notificacao desativada");}
+  try{await dbUpsertNotifConfig({id,ativo});toast(ativo?"Notifica\u00e7\u00e3o ativada":"Notifica\u00e7\u00e3o desativada");}
   catch(e){toast("Erro",true);}
 }
 async function salvarExtras(id){
@@ -671,11 +671,11 @@ function _novoItemCat(catId){
     +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Novo item de pauta</div>'
     +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button>'
     +'</div>'
-    +'<div class="field"><label>Titulo</label><input id="nitem-titulo" placeholder="Ex: Relatorio mensal de demandas"/></div>'
-    +'<div class="field"><label>Descricao (opcional)</label><textarea id="nitem-desc" rows="2" style="resize:vertical;"></textarea></div>'
+    +'<div class="field"><label>T\u00edtulo</label><input id="nitem-titulo" placeholder="Ex: Relat\u00f3rio mensal de demandas"/></div>'
+    +'<div class="field"><label>Descri\u00e7\u00e3o (opcional)</label><textarea id="nitem-desc" rows="2" style="resize:vertical;"></textarea></div>'
     +'<label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;font-size:13px;color:var(--text2);">'
     +'<input type="checkbox" id="nitem-rec" style="width:auto;cursor:pointer;"/>'
-    +'Recorrente <span style="font-size:11px;color:var(--text3);">(aparece em novas reunioes automaticamente)</span></label>'
+    +'Recorrente <span style="font-size:11px;color:var(--text3);">(aparece em novas reuni\u00f5es automaticamente)</span></label>'
     +'<input type="hidden" id="nitem-cat" value="'+catId+'"/>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
@@ -693,8 +693,8 @@ function _editItemCat(catId,itemId){
     +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Editar item</div>'
     +'<button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button>'
     +'</div>'
-    +'<div class="field"><label>Titulo</label><input id="eitem-titulo" value="'+it.titulo.replace(/"/g,"&quot;")+'"/></div>'
-    +'<div class="field"><label>Descricao (opcional)</label><textarea id="eitem-desc" rows="2" style="resize:vertical;">'+(it.descricao||'')+'</textarea></div>'
+    +'<div class="field"><label>T\u00edtulo</label><input id="eitem-titulo" value="'+it.titulo.replace(/"/g,"&quot;")+'"/></div>'
+    +'<div class="field"><label>Descri\u00e7\u00e3o (opcional)</label><textarea id="eitem-desc" rows="2" style="resize:vertical;">'+(it.descricao||'')+'</textarea></div>'
     +'<label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;font-size:13px;color:var(--text2);">'
     +'<input type="checkbox" id="eitem-rec"'+(it.recorrente?' checked':'')+' style="width:auto;cursor:pointer;"/>'
     +'Recorrente</label>'
@@ -711,7 +711,7 @@ async function _salvarNovoItemCat(){
   var catId=document.getElementById("nitem-cat").value;
   var descricao=(document.getElementById("nitem-desc").value||"").trim();
   var recorrente=document.getElementById("nitem-rec").checked;
-  if(!titulo){toast("Informe o titulo",true);return;}
+  if(!titulo){toast("Informe o t\u00edtulo",true);return;}
   try{
     await dbUpsertPautaItem({titulo,descricao:descricao||null,recorrente,categoria_id:catId});
     toast("Criado!");closeModal();_catLoadItens(catId);
@@ -724,7 +724,7 @@ async function _salvarEditItemCat(){
   var titulo=(document.getElementById("eitem-titulo").value||"").trim();
   var descricao=(document.getElementById("eitem-desc").value||"").trim();
   var recorrente=document.getElementById("eitem-rec").checked;
-  if(!titulo){toast("Informe o titulo",true);return;}
+  if(!titulo){toast("Informe o t\u00edtulo",true);return;}
   try{
     await dbUpsertPautaItem({id,titulo,descricao:descricao||null,recorrente,categoria_id:catId});
     toast("Salvo!");closeModal();_catLoadItens(catId);

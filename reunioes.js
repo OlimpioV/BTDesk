@@ -232,7 +232,7 @@ function _renderProjetosEquipePage(cats){
 async function openNovoProjetoPauta(){
   if(!_requireEditConteudo())return;
   var mc=document.getElementById("modal-container");
-  var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join("");
+  var respOpts='<option value="">Sem respons\u00e1vel</option>'+(responsaveis||[]).map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join("");
   var eqId=equipeAtiva?equipeAtiva.id:null;
   var hoje=new Date().toISOString().slice(0,10);
   var futuras=(reunioesDB||[]).filter(function(r){return (!eqId||!r.equipe_id||r.equipe_id===eqId)&&r.data>=hoje;}).sort(function(a,b){return a.data.localeCompare(b.data);});
@@ -241,10 +241,10 @@ async function openNovoProjetoPauta(){
   }).join("");
   mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,560px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Novo projeto de equipe</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
-    +'<div class="field"><label>Titulo *</label><input id="npp-titulo"/></div>'
-    +'<div class="field"><label>Descricao</label><textarea id="npp-desc" rows="4" style="resize:vertical;"></textarea></div>'
+    +'<div class="field"><label>T\u00edtulo *</label><input id="npp-titulo"/></div>'
+    +'<div class="field"><label>Descri\u00e7\u00e3o</label><textarea id="npp-desc" rows="4" style="resize:vertical;"></textarea></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
-    +'<div><label class="icell-label">Responsavel</label><select id="npp-resp" style="width:100%;">'+respOpts+'</select></div>'
+    +'<div><label class="icell-label">Respons\u00e1vel</label><select id="npp-resp" style="width:100%;">'+respOpts+'</select></div>'
     +'<div><label class="icell-label">Status</label><select id="npp-status" style="width:100%;">'+statusTarefaOptions("em_andamento",false)+'</select></div>'
     +'</div>'
     +'<div class="field"><label>V\u00ednculo com reuni\u00f5es</label><select id="npp-vinculo" onchange="_toggleProjetoPautaVinculo()" style="width:100%;">'
@@ -267,7 +267,7 @@ function _toggleProjetoPautaVinculo(){
 async function salvarNovoProjetoPauta(){
   if(!_requireEditConteudo())return;
   var titulo=(document.getElementById("npp-titulo").value||"").trim();
-  if(!titulo){toast("Informe o titulo",true);return;}
+  if(!titulo){toast("Informe o t\u00edtulo",true);return;}
   var desc=(document.getElementById("npp-desc").value||"").trim()||null;
   var resp=document.getElementById("npp-resp").value||null;
   var status=document.getElementById("npp-status").value||"em_andamento";
@@ -275,7 +275,7 @@ async function salvarNovoProjetoPauta(){
     var eqId=equipeAtiva?equipeAtiva.id:null;
     var cats=await dbFetchPautaCategorias(eqId);
     var cat=cats.find(function(c){return _isProjetosCategoria(c.nome);});
-    if(!cat){toast("Categoria Projetos de equipe nao encontrada",true);return;}
+    if(!cat){toast("Categoria Projetos de equipe n\u00e3o encontrada",true);return;}
     var vinculo=document.getElementById("npp-vinculo").value||"area";
     var reuniao=null;
     if(vinculo==="proxima"){
@@ -298,7 +298,7 @@ async function salvarNovoProjetoPauta(){
 
 async function _toggleProjetoArquivado(tarefaId,arquivar){
   if(!_requireEditConteudo())return;
-  var msg=arquivar?"Arquivar este projeto? Ele sai da lista de ativos e fica disponivel em Ver arquivados.":"Restaurar este projeto para a lista de ativos?";
+  var msg=arquivar?"Arquivar este projeto? Ele sai da lista de ativos e fica dispon\u00edvel em Ver arquivados.":"Restaurar este projeto para a lista de ativos?";
   if(!window.confirm(msg))return;
   try{
     await dbUpsertTarefa({
@@ -482,7 +482,7 @@ function _renderReunioesPagina(){
     +'</div>'
     +'</div>'
     +'<div id="mini-cal-area"></div>'
-    +'<div class="reun-sidebar-list">'+(listaSidebar||'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma reuniao</div>')+'</div>'
+    +'<div class="reun-sidebar-list">'+(listaSidebar||'<div class="ux-empty-inline">Nenhuma reuni\u00e3o cadastrada</div>')+'</div>'
     +'<div class="reun-sidebar-footer">'
     +'</div>'
     +'</div>'
@@ -503,13 +503,13 @@ function _fmtData(d){
 }
 
 function _labelTipoPauta(tipo){
-  return {'seminario':'Seminario','projeto':'Projetos','atualizacao_demandas':'Atualizacao de demandas','avisos_gerais':'Avisos gerais','livre':'Livre','demanda':'Demanda'}[tipo]||tipo||'Livre';
+  return {'seminario':'Semin\u00e1rio','projeto':'Projetos','atualizacao_demandas':'Atualiza\u00e7\u00e3o de demandas','avisos_gerais':'Avisos gerais','livre':'Livre','demanda':'Demanda'}[tipo]||tipo||'Livre';
 }
 
 function _buildReuniaoPlaceholder(){
   return '<div class="reun-empty" style="height:100%;">'
     +'<div class="reun-empty-icon">'+ic("meeting")+'</div>'
-    +'<div class="reun-empty-msg">Selecione ou crie uma reuniao</div>'
+    +'<div class="reun-empty-msg">Selecione ou crie uma reuni\u00e3o</div>'
     +'</div>';
 }
 
@@ -518,7 +518,7 @@ function _renderMiniCal(){
   var hoje=new Date();
   var hojeD=hoje.getDate(),hojeM=hoje.getMonth(),hojeA=hoje.getFullYear();
   var hojeStr=String(hojeA)+'-'+(hojeM+1<10?'0':'')+(hojeM+1)+'-'+(hojeD<10?'0':'')+hojeD;
-  var mesesNome=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mesesNome=['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var diasSem=['D','S','T','Q','Q','S','S'];
   var primeiroDia=new Date(_calAno,_calMes,1).getDay();
   var diasNoMes=new Date(_calAno,_calMes+1,0).getDate();
@@ -883,17 +883,17 @@ function _renderPautaView(pauta,snap,ce,ehPassado){
     var rSem=snap.responsavel_nome||'';
     var oSem=snap.observacoes||'';
     if(!tSem&&!rSem&&!oSem){
-      html+='<div class="pauta-empty">Sem registros para este seminario.</div>';
+      html+='<div class="pauta-empty">Sem registros para este semin\u00e1rio.</div>';
     } else {
       if(tSem)html+='<div class="pauta-kv"><b>Tema</b><span style="color:var(--bt-navy);font-weight:600;">'+tSem+'</span></div>';
-      if(rSem)html+='<div class="pauta-kv"><b>Responsavel</b><span style="color:var(--text2);">'+rSem+'</span></div>';
+      if(rSem)html+='<div class="pauta-kv"><b>Respons\u00e1vel</b><span style="color:var(--text2);">'+rSem+'</span></div>';
       if(oSem)html+='<div class="notas" style="margin-top:8px;">'+oSem+'</div>';
     }
   } else if(tipo==='atualizacao_demandas'){
     var adNotas=snap.notas||'';
     var adDemandas=snap.demandas||[];
     if(!adNotas&&!adDemandas.length){
-      html+='<div class="pauta-empty">Sem atualizacoes registradas.</div>';
+      html+='<div class="pauta-empty">Sem atualiza\u00e7\u00f5es registradas.</div>';
     } else {
       adDemandas.forEach(function(d){
         var card=(cards||[]).find(function(c){return c.id===d.card_id;})||{};
@@ -905,14 +905,14 @@ function _renderPautaView(pauta,snap,ce,ehPassado){
     }
   } else {
     if(snap.notas)html+='<div class="notas">'+snap.notas+'</div>';
-    else html+='<div class="pauta-empty">Sem notas para esta pauta nesta reuniao.</div>';
+    else html+='<div class="pauta-empty">Sem notas para esta pauta nesta reuni\u00e3o.</div>';
   }
   return html;
 }
 
 function _buildProjetosSection(snap,ce,ehPassado){
   var html='<div class="pauta-empty">Projetos de equipe agora usam a estrutura de tarefas. Adicione ou vincule projetos pela tela Projetos e eles aparecer\u00e3o nas tarefas desta reuni\u00e3o com subtarefas, status, respons\u00e1veis e coment\u00e1rios.</div>';
-  if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);"><div class="cl-lbl">Notas da reuniao</div><div class="notas">'+snap.notas+'</div></div>';
+  if(snap.notas)html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft);"><div class="cl-lbl">Notas da reuni\u00e3o</div><div class="notas">'+snap.notas+'</div></div>';
   return html;
 }
 async function _refreshProjetosNaReuniao(){
@@ -1007,7 +1007,7 @@ function _projCampoEditor(campo,val,projetoId){
   }
   if(tipo==='responsavel'){
     return '<select id="pcf-'+vid+'" onchange="_projCampoSalvar(\''+projetoId+'\',\''+campo.id+'\')" style="width:100%;font-size:12px;">'
-      +'<option value="">Sem responsavel</option>'
+      +'<option value="">Sem respons\u00e1vel</option>'
       +(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(val===s?' selected':'')+'>'+s+'</option>';}).join("")
       +'</select>';
   }
@@ -1194,7 +1194,7 @@ async function _showAddChecklistItem(projetoId,ehPassado){
   try{var us=await dbFetchUsers();advs=us.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});}catch(_){}
   var respOpts=advs.map(function(u){return '<option value="'+u.id+'">'+(u.sigla||u.nome||"")+'</option>';}).join("");
   el.innerHTML='<div style="padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:flex;flex-direction:column;gap:6px;">'
-    +'<input id="cli-titulo-'+projetoId+'" placeholder="Titulo da subtarefa *" style="font-size:12px;"/>'
+    +'<input id="cli-titulo-'+projetoId+'" placeholder="T\u00edtulo da subtarefa *" style="font-size:12px;"/>'
     +'<div style="display:flex;gap:6px;">'
     +'<select id="cli-resp-'+projetoId+'" style="flex:1;font-size:11px;"><option value="">Responsável...</option>'+respOpts+'</select>'
     +'<select id="cli-status-'+projetoId+'" style="flex:1;font-size:11px;">'+statusTarefaOptions("nao_iniciada",false)+'</select>'
@@ -1213,7 +1213,7 @@ async function _salvarAddChecklistItem(projetoId,ehPassado){
   if(!_requireEditConteudo())return;
   var inp=document.getElementById("cli-titulo-"+projetoId);
   var titulo=(inp?inp.value||"":"").trim();
-  if(!titulo){toast("Informe o titulo da subtarefa",true);return;}
+  if(!titulo){toast("Informe o t\u00edtulo da subtarefa",true);return;}
   var respId=document.getElementById("cli-resp-"+projetoId).value||null;
   var status=document.getElementById("cli-status-"+projetoId).value||"nao_iniciada";
   var cl=_checklistCache[projetoId]||[];
@@ -1248,7 +1248,7 @@ async function _editChecklistItemInline(itemId,projetoId,ehPassado){
 async function _saveChecklistItemInline(itemId,projetoId,ehPassado){
   if(!_requireEditConteudo())return;
   var titulo=(document.getElementById("cli-edit-t-"+itemId).value||"").trim();
-  if(!titulo){toast("Informe o titulo",true);return;}
+  if(!titulo){toast("Informe o t\u00edtulo",true);return;}
   var respId=document.getElementById("cli-edit-r-"+itemId).value||null;
   var status=document.getElementById("cli-edit-s-"+itemId).value||"pendente";
   try{
@@ -1335,7 +1335,7 @@ async function _addProjetoComentarioInline(projetoId){
   try{
     await dbUpsertProjetoComentario({projeto_id:projetoId,usuario_id:userDbId,texto:txt,tipo:"comentario"});
     _commentsCache[projetoId]=await dbFetchProjetoComentarios(projetoId);
-    _reloadProjetoCard(projetoId,false);toast("Comentario adicionado!");
+    _reloadProjetoCard(projetoId,false);toast("Coment\u00e1rio adicionado!");
   }catch(e){toast("Erro",true);}
 }
 async function _editProjetoInline(projetoId,ehPassado){
@@ -1346,14 +1346,14 @@ async function _editProjetoInline(projetoId,ehPassado){
   var respOpts=advs.map(function(u){return '<option value="'+u.id+'"'+(p.responsavel_id===u.id?' selected':'')+'>'+((u.sigla||"")||(u.nome||u.email||""))+'</option>';}).join("");
   var eqOpts=equipesDB.map(function(e){return '<option value="'+e.id+'"'+(p.equipe_id===e.id?' selected':'')+'>'+e.nome+'</option>';}).join("");
   el.innerHTML='<div class="proj-card"><div class="proj-card-bar" style="background:#94a3b8;"></div><div class="proj-card-content">'
-    +'<div class="field" style="margin-bottom:10px;"><label>Titulo *</label><input id="pei-titulo-'+projetoId+'" value="'+p.titulo+'" style="font-size:13px;"/></div>'
+    +'<div class="field" style="margin-bottom:10px;"><label>T\u00edtulo *</label><input id="pei-titulo-'+projetoId+'" value="'+p.titulo+'" style="font-size:13px;"/></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
     +'<div><label class="icell-label">Tipo</label><select id="pei-tipo-'+projetoId+'" style="width:100%;font-size:12px;"><option value="continuo"'+(!p.tipo||p.tipo==="continuo"?" selected":"")+'>Continuo</option><option value="pontual"'+(p.tipo==="pontual"?" selected":"")+'>Pontual (subtarefas)</option></select></div>'
     +'<div><label class="icell-label">Status</label><select id="pei-status-'+projetoId+'" style="width:100%;font-size:12px;">'+statusTarefaOptions(p.status||"em_andamento",false)+'</select></div>'
     +'</div>'
-    +'<div style="margin-bottom:10px;"><label class="icell-label">Responsavel</label><select id="pei-resp-'+projetoId+'" style="width:100%;font-size:12px;"><option value="">Nenhum</option>'+respOpts+'</select></div>'
+    +'<div style="margin-bottom:10px;"><label class="icell-label">Respons\u00e1vel</label><select id="pei-resp-'+projetoId+'" style="width:100%;font-size:12px;"><option value="">Nenhum</option>'+respOpts+'</select></div>'
     +(eqOpts?'<div style="margin-bottom:10px;"><label class="icell-label">Equipe</label><select id="pei-equipe-'+projetoId+'" style="width:100%;font-size:12px;"><option value="">Sem equipe</option>'+eqOpts+'</select></div>':"")
-    +'<div style="margin-bottom:10px;"><label class="icell-label">Descricao</label><textarea id="pei-desc-'+projetoId+'" rows="2" style="font-size:12px;">'+(p.descricao||"")+'</textarea></div>'
+    +'<div style="margin-bottom:10px;"><label class="icell-label">Descri\u00e7\u00e3o</label><textarea id="pei-desc-'+projetoId+'" rows="2" style="font-size:12px;">'+(p.descricao||"")+'</textarea></div>'
     +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
     +'<button onclick="delProjeto(\''+projetoId+'\')" class="btn btn-danger" style="font-size:11px;padding:3px 10px;margin-right:auto;">Excluir</button>'
     +'<button onclick="_reloadProjetoCard(\''+projetoId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
@@ -1363,7 +1363,7 @@ async function _editProjetoInline(projetoId,ehPassado){
 async function _saveProjetoInline(projetoId,ehPassado){
   if(!_requireEditConteudo())return;
   var titulo=(document.getElementById("pei-titulo-"+projetoId).value||"").trim();
-  if(!titulo){toast("Informe o titulo",true);return;}
+  if(!titulo){toast("Informe o t\u00edtulo",true);return;}
   var tipo=document.getElementById("pei-tipo-"+projetoId).value||"continuo";
   var status=document.getElementById("pei-status-"+projetoId).value||"em_andamento";
   var respId=document.getElementById("pei-resp-"+projetoId).value||null;
@@ -1411,8 +1411,8 @@ function _abrirFormReuniao(r){
   var tipoOpts=(modelosDB&&modelosDB.length)?modelosDB.map(function(m){return '<option value="'+(m.slug||_modeloSlug(m.nome))+'"'+(tipoSel===(m.slug||_modeloSlug(m.nome))?' selected':'')+'>'+m.nome+'</option>';}).join(""):Object.keys(REUNIAO_TIPOS).map(function(k){return '<option value="'+k+'"'+(tipoSel===k?' selected':'')+'>'+REUNIAO_TIPOS[k].label+'</option>';}).join("");
   var modeloField='<div class="field"><label>Tipo</label><select id="rf-tipo">'+tipoOpts+'</select></div>';
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,520px);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isEdit?"Editar reuniao":"Nova reuniao")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
-    +'<div class="field"><label>Titulo</label><input id="rf-titulo" value="'+(r.titulo||"")+'"/></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isEdit?"Editar reuni\u00e3o":"Nova reuni\u00e3o")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
+    +'<div class="field"><label>T\u00edtulo</label><input id="rf-titulo" value="'+(r.titulo||"")+'"/></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="field">'
     +'<div><label>Data</label><input type="date" id="rf-data" value="'+(r.data||"")+'"/></div>'
     +'<div><label>Hora</label><input type="time" id="rf-hora" value="'+(r.hora?r.hora.slice(0,5):"09:30")+'"/></div>'
@@ -1420,7 +1420,7 @@ function _abrirFormReuniao(r){
     +'<div class="field"><label>Status</label><select id="rf-status"><option value="agendada"'+(r.status==="agendada"?" selected":"")+'>Agendada</option><option value="realizada"'+(r.status==="realizada"?" selected":"")+'>Realizada</option><option value="cancelada"'+(r.status==="cancelada"?" selected":"")+'>Cancelada</option></select></div>'
     +modeloField
     +(equipesDB.length?'<div class="field"><label>Equipe</label><select id="rf-equipe"><option value="">Selecione...</option>'+eqOptions+'</select></div>':"")
-    +'<div class="field"><label>Observacoes</label><textarea id="rf-obs" rows="3" style="resize:vertical;">'+(r.observacoes||"")+'</textarea></div>'
+    +'<div class="field"><label>Observa\u00e7\u00f5es</label><textarea id="rf-obs" rows="3" style="resize:vertical;">'+(r.observacoes||"")+'</textarea></div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
     +(isEdit?'<button class="btn btn-danger" onclick="delReuniao(\''+r.id+'\')">Excluir</button>':"")
     +'<button class="btn" onclick="closeModal()">Cancelar</button>'
@@ -1468,22 +1468,22 @@ async function salvarReuniao(id){
       }
       // Cria notificacoes para membros da equipe
       if(equipe_id){
-        var titulo_r=obj.titulo||("Reuniao de "+_fmtData(obj.data));
-        await criarNotifParaMembros(equipe_id,"reuniao_criada",criada.id,"Nova reuniao agendada: "+titulo_r+" em "+_fmtData(obj.data));
+        var titulo_r=obj.titulo||("Reuni\u00e3o de "+_fmtData(obj.data));
+        await criarNotifParaMembros(equipe_id,"reuniao_criada",criada.id,"Nova reuni\u00e3o agendada: "+titulo_r+" em "+_fmtData(obj.data));
       }
     }
     if(status==="realizada"&&reuniaoAtiva)await salvarSnapshotReuniao(reuniaoAtiva.id);
-    closeModal();_renderReunioesPagina();toast("Reuniao salva!");
+    closeModal();_renderReunioesPagina();toast("Reuni\u00e3o salva!");
   }catch(e){toast("Erro ao salvar",true);}
 }
 async function delReuniao(id){
   closeModal();
-  modalConfirm("Excluir esta reuniao?",async function(){
+  modalConfirm("Excluir esta reuni\u00e3o?",async function(){
     try{
       await dbDelReuniao(id);
       reunioesDB=reunioesDB.filter(function(r){return r.id!==id;});
       if(reuniaoAtiva&&reuniaoAtiva.id===id)reuniaoAtiva=null;
-      _renderReunioesPagina();toast("Reuniao excluida!");
+      _renderReunioesPagina();toast("Reuni\u00e3o exclu\u00edda!");
     }catch(e){toast("Erro",true);}
   });
 }
@@ -1524,7 +1524,7 @@ async function openGerenciarParticipantes(reuniaoId){
     var idsAtuais=atuais.map(function(p){return p.usuario_id;});
     var advs=todosUsers.filter(function(u){return u.perfil==="advogado"||u.perfil==="mestre";});
     var el=document.getElementById("part-list");if(!el)return;
-    if(!advs.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhum usuario disponivel.</div>';return;}
+    if(!advs.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;">Nenhum usu\u00e1rio dispon\u00edvel.</div>';return;}
     el.innerHTML=advs.map(function(u){
       var sel=idsAtuais.includes(u.id);
       return '<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer;">'
@@ -1577,7 +1577,7 @@ async function renderPautas(){
     +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
     +'<table style="width:100%;border-collapse:collapse;">'
     +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
-    +['Titulo','Tipo','Acoes'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
+    +['T\u00edtulo','Tipo','A\u00e7\u00f5es'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
     +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 function openEditPauta(id){
@@ -1585,9 +1585,9 @@ function openEditPauta(id){
   var eqOptions=equipesDB.map(function(e){return '<option value="'+e.id+'"'+(p&&p.equipe_id===e.id?' selected':'')+'>'+e.nome+'</option>';}).join("");
   document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,480px);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(p?"Editar pauta":"Nova pauta")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
-    +'<div class="field"><label>Titulo *</label><input id="pf-titulo" value="'+(p?p.titulo:'')+'"/></div>'
+    +'<div class="field"><label>T\u00edtulo *</label><input id="pf-titulo" value="'+(p?p.titulo:'')+'"/></div>'
     +'<div class="field"><label>Tipo</label><select id="pf-tipo">'+_tiposOpts(p?p.tipo:'livre')+'</select></div>'
-    +'<div class="field"><label>Descricao</label><textarea id="pf-desc" rows="3">'+(p?p.descricao||'':"")+'</textarea></div>'
+    +'<div class="field"><label>Descri\u00e7\u00e3o</label><textarea id="pf-desc" rows="3">'+(p?p.descricao||'':"")+'</textarea></div>'
     +'<div style="display:flex;gap:16px;margin-bottom:12px;">'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="pf-recorrente"'+(p&&p.recorrente?' checked':'')+'/> Recorrente</label>'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="pf-padrao"'+(p&&p.padrao?' checked':'')+'/> Padrao</label>'
@@ -1598,7 +1598,7 @@ function openEditPauta(id){
 }
 async function salvarPauta(id){
   var titulo=(document.getElementById("pf-titulo").value||"").trim();
-  if(!titulo){toast("Informe o titulo",true);return;}
+  if(!titulo){toast("Informe o t\u00edtulo",true);return;}
   var tipo=document.getElementById("pf-tipo").value;
   var descricao=(document.getElementById("pf-desc").value||"").trim();
   var recorrente=document.getElementById("pf-recorrente").checked;
@@ -1615,16 +1615,16 @@ async function salvarPauta(id){
 }
 async function delPauta(id){
   modalConfirm("Excluir esta pauta?",async function(){
-    try{await dbDelPauta(id);pautasDB=pautasDB.filter(function(p){return p.id!==id;});renderPautas();toast("Pauta excluida!");}catch(e){toast("Erro",true);}
+    try{await dbDelPauta(id);pautasDB=pautasDB.filter(function(p){return p.id!==id;});renderPautas();toast("Pauta exclu\u00edda!");}catch(e){toast("Erro",true);}
   });
 }
 
 // ── ADICIONAR PAUTA A REUNIAO ──
 function _tiposOpts(sel){
   return '<option value="livre"'+(sel==='livre'?' selected':'')+'>Livre</option>'
-    +'<option value="seminario"'+(sel==='seminario'?' selected':'')+'>Seminario</option>'
+    +'<option value="seminario"'+(sel==='seminario'?' selected':'')+'>Semin\u00e1rio</option>'
     +'<option value="projeto"'+(sel==='projeto'?' selected':'')+'>Projetos de equipe</option>'
-    +'<option value="atualizacao_demandas"'+(sel==='atualizacao_demandas'?' selected':'')+'>Atualizacao de demandas</option>'
+    +'<option value="atualizacao_demandas"'+(sel==='atualizacao_demandas'?' selected':'')+'>Atualiza\u00e7\u00e3o de demandas</option>'
     +'<option value="avisos_gerais"'+(sel==='avisos_gerais'?' selected':'')+'>Avisos gerais</option>';
 }
 var _apCatSel=null;var _apReuniao=null;var _gpEditando=null;var _apPautasCtx=[];
@@ -1801,16 +1801,16 @@ async function _gpLoadItens(catId){
     var headerHTML='<div style="padding:12px 16px 8px;border-bottom:1px solid #f1f5f9;">'
       +'<div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;">'+catNome+'</div>'
       +'</div>';
-    var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
-    var pautaOpts='<option value="">Sem pauta especifica</option>'+(_apPautasCtx||[]).map(function(p){return '<option value="'+p.reuniao_pauta_id+'">'+p.titulo+'</option>';}).join("");
+    var respOpts='<option value="">Sem respons\u00e1vel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
+    var pautaOpts='<option value="">Sem pauta espec\u00edfica</option>'+(_apPautasCtx||[]).map(function(p){return '<option value="'+p.reuniao_pauta_id+'">'+p.titulo+'</option>';}).join("");
     var formHTML='<div id="gp-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo *</label>'
-      +'<input id="gp-ni-titulo" placeholder="Titulo da tarefa..." style="font-size:13px;"/></div>'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
-      +'<textarea id="gp-ni-descricao" rows="2" placeholder="Descricao opcional..." style="font-size:13px;resize:vertical;"></textarea></div>'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel *</label>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">T\u00edtulo *</label>'
+      +'<input id="gp-ni-titulo" placeholder="T\u00edtulo da tarefa..." style="font-size:13px;"/></div>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descri\u00e7\u00e3o</label>'
+      +'<textarea id="gp-ni-descricao" rows="2" placeholder="Descri\u00e7\u00e3o opcional..." style="font-size:13px;resize:vertical;"></textarea></div>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Respons\u00e1vel *</label>'
       +'<select id="gp-ni-resp" style="font-size:13px;">'+respOpts+'</select></div>'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Pauta da reuniao</label>'
+      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Pauta da reuni\u00e3o</label>'
       +'<select id="gp-ni-pauta" style="font-size:13px;">'+pautaOpts+'</select></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
       +'<div class="field"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Inicio</label>'
@@ -1853,7 +1853,7 @@ function _gpCancelarNovaTarefa(){
 }
 async function _gpSalvarNovaTarefa(catId){
   var texto=(document.getElementById("gp-ni-titulo").value||"").trim();
-  if(!texto){toast("Informe o titulo",true);return;}
+  if(!texto){toast("Informe o t\u00edtulo",true);return;}
   var descricao=(document.getElementById("gp-ni-descricao").value||"").trim()||null;
   var resp=document.getElementById("gp-ni-resp").value||null;
   var pautaSel=document.getElementById("gp-ni-pauta");
@@ -1883,7 +1883,7 @@ async function _gpSalvarNovaTarefa(catId){
   }catch(e){toast("Erro ao criar tarefa",true);}
 }
 async function _gpDeletarTarefa(tarefaId,catId){
-  modalConfirm("Excluir esta tarefa da reuniao?",async function(){
+  modalConfirm("Excluir esta tarefa da reuni\u00e3o?",async function(){
     try{
       await dbDelTarefa(tarefaId);
       _gpLoadItens(catId);
@@ -1920,7 +1920,7 @@ function _gpCancelarEditTarefa(catId){
 }
 async function _gpSalvarEditTarefa(tarefaId,catId){
   var texto=(document.getElementById("gp-edit-titulo-"+tarefaId).value||"").trim();
-  if(!texto){toast("Informe o titulo",true);return;}
+  if(!texto){toast("Informe o t\u00edtulo",true);return;}
   var descricao=(document.getElementById("gp-edit-descricao-"+tarefaId).value||"").trim()||null;
   var resp=document.getElementById("gp-edit-resp-"+tarefaId).value||null;
   var inicio=document.getElementById("gp-edit-inicio-"+tarefaId).value||null;
@@ -2763,7 +2763,7 @@ async function gerarAta(reuniaoId){
   var tarefas=snapTarefas?snapTarefas.tarefas:[];
   var catMap=(snapTarefas&&snapTarefas.categorias)||{"sem_cat":"Geral"};
   var dataFmt=_fmtData(r.data);
-  var linhas=["ATA DE REUNIAO","","Titulo: "+(r.titulo||("Reuniao de "+dataFmt)),"Data: "+dataFmt+" as "+r.hora.slice(0,5),"Status: "+r.status,""];
+  var linhas=["ATA DE REUNI\u00c3O","","T\u00edtulo: "+(r.titulo||("Reuni\u00e3o de "+dataFmt)),"Data: "+dataFmt+" \u00e0s "+r.hora.slice(0,5),"Status: "+r.status,""];
   if(r.observacoes){linhas.push("Observacoes: "+r.observacoes);linhas.push("");}
   linhas.push("PAUTAS DISCUTIDAS","");
   rps.forEach(function(rp,i){
@@ -2775,7 +2775,7 @@ async function gerarAta(reuniaoId){
   });
   linhas.push("TAREFAS DA REUNIAO","");
   if(!tarefas.length){
-    linhas.push("Nenhuma tarefa vinculada a esta reuniao.","");
+    linhas.push("Nenhuma tarefa vinculada a esta reuni\u00e3o.","");
   } else {
     tarefas.forEach(function(t,i){
       var catId=t.pauta_categoria_id||"sem_cat";
@@ -2784,13 +2784,13 @@ async function gerarAta(reuniaoId){
       linhas.push((i+1)+". "+(t.texto||"Tarefa sem titulo"));
       var pautaTitulo=t.campos_valores&&t.campos_valores.pauta_titulo;
       linhas.push("   Categoria/pauta: "+(pautaTitulo||catMap[catId]||"Geral"));
-      linhas.push("   Responsavel: "+(t.responsavel||"Sem responsavel"));
+      linhas.push("   Respons\u00e1vel: "+(t.responsavel||"Sem respons\u00e1vel"));
       linhas.push("   Status: "+statusTarefaLabel(t.status));
       linhas.push("   Prazo: "+(t.data_fim?_fmtDateBr(t.data_fim):"Sem prazo"));
       if(t.data_inicio)linhas.push("   Inicio: "+_fmtDateBr(t.data_inicio));
       if(subs.length)linhas.push("   Progresso: "+concluidas+"/"+subs.length+" subtarefas concluidas");
       if(t.descricao){
-        linhas.push("   Descricao:");
+        linhas.push("   Descri\u00e7\u00e3o:");
         String(t.descricao).split("\n").forEach(function(l){linhas.push("      "+l);});
       }
       linhas.push("");
@@ -3167,7 +3167,7 @@ function _buildTarefaCard(t,ce,ehPassado){
     +'</div></div>';
   // coluna 3: responsavel
   html+='<div id="tp-resp-'+t.id+'" class="bc bc-resp'+(canEdit?' inline-edit-hit':'')+'"'
-    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar responsavel"':'')+'>';
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar respons\u00e1vel"':'')+'>';
   if(t.responsavel){
     var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
     html+='<span class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';font-size:9px;width:24px;height:24px;min-width:24px;flex-shrink:0;">'+t.responsavel.slice(0,2).toUpperCase()+'</span><span class="bresp-nm">'+t.responsavel+'</span>';
@@ -3194,7 +3194,7 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='<button class="baddsub" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Adicionar subtarefa">'+ic("plus")+'<span>subtarefa</span></button>';
   } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   if(ce&&!ehPassado){
-    html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>';
+    html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>';
   }
   html+='</div>';
   html+='</div>';// fecha brow
@@ -3221,25 +3221,25 @@ function _buildTarefaCard(t,ce,ehPassado){
       html+='<div id="tp-desc-'+t.id+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
         +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
     } else if(canEdit&&!(subtarefas&&subtarefas.length)){
-      html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descricao...</div>';
+      html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descri\u00e7\u00e3o...</div>';
     }
   }
 
   // form de edicao da tarefa principal
   if(_itemEditando===t.id){
-    var respOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
+    var respOpts='<option value="">Sem respons\u00e1vel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
     var statusOpts=statusTarefaOptions(t.status,false);
     html+='<div class="rt-edit-form" style="margin-top:10px;">'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
-      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Titulo</label>'
+      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">T\u00edtulo</label>'
       +'<input id="tp-edit-titulo-'+t.id+'" value="'+t.texto.replace(/"/g,"&quot;")+'" style="font-size:13px;"/></div>'
       +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
       +'<select id="tp-edit-status-'+t.id+'" style="font-size:13px;">'+statusOpts+'</select></div>'
       +'</div>'
-      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+      +'<div class="field" style="margin-bottom:6px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descri\u00e7\u00e3o</label>'
       +'<textarea id="tp-edit-descricao-'+t.id+'" rows="2" style="font-size:13px;resize:vertical;">'+(t.descricao||'')+'</textarea></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;">'
-      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
+      +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Respons\u00e1vel</label>'
       +'<select id="tp-edit-resp-'+t.id+'" style="font-size:13px;">'+respOpts+'</select></div>'
       +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Inicio</label>'
       +'<input id="tp-edit-inicio-'+t.id+'" type="date" value="'+(t.data_inicio||'')+'" style="font-size:13px;"/></div>'
@@ -3268,16 +3268,16 @@ function _buildTarefaCard(t,ce,ehPassado){
         var sLbl=statusTarefaLabel(s.status);
         if(_subEditando===s.id){
           var sStatOpts=statusTarefaOptions(s.status,false);
-          var sRespOpts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(sr){return '<option value="'+sr+'"'+(s.responsavel===sr?' selected':'')+'>'+sr+'</option>';}).join("");
+          var sRespOpts='<option value="">Sem respons\u00e1vel</option>'+(responsaveis||[]).map(function(sr){return '<option value="'+sr+'"'+(s.responsavel===sr?' selected':'')+'>'+sr+'</option>';}).join("");
           html+='<div class="rt-edit-form" style="margin:6px 0;">'
             +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Nome</label>'
             +'<input id="tp-sub-edit-titulo-'+s.id+'" value="'+s.texto.replace(/"/g,"&quot;")+'" style="font-size:12px;"/></div>'
-            +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descricao</label>'
+            +'<div class="field" style="margin-bottom:5px;"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descri\u00e7\u00e3o</label>'
             +'<textarea id="tp-sub-edit-desc-'+s.id+'" rows="2" style="font-size:12px;resize:vertical;">'+(s.descricao||'')+'</textarea></div>'
             +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">'
             +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Status</label>'
             +'<select id="tp-sub-edit-status-'+s.id+'" style="font-size:12px;">'+sStatOpts+'</select></div>'
-            +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Responsavel</label>'
+            +'<div class="field"><label style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;">Respons\u00e1vel</label>'
             +'<select id="tp-sub-edit-resp-'+s.id+'" style="font-size:12px;">'+sRespOpts+'</select></div>'
             +'</div>'
             +'<div style="display:flex;gap:5px;justify-content:flex-end;">'
@@ -3291,11 +3291,11 @@ function _buildTarefaCard(t,ce,ehPassado){
           if(s.descricao){
             html+='<span id="tp-sdesc-'+s.id+'" class="subdesc"'+(canEdit?' style="cursor:text;" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
           } else if(canEdit){
-            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descricao</span>';
+          html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add" onclick="_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descri\u00e7\u00e3o</span>';
           }
           html+='</div></div>';
           html+='<div id="tp-sresp-'+s.id+'" class="subcell subcell-resp'+(canEdit?' inline-edit-hit':'')+'"'
-            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar responsavel"':'')+'>';
+            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar respons\u00e1vel"':'')+'>';
           if(s.responsavel){
             var su=(usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{};
             html+='<span class="av av-sm" style="background:'+_avCor(su.id||s.responsavel)+';font-size:9px;width:22px;height:22px;min-width:22px;flex-shrink:0;">'+s.responsavel.slice(0,2).toUpperCase()+'</span><span class="subresp-nm">'+s.responsavel+'</span>';
@@ -3307,7 +3307,7 @@ function _buildTarefaCard(t,ce,ehPassado){
           html+='<div id="tp-sdate-'+s.id+'" class="subcell subcell-date'+(sAtrasado?' late':'')+(canEdit?' inline-edit-hit':'')+'"'
             +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirPrazoInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar prazo"':'')+'>'
             +(sConcEm?'<span style="color:#16a34a;font-weight:700;">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>'))+'</div>';
-          html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="Acoes">&#8943;</button>':'')+'</div>';
+          html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>':'')+'</div>';
           html+='</div>';
           var subCols=_colunasTarefaSnapshot();
           if(subCols.length){
@@ -3355,7 +3355,7 @@ function _cancelarEditTarefaPauta(tarefaId){
 }
 async function _salvarEditTarefaPauta(tarefaId){
   var texto=(document.getElementById("tp-edit-titulo-"+tarefaId).value||"").trim();
-  if(!texto){toast("Informe o titulo",true);return;}
+  if(!texto){toast("Informe o t\u00edtulo",true);return;}
   var descricao=(document.getElementById("tp-edit-descricao-"+tarefaId).value||"").trim()||null;
   var resp=document.getElementById("tp-edit-resp-"+tarefaId).value||null;
   var status=document.getElementById("tp-edit-status-"+tarefaId).value||"pendente";
@@ -3438,7 +3438,7 @@ async function _showAddSubtarefaPauta(parentId,ehPassado){
   var el=document.getElementById("tp-add-sub-"+parentId);if(!el)return;
   el.style.display='flex';
   var respOptsSub='<option value="">Responsável...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
-  el.innerHTML='<input id="tp-sub-titulo-'+parentId+'" placeholder="Titulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;min-width:100px;"/>'
+  el.innerHTML='<input id="tp-sub-titulo-'+parentId+'" placeholder="T\u00edtulo da subtarefa..." style="flex:1;font-size:12px;padding:3px 7px;border:1.5px solid var(--bt-orange);border-radius:5px;min-width:100px;"/>'
     +'<select id="tp-sub-resp-'+parentId+'" style="font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;color:var(--text2);">'+respOptsSub+'</select>'
     +'<button onclick="_salvarSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" class="btn" style="font-size:11px;padding:3px 9px;">Ok</button>'
     +'<button onclick="_cancelarAddSubtarefaPauta(\''+parentId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">x</button>';
@@ -3452,7 +3452,7 @@ function _cancelarAddSubtarefaPauta(parentId,ehPassado){
 async function _salvarSubtarefaPauta(parentId,ehPassado){
   var inp=document.getElementById("tp-sub-titulo-"+parentId);
   var texto=(inp?inp.value||"":"").trim();
-  if(!texto){toast("Informe o titulo",true);return;}
+  if(!texto){toast("Informe o t\u00edtulo",true);return;}
   var respElSub=document.getElementById("tp-sub-resp-"+parentId);
   var respSub=respElSub?respElSub.value||null:null;
   var rId=_tarefaPayloadReuniaoId();
@@ -3562,7 +3562,7 @@ async function _doSaveTitulo(tarefaId,isSub,parentId,ehPassado){
       (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId)t.texto=texto;});
       _reloadTarefaCard(tarefaId,ehPassado);
     }
-    toast('Titulo salvo!');
+    toast('T\u00edtulo salvo!');
     (function(fId){setTimeout(function(){
       var fe=document.getElementById(fId);
       if(fe&&!window.matchMedia('(prefers-reduced-motion:reduce)').matches){
@@ -3582,7 +3582,7 @@ function _cancelarTituloInline(tarefaId,isSub,parentId,ehPassado){
 var _descEsc=false;
 function _iniciarEdicaoDescricaoSub(subId,parentId,ehPassado){
   var el=document.getElementById('tp-sdesc-'+subId);if(!el)return;
-  var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
+  var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descri\u00e7\u00e3o\.\.\.$/,'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
   _descEsc=false;
   el.innerHTML='<span class="rt-inline-editor rt-inline-desc inline-edit-hit">'
     +'<textarea id="tp-sdesc-ta-'+subId+'" rows="3" class="rt-inline-control"'
@@ -3609,7 +3609,7 @@ async function _doSaveDescricaoSub(subId,parentId,ehPassado){
     await dbUpsertTarefa({id:subId,descricao:descricao});
     (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===subId)s.descricao=descricao;});
     _reloadTarefaCard(parentId,ehPassado);
-    toast('Descricao salva!');
+    toast('Descri\u00e7\u00e3o salva!');
   }catch(_){toast('Erro ao salvar',true);_cancelarDescricaoSub(subId,parentId,ehPassado);}
 }
 function _cancelarDescricaoSub(subId,parentId,ehPassado){
@@ -3621,7 +3621,7 @@ function _cancelarDescricaoSub(subId,parentId,ehPassado){
 var _descMainEsc=false;
 function _iniciarEdicaoDescricaoMain(tarefaId,ehPassado){
   var el=document.getElementById('tp-desc-'+tarefaId);if(!el)return;
-  var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
+  var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descri\u00e7\u00e3o\.\.\.$/,'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
   _descMainEsc=false;
   el.innerHTML='<div class="rt-inline-editor rt-inline-desc rt-inline-desc-main inline-edit-hit">'
     +'<textarea id="tp-desc-ta-'+tarefaId+'" rows="4" class="rt-inline-control"'
@@ -3649,7 +3649,7 @@ async function _doSaveDescricaoMain(tarefaId,ehPassado){
     var rId=_tarefaCacheKey();
     (_tarefasPautaCache[rId]||[]).forEach(function(t){if(t.id===tarefaId)t.descricao=descricao;});
     _reloadTarefaCard(tarefaId,ehPassado);
-    toast('Descricao salva!');
+    toast('Descri\u00e7\u00e3o salva!');
   }catch(_){toast('Erro ao salvar',true);_cancelarDescricaoMain(tarefaId,ehPassado);}
 }
 function _cancelarDescricaoMain(tarefaId,ehPassado){
@@ -3678,7 +3678,7 @@ function _abrirRespInline(tarefaId,isSub,parentId,ehPassado){
   var t=_getTarefaBoardCache(tarefaId,isSub,parentId)||{};
   el.removeAttribute("onclick");
   el.removeAttribute("title");
-  var opts='<option value="">Sem responsavel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
+  var opts='<option value="">Sem respons\u00e1vel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'"'+(t.responsavel===s?' selected':'')+'>'+s+'</option>';}).join("");
   el.innerHTML='<div class="rt-inline-editor rt-inline-select inline-edit-hit">'
     +'<select id="tp-resp-sel-'+tarefaId+'" class="rt-inline-control"'
     +' onclick="event.stopPropagation()"'
@@ -3698,9 +3698,9 @@ async function _salvarRespInline(tarefaId,isSub,parentId,ehPassado){
     await dbUpsertTarefa({id:tarefaId,responsavel:resp});
     _patchTarefaBoardCache(tarefaId,isSub,parentId,{responsavel:resp});
     _reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);
-    toast("Responsavel salvo!");
+    toast("Respons\u00e1vel salvo!");
   }catch(_){
-    toast("Erro ao salvar responsavel",true);
+    toast("Erro ao salvar respons\u00e1vel",true);
     _reloadTarefaOuSub(tarefaId,isSub,parentId,ehPassado);
   }
 }
@@ -3961,15 +3961,15 @@ async function _saveTarefaComentario(cId,tarefaId,ehPassado){
   try{
     await dbUpsertTarefaComentario({id:cId,texto:txt});
     _reloadTarefaCmts(tarefaId,ehPassado);
-    toast("Comentario editado!");
+    toast("Coment\u00e1rio editado!");
   }catch(_){toast("Erro",true);}
 }
 function _delTarefaComentario(cId,tarefaId,ehPassado){
-  modalConfirm("Excluir este comentario?",async function(){
+  modalConfirm("Excluir este coment\u00e1rio?",async function(){
     try{
       await dbDelTarefaComentario(cId);
       _reloadTarefaCmts(tarefaId,ehPassado);
-      toast("Comentario excluido!");
+      toast("Coment\u00e1rio exclu\u00eddo!");
     }catch(_){toast("Erro",true);}
   });
 }
@@ -4025,7 +4025,7 @@ function _buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado){
     html+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">';
     html+='<div style="display:flex;gap:6px;align-items:flex-start;">';
     html+='<div class="av av-sm" style="background:'+_avCor(userDbId||'')+';flex-shrink:0;">'+meIni+'</div>';
-    html+='<textarea id="rcmt-new" rows="2" placeholder="Comentar sobre a reuniao..." style="flex:1;resize:none;font-size:13px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
+    html+='<textarea id="rcmt-new" rows="2" placeholder="Comentar sobre a reuni\u00e3o..." style="flex:1;resize:none;font-size:13px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
     html+='<button onclick="_addReuniaoComentario(\''+reuniaoId+'\')" style="font-size:11px;padding:6px 12px;border-radius:6px;border:none;background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
     html+='</div></div>';
   }
@@ -4036,7 +4036,7 @@ async function _addReuniaoComentario(reuniaoId){
   var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentário",true);return;}
   try{
     await dbUpsertReuniaoComentario({reuniao_id:reuniaoId,usuario_id:userDbId,texto:txt});
-    _loadReuniaoComentários(reuniaoId);toast("Comentario adicionado!");
+    _loadReuniaoComentários(reuniaoId);toast("Coment\u00e1rio adicionado!");
   }catch(_){toast("Erro",true);}
 }
 async function _editReuniaoComentarioInline(cId,reuniaoId){
@@ -4054,15 +4054,15 @@ async function _editReuniaoComentarioInline(cId,reuniaoId){
 }
 async function _saveReuniaoComentario(cId,reuniaoId){
   var txt=(document.getElementById("rcmt-edit-"+cId).value||"").trim();
-  if(!txt){toast("Texto nao pode ser vazio",true);return;}
+  if(!txt){toast("Texto n\u00e3o pode ser vazio",true);return;}
   try{
     await dbUpsertReuniaoComentario({id:cId,texto:txt});
-    _loadReuniaoComentários(reuniaoId);toast("Comentario editado!");
+    _loadReuniaoComentários(reuniaoId);toast("Coment\u00e1rio editado!");
   }catch(_){toast("Erro",true);}
 }
 function _delReuniaoComentario(cId,reuniaoId){
-  modalConfirm("Excluir este comentario?",async function(){
-    try{await dbDelReuniaoComentario(cId);_loadReuniaoComentários(reuniaoId);toast("Comentario excluido!");}
+  modalConfirm("Excluir este coment\u00e1rio?",async function(){
+    try{await dbDelReuniaoComentario(cId);_loadReuniaoComentários(reuniaoId);toast("Coment\u00e1rio exclu\u00eddo!");}
     catch(_){toast("Erro",true);}
   });
 }
@@ -4597,7 +4597,7 @@ function _abrirDialogoDuplicar(cfg){
 function openDuplicarTarefa(tarefaId){
   var rId=_tarefaCacheKey();
   var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
-  if(!t){toast("Tarefa nao encontrada",true);return;}
+  if(!t){toast("Tarefa n\u00e3o encontrada",true);return;}
   _abrirDialogoDuplicar({
     titulo:"Duplicar tarefa",
     opcoes:[
@@ -4679,7 +4679,7 @@ async function _confirmarDuplicarTarefa(t,vals){
 // Duplicar subtarefa
 function openDuplicarSubtarefa(subId,parentId){
   var sub=(_subtarefasCache[parentId]||[]).find(function(x){return x.id===subId;});
-  if(!sub){toast("Subtarefa nao encontrada",true);return;}
+  if(!sub){toast("Subtarefa n\u00e3o encontrada",true);return;}
   _abrirDialogoDuplicar({
     titulo:"Duplicar subtarefa",
     opcoes:[
@@ -4727,7 +4727,7 @@ async function _confirmarDuplicarSubtarefa(sub,parentId,vals){
 // Duplicar reunião
 function openDuplicarReuniao(reuniaoId){
   var r=reunioesDB.find(function(x){return x.id===reuniaoId;});
-  if(!r){toast("Reuniao nao encontrada",true);return;}
+  if(!r){toast("Reuni\u00e3o n\u00e3o encontrada",true);return;}
   _abrirDialogoDuplicar({
     titulo:"Duplicar reunião",
     campos:[
