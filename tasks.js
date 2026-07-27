@@ -267,7 +267,7 @@ function buildTarefasHTML(card,ce){
     html+="<div style=\"background:#fff;border-radius:8px;margin-bottom:7px;border-left:3px solid "+bLeft+";overflow:hidden;\">";
     html+="<div id=\"tcv-"+t.id+"\" style=\"padding:8px 10px;cursor:"+(ce?"pointer":"default")+";\" "+(ce?"onclick=\"toggleTarefaEdit('"+t.id+"')\"":"")+">";
     html+="<div style=\"display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px;\">";
-    html+="<div style=\""+titleStyle+"\">"+t.texto+"</div>"+(ce?chevron:"")+"</div>";
+    html+="<div style=\""+titleStyle+"\">"+escHTML(t.texto)+"</div>"+(ce?chevron:"")+"</div>";
     html+="<div style=\"display:flex;align-items:center;gap:5px;flex-wrap:wrap;\">";
     html+="<span style=\"display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:"+col.badgeBg+";color:"+col.badgeText+";\"><span style=\"width:6px;height:6px;border-radius:50%;background:"+col.dot+";flex-shrink:0;\"></span>"+col.label+"</span>";
     if(t.responsavel)html+="<span style=\"font-size:10px;font-weight:600;background:#f4f5f7;border-radius:4px;padding:2px 6px;color:#5e6c84;\">"+t.responsavel+"</span>";
@@ -390,7 +390,7 @@ function _mtRow(t){
   var cor=late?"#dc2626":done?"#16a34a":"#2b76e5";
   return '<tr style="border-bottom:1px solid var(--border);">'
     +'<td style="padding:11px 14px;font-size:12px;color:var(--text3);white-space:nowrap;"><span style="font-weight:700;color:'+cor+';">'+t.origem+'</span></td>'
-    +'<td style="padding:11px 14px;font-size:13px;font-weight:650;color:var(--bt-navy);">'+t.texto+'</td>'
+    +'<td style="padding:11px 14px;font-size:13px;font-weight:650;color:var(--bt-navy);">'+escHTML(t.texto)+'</td>'
     +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+t.contexto+'</td>'
     +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+_mtStatusLabel(t.status)+'</td>'
     +'<td style="padding:11px 14px;font-size:12px;color:'+(late?"#dc2626":"var(--text2)")+';font-weight:'+(late?"700":"400")+';white-space:nowrap;">'+_mtFmtDate(t.prazo)+'</td>'

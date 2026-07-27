@@ -596,7 +596,7 @@ function _buildReuniaoDetalhe(r){
     +'<span class="reun-hmeta">'+ic("clock")+' '+r.hora.slice(0,5)+'</span>'
     +'<span class="reun-statuspill" style="background:'+statusCor+';">'+statusLabel+'</span>'
     +'</div>'
-    +(r.observacoes?'<div class="reun-hero-obs">'+r.observacoes+'</div>':'')
+    +(r.observacoes?'<div class="reun-hero-obs">'+_inlineHtml(r.observacoes)+'</div>':'')
     +'</div>'
     +(ce?'<div class="reun-hero-actions">'
       +'<button onclick="openEditReuniao(\''+r.id+'\')" class="reun-abtn">'+ic("edit")+' Editar</button>'
@@ -1297,7 +1297,7 @@ function _buildInlineComments(projetoId,comments,ce,ehPassado,expanded){
       html+='<span class="cmt-nm">'+(u.sigla||u.nome||"?")+(isSinal?'<span class="cmt-flag">SINAL</span>':'')+'</span>';
       html+='<span class="cmt-dt">'+dtStr+'</span>';
       html+='</div>';
-      html+='<div class="cmt-tx">'+c.texto+'</div>';
+      html+='<div class="cmt-tx">'+_inlineHtml(c.texto)+'</div>';
       html+='</div></div>';
     });
     html+='</div>';
@@ -1833,7 +1833,7 @@ async function _gpLoadItens(catId){
       }
       return '<div id="gp-row-'+t.id+'" style="display:flex;align-items:center;gap:10px;padding:8px 1rem;border-bottom:0.5px solid var(--border);">'
         +'<input type="checkbox"'+(isLinked?' checked':'')+' onchange="_gpToggleReuniaoTarefa(\''+reuniaoId+'\',\''+t.id+'\',this.checked,\''+catId+'\')" style="cursor:pointer;accent-color:var(--bt-orange);flex-shrink:0;">'
-        +'<span style="font-size:13px;font-weight:500;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+t.texto+'</span>'
+        +'<span style="font-size:13px;font-weight:500;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_inlineHtml(t.texto)+'</span>'
         +rAvatar
         +'</div>';
     }).join(""):'<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma tarefa nesta categoria. Crie a primeira.</div>';
@@ -2310,7 +2310,7 @@ async function _loadProjetoComentários(projetoId){
         +(canEdit?'<button onclick="delComentarioProjeto(\''+c.id+'\',\''+projetoId+'\')" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>':'')
         +'</div>'
         +'</div>'
-        +'<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5;">'+c.texto+'</div>'
+        +'<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5;">'+_inlineHtml(c.texto)+'</div>'
         +'</div></div>';
     }).join("");
   }catch(e){if(el)el.innerHTML='<div style="color:var(--text3);font-size:12px;">Erro ao carregar.</div>';}
@@ -2337,7 +2337,7 @@ async function editarComentarioProjeto(cId,projetoId){
   var u=c.usuarios||{};
   el.innerHTML='<div style="padding:8px 0;"><div style="'+bgStyle+'">'
     +'<div style="font-size:12px;font-weight:600;color:var(--bt-navy);margin-bottom:6px;">'+(u.sigla||u.nome||"?")+'</div>'
-    +'<textarea id="cmt-edit-'+cId+'" rows="3" style="width:100%;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:13px;">'+c.texto+'</textarea>'
+    +'<textarea id="cmt-edit-'+cId+'" rows="3" style="width:100%;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:13px;">'+_inlineHtml(c.texto)+'</textarea>'
     +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;">'
     +'<button onclick="_loadProjetoComentários(\''+projetoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
     +'<button onclick="salvarComentarioProjeto(\''+cId+'\',\''+projetoId+'\')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
@@ -2429,7 +2429,7 @@ function _getReuniaoAnterior(r){
 function _buildPendenciaItem(t,cor){
   var prazo=t.data_fim?_fmtDateBrShort(t.data_fim):"Sem prazo";
   return '<div class="pend-card" style="border-left-color:'+cor+';">'
-    +'<div class="pend-title">'+trunc(t.texto||"Tarefa sem titulo",90)+'</div>'
+    +'<div class="pend-title">'+_inlineHtml(trunc(t.texto||"Tarefa sem titulo",90))+'</div>'
     +'<div class="pend-meta">'
     +'<span>Responsavel: '+(t.responsavel||"Sem responsavel")+'</span>'
     +'<span>Prazo: '+prazo+'</span>'
@@ -3158,12 +3158,12 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="'+(subExp?'Ocultar subtarefas':'Ver subtarefas')+'">'+ic("chevdown")+'</button></div>';
   // coluna 2: tarefa (titulo editavel)
   html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(statusTarefaFinalizador(t.status)?' done':'')+(canEdit?' inline-edit-hit':'')+'"'
-    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar o t\u00edtulo"':'')+'>'+t.texto+'</span>'
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar o t\u00edtulo"':'')+'>'+_inlineHtml(t.texto)+'</span>'
     +(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
     +(t.campos_valores&&t.campos_valores.projeto_titulo?'<span class="bsub">Projeto: '+trunc(t.campos_valores.projeto_titulo,64)+'</span>':'')
     +(_isProjetosPage()?'<span class="projeto-links">'+(_projetoReunioes(t.id).length?_projetoReunioes(t.id).slice(0,3).map(function(r){return '<span class="projeto-link-chip" title="'+_inlineHtml(_reuniaoResumoLabel(r))+'">'+_inlineHtml(_reuniaoResumoLabel(r))+'</span>';}).join(""):'<span class="projeto-link-empty">Sem reuni\u00e3o vinculada</span>')+(_projetoReunioes(t.id).length>3?'<span class="projeto-link-more">+'+(_projetoReunioes(t.id).length-3)+'</span>':'')+'</span>':'')
     +(t.arquivado?'<span class="projeto-archived">Arquivado</span>':'')
-    +((t.descricao&&!subExp)?'<span class="bsub">'+trunc(t.descricao,64)+'</span>':'')
+    +((t.descricao&&!subExp)?'<span class="bsub">'+_inlineHtml(trunc(t.descricao,64))+'</span>':'')
     +'</div></div>';
   // coluna 3: responsavel
   html+='<div id="tp-resp-'+t.id+'" class="bc bc-resp'+(canEdit?' inline-edit-hit':'')+'"'
@@ -3220,7 +3220,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   if(subExp){
     if(t.descricao){
       html+='<div id="tp-desc-'+t.id+'" class="'+(canEdit?'inline-edit-hit':'')+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
-        +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+t.descricao+'</div>';
+        +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+_inlineHtml(t.descricao)+'</div>';
     } else if(canEdit&&!(subtarefas&&subtarefas.length)){
       html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descri\u00e7\u00e3o...</div>';
     }
@@ -3288,9 +3288,9 @@ function _buildTarefaCard(t,ce,ehPassado){
         } else {
           html+='<div class="subrow"'+(canEdit?' onpointerdown="_tarefaDragStart(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Arraste para o lado para alterar status"':'')+'>';
           html+='<div class="subcell subcell-name"><span class="subdot" style="background:'+sBar+';"></span><div class="subname-wrap">';
-          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(statusTarefaFinalizador(s.status)?' done':'')+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar a subtarefa"':'')+'>'+s.texto+'</span>';
+          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(statusTarefaFinalizador(s.status)?' done':'')+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar a subtarefa"':'')+'>'+_inlineHtml(s.texto)+'</span>';
           if(s.descricao){
-            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc'+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:text;" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+s.descricao+'</span>';
+            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc'+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:text;" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+_inlineHtml(s.descricao)+'</span>';
           } else if(canEdit){
           html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add inline-edit-hit" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descri\u00e7\u00e3o</span>';
           }
@@ -3915,7 +3915,7 @@ function _buildTarefaCmtsHTML(cmts,tarefaId,ce,ehPassado){
       if(canEdit)html+='<button onclick="_editTarefaComentarioInline(\''+c.id+'\',\''+tarefaId+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>';
       if(canEdit)html+='<button onclick="_delTarefaComentario(\''+c.id+'\',\''+tarefaId+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
       html+='</div></div>';
-      html+='<div class="cmt-tx">'+c.texto+'</div>';
+      html+='<div class="cmt-tx">'+_inlineHtml(c.texto)+'</div>';
       html+='</div></div>';
     });
   }
@@ -3950,7 +3950,7 @@ async function _editTarefaComentarioInline(cId,tarefaId,ehPassado){
     var cmts=await dbFetchTarefaComentarios(tarefaId);
     var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
     el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
-      +'<textarea id="tcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+c.texto+'</textarea>'
+      +'<textarea id="tcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+_inlineHtml(c.texto)+'</textarea>'
       +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
       +'<button onclick="_reloadTarefaCmts(\''+tarefaId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
       +'<button onclick="_saveTarefaComentario(\''+cId+'\',\''+tarefaId+'\','+!!ehPassado+')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
@@ -4017,7 +4017,7 @@ function _buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado){
       if(canEdit)html+='<button onclick="_editReuniaoComentarioInline(\''+c.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>';
       if(canEdit)html+='<button onclick="_delReuniaoComentario(\''+c.id+'\',\''+reuniaoId+'\')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
       html+='</div></div>';
-      html+='<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-top:2px;">'+c.texto+'</div>';
+      html+='<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-top:2px;">'+_inlineHtml(c.texto)+'</div>';
       html+='</div></div>';
     });
   }
@@ -4047,7 +4047,7 @@ async function _editReuniaoComentarioInline(cId,reuniaoId){
     var cmts=await dbFetchReuniaoComentarios(reuniaoId);
     var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
     el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
-      +'<textarea id="rcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+c.texto+'</textarea>'
+      +'<textarea id="rcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+_inlineHtml(c.texto)+'</textarea>'
       +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
       +'<button onclick="_loadReuniaoComentários(\''+reuniaoId+'\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
       +'<button onclick="_saveReuniaoComentario(\''+cId+'\',\''+reuniaoId+'\')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'

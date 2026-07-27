@@ -60,6 +60,7 @@ let _acMatches=[],_acI=-1;
 
 function trunc(s,n){return s&&s.length>n?s.substring(0,n)+"...":s||"";}
 function escQ(s){return (s||"").replace(/'/g,"\\'");}
+function escHTML(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 function numFromStr(s){var m=(s||"").match(/^(\d+)/);return m?parseInt(m[1]):null;}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function loadEtq(){try{var s=localStorage.getItem(EK);if(s){Object.assign(TC,JSON.parse(s));TIPOS=Object.keys(TC);}}catch(e){}}

@@ -77,9 +77,9 @@ function taskChipHTML(card){
 }
 function buildCardHTML(card,ce){
   var nc=getCmts(card).length;var cv=coverColor(card);var labels=buildLabels(card);var cc2=ccHTML(card);
-  var obsP=card.obs?'<div class="card-obs" id="co-'+card.id+'">'+trunc(card.obs,90)+'</div>':'<div class="card-obs" id="co-'+card.id+'" style="display:none;"></div>';
+  var obsP=card.obs?'<div class="card-obs" id="co-'+card.id+'">'+escHTML(trunc(card.obs,90))+'</div>':'<div class="card-obs" id="co-'+card.id+'" style="display:none;"></div>';
   var taskChip=taskChipHTML(card);
-  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+card.titulo+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(nc?'<span class="chip">'+ic("comment")+" "+nc+"</span>":"")+(card.dataFim?'<span class="chip">'+ic("cal")+" "+card.dataFim+"</span>":"")+(taskChip||"")+'</div></div></div>';
+  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(nc?'<span class="chip">'+ic("comment")+" "+nc+"</span>":"")+(card.dataFim?'<span class="chip">'+ic("cal")+" "+card.dataFim+"</span>":"")+(taskChip||"")+'</div></div></div>';
 }
 
 function renderKanban(){
@@ -121,7 +121,7 @@ function renderLista(){
     var ccTd=(card.clienteNum&&card.casoNum)?card.clienteNum+"/"+card.casoNum:(card.clienteNum||"-");
     var ac=ce?'<button onclick="openCardModal(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;margin-right:3px;">Abrir</button><button onclick="confirmDelCard(\''+card.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;">Excluir</button>':"-";
     return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" onclick="openCardModal(\''+card.id+'\')">'
-      +'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+card.titulo+_demandaListaResumo(card)+'</td>'
+      +'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+escHTML(card.titulo)+_demandaListaResumo(card)+'</td>'
       +'<td style="padding:11px 14px;">'+sp+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"-")+'</td>'
