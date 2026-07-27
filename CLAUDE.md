@@ -72,14 +72,16 @@ Antes de rodar qualquer SQL de criação de tabela, verificar se a tabela já ex
 
 | Arquivo | Responsabilidade |
 |---------|-----------------|
-| `config.js` | Constantes globais (SB, SK, H), variáveis de estado, paletas de cor, funções utilitárias (uid, trunc, toast, modalConfirm, modalInput) |
+| `config.js` | Constantes globais (SB, SK, H), variáveis de estado, paletas de cor, funções utilitárias (uid, trunc, escHTML, escQ, toast, modalConfirm, modalInput) |
 | `db.js` | Todas as funções de acesso ao Supabase, incluindo CRUD de tarefas (dbFetchTarefas, dbUpsertTarefa, dbDelTarefa) |
 | `ui.js` | Biblioteca de ícones SVG (ic()), header, toolbar, helpers compartilhados (cliNome, casoDesc, getFiltered) |
 | `kanban.js` | Renderização do kanban, drag-and-drop de cards e colunas, gerenciamento de colunas, etiquetas |
 | `tasks.js` | CRUD de tarefas, cache local tarefasDB indexado por card_id, painel de tarefas HTML |
 | `modal.js` | Modal de card (estilo Trello), edição inline, comentários, painel de tarefas, cover picker |
-| `pages.js` | Páginas admin: importação XLSX, etiquetas, logs, usuários, formulário de criação/edição de card |
-| `app.js` | init(), salvar/deletar card, renderização kanban e lista, edição inline de células |
+| `pages.js` | Páginas administrativas (menu lateral): estrutura/modelos, permissões, usuários, equipes, categorias de pauta, e-mails, importação XLSX, etiquetas, logs; formulário de criação/edição de demanda |
+| `reunioes.js` | Módulo de Reuniões e motor modular (maior arquivo do projeto): detalhe da reunião, board de pautas estilo Monday, tarefas/subtarefas, projetos de equipe, pool de pendências, snapshots, ata, notificações, construtor de modelos e duplicação universal |
+| `app.js` | Somente autenticação/login, snapshot inicial e init() (orquestra o carregamento e chama renderKanban); as demais funções foram movidas para os módulos acima |
+| `polish.js` | Retoques de UX pós-render (IIFE), aplicados por cima do HTML gerado por string |
 
 ## Estado global (definido em config.js)
 
@@ -120,7 +122,6 @@ Antes de rodar qualquer SQL de criação de tabela, verificar se a tabela já ex
 
 - Segurança: RLS real no Supabase e Supabase Auth (autenticação atual via tabela usuarios com senha em texto plano)
 - Visibilidade por área: substituída pelo sistema de equipes descrito abaixo
-- Tarefas antigas salvas no JSON dos cards não foram migradas para a tabela tarefas
 
 ---
 
