@@ -148,9 +148,11 @@ async function updateTarefa(cardId,tarefaId,fields){
 }
 async function delTarefa(cardId,tarefaId){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  await dbDelTarefa(tarefaId);
-  await loadTarefasDoCard(cardId);
-  toast("Subtarefa excluída!");refreshTarefasPanel(cardId);
+  try{
+    await dbDelTarefa(tarefaId);
+    await loadTarefasDoCard(cardId);
+    toast("Subtarefa excluída!");refreshTarefasPanel(cardId);
+  }catch(e){toast("Erro ao excluir",true);}
 }
 function _mc2(){var el=document.getElementById("modal-container2");if(!el){el=document.createElement("div");el.id="modal-container2";document.body.appendChild(el);}return el;}
 function _mc2Close(){var el=document.getElementById("modal-container2");if(el)el.innerHTML="";}
