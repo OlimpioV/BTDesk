@@ -17,7 +17,9 @@ const STRICT = process.argv.includes('--strict');
 // Nomes aceitos em handlers que nao sao funcoes do app (globais do browser).
 const ALLOW = new Set([
   'event', 'window', 'document', 'this', 'alert', 'confirm', 'print',
-  'setTimeout', 'setInterval', 'requestAnimationFrame', 'Boolean', 'Number', 'String'
+  'setTimeout', 'setInterval', 'requestAnimationFrame', 'Boolean', 'Number', 'String',
+  // palavras-chave de JS que podem iniciar um handler (ex.: onkeydown="if(...)")
+  'if', 'for', 'while', 'switch', 'return', 'new', 'typeof', 'void', 'delete', 'do', 'else', 'try', 'throw'
 ]);
 
 const files = readdirSync('.').filter(function (f) { return f.endsWith('.js'); });
