@@ -54,6 +54,7 @@ let modalCardId=null,editingCmtId=null;
 let responsaveis=[],clientesDB=[],casosDB=[];
 let usuariosFullDB=[];
 let labelsGlobalExp=false,labelsExp={};
+let cmtsExp={};
 let cpOpen=null;
 let _ef=null,_ecid=null;
 let _acMatches=[],_acI=-1;

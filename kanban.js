@@ -79,8 +79,36 @@ function buildCardHTML(card,ce){
   var nc=getCmts(card).length;var cv=coverColor(card);var labels=buildLabels(card);var cc2=ccHTML(card);
   var obsP=card.obs?'<div class="card-obs" id="co-'+card.id+'">'+escHTML(trunc(card.obs,90))+'</div>':'<div class="card-obs" id="co-'+card.id+'" style="display:none;"></div>';
   var taskChip=taskChipHTML(card);
-  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(nc?'<span class="chip">'+ic("comment")+" "+nc+"</span>":"")+(card.dataFim?'<span class="chip">'+ic("cal")+" "+card.dataFim+"</span>":"")+(taskChip||"")+'</div></div></div>';
+  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(card.dataFim?'<span class="chip">'+ic("cal")+" "+card.dataFim+"</span>":"")+(taskChip||"")+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
 }
+
+// ── COMENTARIOS INLINE NO CARD ──
+function buildCardComments(card){
+  var cmts=getCmts(card);var n=cmts.length;var canC=canComment();
+  if(!n&&!canC)return "";
+  var exp=!!cmtsExp[card.id];
+  var head='<button class="cc-toggle" onclick="toggleCardComments(\''+card.id+'\',event)">'+ic("comment")+' Comentários ('+n+')<span class="cc-caret'+(exp?' open':'')+'">'+ic("chevdown")+'</span></button>';
+  if(!exp)return head;
+  var list;
+  if(n){
+    list=cmts.map(function(c){
+      var nome=(c.autor||"?").split("@")[0];
+      var ini=nome.slice(0,2).toUpperCase();
+      var cor=(typeof _avCor==="function"?_avCor(c.autor||nome):"#2b76e5");
+      var dt=c.data?new Date(c.data).toLocaleDateString("pt-BR"):"";
+      var del=canEditCmt(c.autor)?'<button class="cc-del" title="Excluir" onclick="delCardComment(\''+card.id+'\',\''+c.id+'\',event)">&times;</button>':'';
+      return '<div class="cc-item"><div class="cc-item-hd"><span class="cc-av" style="background:'+cor+';">'+escHTML(ini)+'</span><span class="cc-nm">'+escHTML(nome)+'</span><span class="cc-dt">'+dt+'</span>'+del+'</div><div class="cc-tx">'+escHTML(c.texto)+'</div></div>';
+    }).join("");
+  } else { list='<div class="cc-empty">Sem comentários.</div>'; }
+  var input=canC?'<div class="cc-input"><textarea id="cc-ta-'+card.id+'" class="cc-ta" rows="1" placeholder="Comentar... (Enter envia)" onkeydown="cardCmtKd(event,\''+card.id+'\')" oninput="_ccGrow(this)"></textarea><button class="cc-send" onclick="sendCardComment(\''+card.id+'\',event)">Enviar</button></div>':'';
+  return head+'<div class="cc-list">'+list+'</div>'+input;
+}
+function toggleCardComments(cardId,e){if(e)e.stopPropagation();cmtsExp[cardId]=!cmtsExp[cardId];_refreshCardComments(cardId,true);}
+function _refreshCardComments(cardId,focus){var card=cards.find(function(c){return c.id===cardId;});var el=document.getElementById("cc-"+cardId);if(!el||!card)return;el.innerHTML=buildCardComments(card);if(focus&&cmtsExp[cardId]){var ta=document.getElementById("cc-ta-"+cardId);if(ta)ta.focus();}}
+function cardCmtKd(e,cardId){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();e.stopPropagation();sendCardComment(cardId);}}
+function _ccGrow(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,80)+"px";}
+async function sendCardComment(cardId,e){if(e)e.stopPropagation();var ta=document.getElementById("cc-ta-"+cardId);var txt=(ta?ta.value:"").trim();if(!txt)return;try{await addCmt(cardId,txt);cmtsExp[cardId]=true;_refreshCardComments(cardId,true);toast("Comentário adicionado!");}catch(err){toast("Erro ao comentar",true);}}
+function delCardComment(cardId,cmtId,e){if(e)e.stopPropagation();modalConfirm("Excluir este comentário?",async function(){try{await delCmt(cardId,cmtId);_refreshCardComments(cardId,false);}catch(err){toast("Erro",true);}});}
 
 function renderKanban(){
   viewMode="kanban";var ce=perfil==="mestre"||perfil==="advogado";var isMestre=perfil==="mestre";var filtered=getFiltered();
