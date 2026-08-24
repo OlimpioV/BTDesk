@@ -16,6 +16,13 @@ const COLS_DEFAULT=[
   {id:"concluido", label:"Concluído",   dot:"#22c55e",cover:"#bbf7d0",badgeBg:"#dcfce7",badgeText:"#15803d",ordem:3},
 ];
 let COLS=[...COLS_DEFAULT];
+const PRAZO_COLS=[
+  {id:"hoje",     label:"Hoje",        dot:"#fa510e"},
+  {id:"amanha",   label:"Amanhã",      dot:"#2b76e5"},
+  {id:"semana",   label:"Esta semana", dot:"#7c3aed"},
+  {id:"sem_prazo",label:"Sem prazo",   dot:"#94a3b8"},
+  {id:"concluida",label:"Concluídas",  dot:"#00c875"},
+];
 
 const EK="bari_etiquetas_v1";
 const TC_DEF={
@@ -45,6 +52,7 @@ let subtarefaModeloDB={nome:"Subtarefa padrão",campos:[]};
 let reuniaoAtiva=null;
 let filterResp="",filterTipo="",filterStatus="",filterCliente="",filterCaso="";
 let viewMode="kanban";
+let agruparPor="status";
 let dragCardId=null,_dOvColId=null,_dOvIdx=null;
 let dragColId=null;
 let editingId=null,formTipos=[];

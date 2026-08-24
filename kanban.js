@@ -25,6 +25,7 @@ function onColDrop(e,colId){
   var cid=dragCardId;
   if(!cid)return;
   dragCardId=null;
+  if(agruparPor==="prazo"){_dOvColId=null;_dOvIdx=null;_prazoDrop(colId,cid);return;}
   var card=cards.find(function(c){return c.id===cid;});if(!card){return;}
   var col=cards.filter(function(c){return c.status===colId&&c.id!==cid;}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
   var ins=(_dOvColId===colId&&_dOvIdx!=null)?_dOvIdx:col.length;
@@ -79,7 +80,7 @@ function buildCardHTML(card,ce){
   var nc=getCmts(card).length;var cv=coverColor(card);var labels=buildLabels(card);var cc2=ccHTML(card);
   var obsP=card.obs?'<div class="card-obs" id="co-'+card.id+'">'+escHTML(trunc(card.obs,90))+'</div>':'<div class="card-obs" id="co-'+card.id+'" style="display:none;"></div>';
   var taskChip=taskChipHTML(card);
-  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(card.dataFim?'<span class="chip">'+ic("cal")+" "+card.dataFim+"</span>":"")+(taskChip||"")+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
+  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(card.dataFim?'<span class="chip"'+(_cardVencido(card)?' style="background:#fef2f2;color:#dc2626;font-weight:700;"':'')+'>'+ic("cal")+" "+card.dataFim+(_cardVencido(card)?" · venceu":"")+'</span>':"")+(taskChip||"")+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
 }
 
 // ── COMENTARIOS INLINE NO CARD ──
@@ -110,29 +111,66 @@ function _ccGrow(el){el.style.height="auto";el.style.height=Math.min(el.scrollHe
 async function sendCardComment(cardId,e){if(e)e.stopPropagation();var ta=document.getElementById("cc-ta-"+cardId);var txt=(ta?ta.value:"").trim();if(!txt)return;try{await addCmt(cardId,txt);cmtsExp[cardId]=true;_refreshCardComments(cardId,true);toast("Comentário adicionado!");}catch(err){toast("Erro ao comentar",true);}}
 function delCardComment(cardId,cmtId,e){if(e)e.stopPropagation();modalConfirm("Excluir este comentário?",async function(){try{await delCmt(cardId,cmtId);_refreshCardComments(cardId,false);}catch(err){toast("Erro",true);}});}
 
+// ── AGRUPAR POR PRAZO ──
+function _fmtYMD(d){var m=d.getMonth()+1,dia=d.getDate();return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(dia<10?"0":"")+dia;}
+function _hojeStr(){return _fmtYMD(new Date());}
+function _addDiasStr(str,n){var p=str.split("-");var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));d.setDate(d.getDate()+n);return _fmtYMD(d);}
+function _fimSemanaStr(str){var p=str.split("-");var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));var delta=(5-d.getDay()+7)%7;d.setDate(d.getDate()+delta);return _fmtYMD(d);}
+function _colConcluidaId(){var c=COLS.find(function(x){return x.id==="concluido"||/conclu/i.test(x.label||"");});return c?c.id:"concluido";}
+function _colAndamentoId(){var c=COLS.find(function(x){return x.id==="andamento"||/andamento/i.test(x.label||"");});if(c)return c.id;var done=_colConcluidaId();var f=[].concat(COLS).filter(function(x){return x.id!==done;}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);})[0];return f?f.id:(COLS[0]&&COLS[0].id);}
+function _cardConcluido(card){return card.status===_colConcluidaId();}
+function _cardVencido(card){return !!(card.dataFim&&card.dataFim<_hojeStr()&&!_cardConcluido(card));}
+function _prazoBucket(card){
+  if(_cardConcluido(card))return "concluida";
+  var d=card.dataFim;if(!d)return "sem_prazo";
+  var hoje=_hojeStr();
+  if(d<=hoje)return "hoje";
+  if(d===_addDiasStr(hoje,1))return "amanha";
+  return "semana";
+}
+function _prazoCardSort(a,b){var da=a.dataFim||"9999-99-99",db=b.dataFim||"9999-99-99";if(da!==db)return da<db?-1:1;return (a.titulo||"").localeCompare(b.titulo||"");}
+async function _prazoDrop(colId,cid){
+  var card=cards.find(function(c){return c.id===cid;});if(!card)return;
+  var hoje=_hojeStr();
+  if(colId==="hoje")card.dataFim=hoje;
+  else if(colId==="amanha")card.dataFim=_addDiasStr(hoje,1);
+  else if(colId==="semana")card.dataFim=_fimSemanaStr(hoje);
+  else if(colId==="sem_prazo")card.dataFim=null;
+  else if(colId==="concluida")card.status=_colConcluidaId();
+  if(colId!=="concluida"&&_cardConcluido(card))card.status=_colAndamentoId();
+  renderKanban();
+  try{await dbUpsert(card);}catch(e){toast("Erro ao salvar",true);}
+}
+
 function renderKanban(){
   viewMode="kanban";var ce=perfil==="mestre"||perfil==="advogado";var isMestre=perfil==="mestre";var filtered=getFiltered();
-  var sortedCols=[].concat(COLS).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
-  var colsHtml=sortedCols.map(function(col){
-    var colCards=filtered.filter(function(c){return c.status===col.id;});
-    var isEmpty=cards.filter(function(c){return c.status===col.id;}).length===0;
+  var porPrazo=(agruparPor==="prazo");
+  var colsList=porPrazo?PRAZO_COLS:[].concat(COLS).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
+  var colsHtml=colsList.map(function(col){
+    var colCards=porPrazo?filtered.filter(function(c){return _prazoBucket(c)===col.id;}).sort(_prazoCardSort):filtered.filter(function(c){return c.status===col.id;});
+    var isEmpty=porPrazo?false:cards.filter(function(c){return c.status===col.id;}).length===0;
     var inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div>';
     colCards.forEach(function(card,i){inner+=buildCardHTML(card,ce)+'<div class="card-drop-ind" id="ind-'+col.id+'-'+(i+1)+'"></div>';});
-    if(colCards.length===0)inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div><div style="border:1.5px dashed rgba(255,255,255,.15);border-radius:10px;padding:16px;text-align:center;font-size:12px;color:rgba(255,255,255,.3);">'+(ce?'Solte aqui':'Nenhuma')+'</div>';
-    return '<div class="col-wrap">'
-      +'<div class="col-header" id="col-hdr-'+col.id+'" draggable="'+(isMestre?"true":"false")+'"'
-      +(isMestre?' ondragstart="onColDragStart(event,\''+col.id+'\')" ondragend="onColDragEnd(event,\''+col.id+'\')"':"")
-      +' ondragover="onColDragOver(event,\''+col.id+'\')" ondrop="onColDrop(event,\''+col.id+'\')">'
-      +'<span style="width:9px;height:9px;border-radius:50%;background:'+col.dot+';box-shadow:0 0 5px '+col.dot+'70;flex-shrink:0;cursor:'+(isMestre?"pointer":"default")+';" '+(isMestre?'onclick="toggleCP(\''+col.id+'\',event)" title="Trocar cor"':"")+' ></span>'
-      +'<div id="col-title-'+col.id+'" style="flex:1;min-width:0;">'+colTitleInner(col)+'</div>'
-      +'<span class="col-count">'+colCards.length+'</span>'
-      +(isMestre&&isEmpty?'<button onclick="delColuna(\''+col.id+'\',event)" style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;padding:2px 4px;border-radius:5px;" title="Excluir coluna" onmouseover="this.style.color=\'#fca5a5\'" onmouseout="this.style.color=\'rgba(255,255,255,.35)\'">'+ic('trash')+'</button>':"")
-      +'</div>'
+    if(colCards.length===0)inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div><div style="border:1.5px dashed rgba(255,255,255,.15);border-radius:10px;padding:16px;text-align:center;font-size:12px;color:rgba(255,255,255,.3);">'+(ce?(porPrazo?'Arraste aqui':'Solte aqui'):'Nenhuma')+'</div>';
+    var header;
+    if(porPrazo){
+      header='<div class="col-header" style="cursor:default;"><span style="width:9px;height:9px;border-radius:50%;background:'+col.dot+';box-shadow:0 0 5px '+col.dot+'70;flex-shrink:0;"></span><div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fff;font-family:var(--font-titulo);">'+col.label+'</div><span class="col-count">'+colCards.length+'</span></div>';
+    } else {
+      header='<div class="col-header" id="col-hdr-'+col.id+'" draggable="'+(isMestre?"true":"false")+'"'
+        +(isMestre?' ondragstart="onColDragStart(event,\''+col.id+'\')" ondragend="onColDragEnd(event,\''+col.id+'\')"':"")
+        +' ondragover="onColDragOver(event,\''+col.id+'\')" ondrop="onColDrop(event,\''+col.id+'\')">'
+        +'<span style="width:9px;height:9px;border-radius:50%;background:'+col.dot+';box-shadow:0 0 5px '+col.dot+'70;flex-shrink:0;cursor:'+(isMestre?"pointer":"default")+';" '+(isMestre?'onclick="toggleCP(\''+col.id+'\',event)" title="Trocar cor"':"")+' ></span>'
+        +'<div id="col-title-'+col.id+'" style="flex:1;min-width:0;">'+colTitleInner(col)+'</div>'
+        +'<span class="col-count">'+colCards.length+'</span>'
+        +(isMestre&&isEmpty?'<button onclick="delColuna(\''+col.id+'\',event)" style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;padding:2px 4px;border-radius:5px;" title="Excluir coluna" onmouseover="this.style.color=\'#fca5a5\'" onmouseout="this.style.color=\'rgba(255,255,255,.35)\'">'+ic('trash')+'</button>':"")
+        +'</div>';
+    }
+    return '<div class="col-wrap">'+header
       +'<div class="col-cards drop-zone" id="col-cards-'+col.id+'"'
       +' ondragover="onColDragOver(event,\''+col.id+'\')" ondrop="onColDrop(event,\''+col.id+'\')" ondragleave="onColDragLeave(event,\''+col.id+'\')">'
       +inner+'</div></div>';
   }).join("");
-  var addBtn=isMestre?'<button class="add-col-btn" onclick="addColuna()">'+ic('plus')+' Adicionar coluna</button>':"";
+  var addBtn=(!porPrazo&&isMestre)?'<button class="add-col-btn" onclick="addColuna()">'+ic('plus')+' Adicionar coluna</button>':"";
   var app=document.getElementById("app");app.className="kanban-mode";
   app.innerHTML=headerHTML("kanban")+toolbarHTML(ce)+'<div class="board-outer"><div class="board-inner">'+colsHtml+addBtn+'</div></div>';
   bindFCI();
