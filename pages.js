@@ -56,6 +56,7 @@ async function saveCard(){
   if(existing){card.modelo_snapshot=existing.modelo_snapshot||_snapshotDemandaModelo();card.campos_valores=existing.campos_valores||{};}
   else{card.modelo_snapshot=_snapshotDemandaModelo();card.campos_valores={};}
   if(existing)card.ordem=existing.ordem||0;else{var cc=cards.filter(function(c){return c.status===card.status;});card.ordem=cc.length;}
+  var _colC=COLS.find(function(c){return c.id===card.status;});card.coverColor=existing?(existing.coverColor||(_colC&&_colC.cover)||"#e2e8f0"):((_colC&&_colC.cover)||"#e2e8f0");
   try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(!editingId&&equipeAtiva){await dbUpsertDemandaEquipe({demanda_id:id,equipe_id:equipeAtiva.id});if(!demandaEquipesDB[id])demandaEquipesDB[id]=[];if(!demandaEquipesDB[id].includes(equipeAtiva.id))demandaEquipesDB[id].push(equipeAtiva.id);}if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");editingId=null;document.getElementById("modal-container").innerHTML="";renderView();}catch(e){toast("Erro",true);}
 }
 

@@ -29,10 +29,21 @@ async function ensureDemandaSnapshots(){
     try{await dbUpsert(alterados[i]);}catch(_){}
   }
 }
+// Congela a cor atual (derivada da coluna) como cor propria de cada card, uma
+// unica vez. Depois disso a cor do card fica estatica e so muda pelo seletor.
+async function ensureCardColors(){
+  var alterados=cards.filter(function(c){return c.id!=="__cols__"&&!c.coverColor;});
+  if(!alterados.length)return;
+  for(var i=0;i<alterados.length;i++){
+    var col=COLS.find(function(c){return c.id===alterados[i].status;});
+    alterados[i].coverColor=(col&&col.cover)||"#e2e8f0";
+    try{await dbUpsert(alterados[i]);}catch(_){}
+  }
+}
 async function init(){
   var app=document.getElementById("app");app.className="kanban-mode";
   app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;"><div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#fff;">BT</span></div><div style="width:28px;height:3px;background:linear-gradient(90deg,#ff8204,#e20500);border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div><style>@keyframes pulse{0%,100%{opacity:.4;transform:scaleX(.8)}50%{opacity:1;transform:scaleX(1)}}</style><div style="font-size:13px;color:rgba(255,255,255,.35);">Carregando BTDesk...</div></div>';
-  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes(),loadTarefaStatus(),loadDemandaModelo(),loadSubtarefaModelo(),loadProjetoModelo()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await ensureDemandaSnapshots();await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await migrarTarefasCardsParaTabela();await verificarAlertasPrazos();}catch(e){console.error("Falha ao carregar dados iniciais:",e);toast("Erro ao carregar os dados. Recarregue a pagina.",true);}
+  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEquipes(),loadTarefaStatus(),loadDemandaModelo(),loadSubtarefaModelo(),loadProjetoModelo()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await ensureDemandaSnapshots();await ensureCardColors();await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await migrarTarefasCardsParaTabela();await verificarAlertasPrazos();}catch(e){console.error("Falha ao carregar dados iniciais:",e);toast("Erro ao carregar os dados. Recarregue a pagina.",true);}
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   loadEtq();renderKanban();
 }
