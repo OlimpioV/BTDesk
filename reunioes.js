@@ -3190,8 +3190,6 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='<div class="btrack">';
     subtarefas.forEach(function(s){html+='<div class="bseg" style="background:'+statusTarefaCor(s.status,'#e8edf2')+';"></div>';});
     html+='</div><span class="bpct">'+_conc+'/'+subtarefas.length+'</span></div>';
-  } else if(ce&&!ehPassado){
-    html+='<button class="baddsub" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Adicionar subtarefa">'+ic("plus")+'<span>subtarefa</span></button>';
   } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   if(ce&&!ehPassado){
     html+='<button onclick="event.stopPropagation();_editarTarefaPauta(\''+t.id+'\')" class="rt-edit-btn inline-edit-hit" title="Editar projeto">'+ic("edit")+'<span>Editar</span></button>';
