@@ -7,8 +7,15 @@ function openMyProfile(){
 async function saveMyProfile(){
   var nome=(document.getElementById("mp-nome").value||"").trim();var email=(document.getElementById("mp-email").value||"").trim().toLowerCase();var senha=document.getElementById("mp-senha").value;var siglEl=document.getElementById("mp-sigla");var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():undefined;
   if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
-  var u={id:userDbId,nome,email,perfil,ativo:true};if(senha)u.senha=senha;if(sigla!==undefined)u.sigla=sigla;
-  try{await dbSaveUser(u);nomeUser=nome;emailUser=email;sessionStorage.setItem("bari_nome",nome);sessionStorage.setItem("bari_email",email);await loadResp();toast("Perfil atualizado!");closeModal();}catch(e){toast("Erro",true);}
+  var u={id:userDbId,nome,email,perfil,ativo:true};if(sigla!==undefined)u.sigla=sigla;
+  try{
+    await dbSaveUser(u);
+    if(senha){
+      var rs=await fetch(SB+"/auth/v1/user",{method:"PUT",headers:H,body:JSON.stringify({password:senha})});
+      if(!rs.ok)throw new Error("Falha ao trocar a senha");
+    }
+    nomeUser=nome;emailUser=email;sessionStorage.setItem("bari_nome",nome);sessionStorage.setItem("bari_email",email);await loadResp();toast("Perfil atualizado!");closeModal();
+  }catch(e){toast("Erro",true);}
 }
 
 
@@ -77,18 +84,7 @@ function delEtq(n){modalConfirm('Excluir a etiqueta "'+n+'"?',function(){delete 
 async function renderLogs(){var app=document.getElementById("app");app.className="page-mode";app.innerHTML=headerHTML("logs")+'<div style="padding:24px;max-width:1100px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';try{var logs=await dbFetchLogs();var rows=logs.length===0?'<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text3);">Nenhum registro</td></tr>':logs.map(function(l){var dt=new Date(l.criado_em).toLocaleString("pt-BR");var b=l.perfil==="mestre"?'<span class="badge" style="background:rgba(168,85,247,.1);color:#7c3aed;">Mestre</span>':l.perfil==="advogado"?'<span class="badge" style="background:rgba(250,81,14,.1);color:var(--bt-orange);">Advogado</span>':'<span class="badge" style="background:var(--surface);color:#64748b;border:1px solid var(--border);">Cliente</span>';return '<tr style="border-bottom:1px solid var(--border);"><td style="padding:11px 14px;font-size:12px;color:var(--text3);white-space:nowrap;">'+dt+'</td><td style="padding:11px 14px;">'+b+'</td><td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+l.acao+'</td><td style="padding:11px 14px;font-size:13px;color:var(--text2);">'+(l.detalhe||"")+'</td></tr>';}).join("");app.innerHTML=headerHTML("logs")+'<div style="padding:24px;max-width:1100px;margin:0 auto;"><div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'+['Data/hora','Perfil','Ação','Detalhe'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';}catch(e){toast("Erro",true);}}
 
 // ── USUÁRIOS ──
-function togglePwd(uid){
-  var el=document.getElementById("pwd-"+uid);if(!el)return;
-  var btn=el.nextElementSibling;
-  if(el.dataset.shown==="1"){
-    el.textContent="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
-    el.dataset.shown="0";
-    if(btn)btn.style.color="var(--text3)";
-  } else {
-    var pwd=el.dataset.pwd;
-    if(pwd){el.textContent=pwd;el.dataset.shown="1";if(btn)btn.style.color="var(--bt-orange)";}
-  }
-}
+var _editUserAuthId="";
 async function renderUsers(){
   var app=document.getElementById("app");app.className="page-mode";
   app.innerHTML=headerHTML("usr")+'<div style="padding:24px;max-width:1000px;margin:0 auto;"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>';
@@ -97,15 +93,12 @@ async function renderUsers(){
     var rows=us.map(function(u){
       var b=u.perfil==="mestre"?'<span class="badge" style="background:rgba(168,85,247,.1);color:#7c3aed;">Mestre</span>':u.perfil==="advogado"?'<span class="badge" style="background:rgba(250,81,14,.1);color:var(--bt-orange);">Advogado</span>':'<span class="badge" style="background:var(--surface);color:#64748b;border:1px solid var(--border);">Cliente</span>';
       var isM=u.perfil==="mestre";
-      var ac=isM?'<span style="font-size:11px;color:var(--text3);">conta principal</span>':'<div style="display:flex;gap:5px;"><button onclick="openEditUser(\''+u.id+'\',\''+escQ(u.nome)+'\',\''+u.email+'\',\''+u.perfil+'\',\''+(u.sigla||'')+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('edit')+' Editar</button><button onclick="delUser(\''+u.id+'\',\''+escQ(u.nome)+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('trash')+' Excluir</button></div>';
-      var eyeBtn='<button onclick="togglePwd(\''+u.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:flex;align-items:center;" title="Ver senha"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>';
-      var pwdCell='<td style="padding:11px 14px;"><div style="display:flex;align-items:center;gap:6px;"><span id="pwd-'+u.id+'" data-pwd="'+(u.senha||"")+'" data-shown="0" style="font-size:12px;font-family:monospace;color:var(--text2);letter-spacing:.05em;">\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022</span>'+eyeBtn+'</div></td>';
+      var ac=isM?'<span style="font-size:11px;color:var(--text3);">conta principal</span>':'<div style="display:flex;gap:5px;"><button onclick="openEditUser(\''+u.id+'\',\''+escQ(u.nome)+'\',\''+u.email+'\',\''+u.perfil+'\',\''+(u.sigla||'')+'\',\''+(u.auth_id||'')+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('edit')+' Editar</button><button onclick="delUser(\''+u.id+'\',\''+escQ(u.nome)+'\',\''+(u.auth_id||'')+'\')" style="font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;display:flex;align-items:center;gap:3px;">'+ic('trash')+' Excluir</button></div>';
       return '<tr style="border-bottom:1px solid var(--border);transition:background .15s;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
         +'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+u.nome+'</td>'
         +'<td style="padding:11px 14px;font-size:13px;color:var(--text2);">'+u.email+'</td>'
         +'<td style="padding:11px 14px;">'+b+'</td>'
         +'<td style="padding:11px 14px;font-size:12px;font-weight:700;color:var(--bt-navy);">'+(u.sigla||'\u2014')+'</td>'
-        +pwdCell
         +'<td style="padding:11px 14px;"><span style="font-size:12px;font-weight:600;color:'+(u.ativo?"#16a34a":"#dc2626")+';">'+(u.ativo?"\u25cf Ativo":"\u25cf Inativo")+'</span></td>'
         +'<td style="padding:11px 14px;">'+ac+'</td>'
         +'</tr>';
@@ -118,18 +111,59 @@ async function renderUsers(){
       +'<div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow-md);">'
       +'<table style="width:100%;border-collapse:collapse;">'
       +'<thead><tr style="background:linear-gradient(135deg,#1a2e3a,#253f4f);">'
-      +['Nome','E-mail','Perfil','Sigla','Senha','Status','A\u00e7\u00f5es'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
+      +['Nome','E-mail','Perfil','Sigla','Status','A\u00e7\u00f5es'].map(function(h){return '<th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;">'+h+'</th>';}).join("")
       +'</tr></thead>'
       +'<tbody>'+rows+'</tbody>'
       +'</table></div></div>';
   }catch(e){toast("Erro",true);}
 }
 
-function delUser(id,nome){modalConfirm('Excluir o usuário "'+nome+'"?',async function(){try{await dbDelUser(id);await dbLog("Excluiu usuário",nome);await loadResp();toast("Excluído!");renderUsers();}catch(e){toast("Erro",true);}});}
+function delUser(id,nome,authId){modalConfirm('Excluir o usuário "'+nome+'"?',async function(){try{await dbDelUser(id);if(authId){try{await dbAdminUsuario({action:"delete",auth_id:authId});}catch(errDel){console.error("Falha ao excluir conta de acesso:",errDel);}}await dbLog("Excluiu usuário",nome);await loadResp();toast("Excluído!");renderUsers();}catch(e){toast("Erro",true);}});}
 
-function openEditUser(id,nome,email,perf,sigla){var isE=!!id;document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isE?"Editar usu\u00e1rio":"Novo usu\u00e1rio")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button></div><div class="field"><label>Nome</label><input id="mu-nome" value="'+(nome||"")+'" placeholder="Nome completo"/></div><div class="field"><label>E-mail</label><input id="mu-email" type="email" value="'+(email||"")+'" placeholder="email@btlaw.com.br"/></div><div class="field"><label>'+(isE?"Nova senha (deixe vazio para manter)":"Senha")+'</label><input id="mu-senha" type="password" placeholder="'+(isE?"Nova senha...":"Senha de acesso...")+'"/></div><div class="field"><label>Perfil</label><select id="mu-perfil" onchange="toggleSigla()" style="width:100%;"><option value="advogado"'+(perf==="advogado"?" selected":"")+'>Advogado</option><option value="cliente"'+(perf==="cliente"?" selected":"")+'>Cliente</option></select></div><div class="field" id="sigla-field" style="'+((!perf||perf==="cliente")?"display:none;":"")+'"><label>Sigla</label><input id="mu-sigla" value="'+(sigla||"")+'" placeholder="Ex: VOL" style="max-width:120px;text-transform:uppercase;"/></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveUser(\''+(id||"")+'\')">Salvar</button></div></div></div>';}
+function openEditUser(id,nome,email,perf,sigla,authId){_editUserAuthId=authId||"";var isE=!!id;document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;"><div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">'+(isE?"Editar usu\u00e1rio":"Novo usu\u00e1rio")+'</div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic('close')+'</button></div><div class="field"><label>Nome</label><input id="mu-nome" value="'+(nome||"")+'" placeholder="Nome completo"/></div><div class="field"><label>E-mail</label><input id="mu-email" type="email" value="'+(email||"")+'" placeholder="email@btlaw.com.br"/></div><div class="field"><label>'+(isE?"Nova senha (deixe vazio para manter)":"Senha")+'</label><input id="mu-senha" type="password" placeholder="'+(isE?"Nova senha...":"Senha de acesso...")+'"/></div><div class="field"><label>Perfil</label><select id="mu-perfil" onchange="toggleSigla()" style="width:100%;"><option value="advogado"'+(perf==="advogado"?" selected":"")+'>Advogado</option><option value="cliente"'+(perf==="cliente"?" selected":"")+'>Cliente</option></select></div><div class="field" id="sigla-field" style="'+((!perf||perf==="cliente")?"display:none;":"")+'"><label>Sigla</label><input id="mu-sigla" value="'+(sigla||"")+'" placeholder="Ex: VOL" style="max-width:120px;text-transform:uppercase;"/></div><div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveUser(\''+(id||"")+'\')">Salvar</button></div></div></div>';}
 function toggleSigla(){var p=document.getElementById("mu-perfil").value;var f=document.getElementById("sigla-field");if(f)f.style.display=p==="advogado"?"":"none";}
-async function saveUser(id){var nome=(document.getElementById("mu-nome").value||"").trim();var email=(document.getElementById("mu-email").value||"").trim().toLowerCase();var senha=document.getElementById("mu-senha").value;var perf=document.getElementById("mu-perfil").value;var siglEl=document.getElementById("mu-sigla");var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():"";if(!nome||!email){toast("Preencha nome e e-mail",true);return;}if(!id&&!senha){toast("Informe a senha",true);return;}var u={nome,email,perfil:perf,ativo:true,sigla:(perf==="advogado"||perf==="mestre")?sigla:null};if(id)u.id=id;if(senha)u.senha=senha;try{await dbSaveUser(u);await dbLog(id?"Editou usu\u00e1rio":"Criou usu\u00e1rio",nome);await loadResp();toast(id?"Atualizado!":"Criado!");closeModal();renderUsers();}catch(e){toast("Erro",true);}}
+async function saveUser(id){
+  var nome=(document.getElementById("mu-nome").value||"").trim();
+  var email=(document.getElementById("mu-email").value||"").trim().toLowerCase();
+  var senha=document.getElementById("mu-senha").value;
+  var perf=document.getElementById("mu-perfil").value;
+  var siglEl=document.getElementById("mu-sigla");
+  var sigla=siglEl?(siglEl.value||"").trim().toUpperCase():"";
+  if(!nome||!email){toast("Preencha nome e e-mail",true);return;}
+  if(!id&&!senha){toast("Informe a senha",true);return;}
+  var u={nome,email,perfil:perf,ativo:true,sigla:(perf==="advogado"||perf==="mestre")?sigla:null};
+  if(id)u.id=id;
+  try{
+    var saved=await dbSaveUser(u);
+    if(!id){
+      try{
+        var authRes=await dbAdminUsuario({action:"create",email:email,password:senha});
+        var newId=saved&&saved.id?saved.id:null;
+        if(!newId){
+          var us2=await dbFetchUsers();
+          var found=us2.find(function(x){return x.email===email;});
+          newId=found?found.id:null;
+        }
+        if(newId&&authRes&&authRes.auth_id){
+          await dbSaveUser({id:newId,auth_id:authRes.auth_id});
+        }
+      }catch(errAuth){
+        toast("Usu\u00e1rio criado, mas falhou ao criar a conta de acesso: "+errAuth.message,true);
+      }
+    } else if(senha&&_editUserAuthId){
+      try{
+        await dbAdminUsuario({action:"set_password",auth_id:_editUserAuthId,password:senha});
+      }catch(errPwd){
+        toast("Dados atualizados, mas falhou ao trocar a senha: "+errPwd.message,true);
+      }
+    }
+    await dbLog(id?"Editou usu\u00e1rio":"Criou usu\u00e1rio",nome);
+    await loadResp();
+    toast(id?"Atualizado!":"Criado!");
+    closeModal();
+    renderUsers();
+  }catch(e){toast("Erro",true);}
+}
 
 
 // ── EQUIPES ──

@@ -674,15 +674,6 @@ button{font-family:inherit;cursor:pointer;}
 .reun-wrap .cmt-box input:focus,.reun-wrap .cmt-box textarea:focus{border-color:var(--bt-orange);background:#fff;box-shadow:0 0 0 3px rgba(250,81,14,.1);}
 
 /* ── CARTOES DE TAREFA DE PAUTA ─────────────────────────────────────── */
-.reun-wrap .tcard-list{display:flex;flex-direction:column;gap:12px;}
-.reun-wrap .tcard{display:flex;border:1px solid var(--border);border-radius:var(--r-md);background:#fff;
-  box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .16s,transform .16s;}
-.reun-wrap .tcard:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
-.reun-wrap .tcard-bar{width:4px;flex-shrink:0;}
-.reun-wrap .tcard-main{flex:1;min-width:0;padding:14px 16px;}
-.reun-wrap .tcard-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-.reun-wrap .tcard-title{font-size:14px;font-weight:700;color:var(--bt-navy);line-height:1.35;flex:1;min-width:0;}
-.reun-wrap .tcard-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);margin-top:6px;flex-wrap:wrap;}
 .reun-wrap .tcard-chev{background:#fff;border:1px solid var(--border-soft);border-radius:999px;padding:0;width:26px;height:26px;display:inline-flex;align-items:center;
   justify-content:center;color:var(--text3);flex-shrink:0;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.06);
   transition:background .15s,border-color .15s,color .15s;}

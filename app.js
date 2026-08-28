@@ -1,14 +1,87 @@
-function checkAuth(){var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email"),i=sessionStorage.getItem("bari_id");if(p){perfil=p;nomeUser=n;emailUser=e;userDbId=i;var ea=sessionStorage.getItem("bari_equipe");try{equipeAtiva=ea?JSON.parse(ea):null;}catch(_){equipeAtiva=null;}return true;}return false;}
-function logout(){sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;userDbId=null;equipeAtiva=null;equipesDB=[];demandaEquipesDB={};renderLogin();}
+// Wrapper unico sobre window.fetch: em 401 numa chamada ao Supabase, tenta um
+// refresh de token e repete a chamada uma vez (opts._retried evita loop).
+// Exclui /auth/v1/ do proprio GoTrue para nao recursar em refreshSession.
+(function(){
+  var _origFetch=window.fetch;
+  window.fetch=function(url,opts){
+    opts=opts||{};
+    var isSb=typeof url==="string"&&url.indexOf(SB)===0&&url.indexOf("/auth/v1/")===-1;
+    return _origFetch(url,opts).then(function(r){
+      if(isSb&&r.status===401&&!opts._retried){
+        opts._retried=true;
+        return refreshSession().then(function(ok){return ok?_origFetch(url,opts):r;});
+      }
+      return r;
+    });
+  };
+})();
+
+var _refreshTimer=null;
+function _startRefreshTimer(){
+  if(_refreshTimer)clearInterval(_refreshTimer);
+  _refreshTimer=setInterval(function(){
+    var exp=parseInt(sessionStorage.getItem("bari_expires_at")||"0",10);
+    if(exp&&Date.now()>exp-5*60*1000)refreshSession();
+  },60000);
+}
+function setSession(tok){
+  sessionStorage.setItem("bari_access_token",tok.access_token);
+  sessionStorage.setItem("bari_refresh_token",tok.refresh_token);
+  sessionStorage.setItem("bari_expires_at",String(Date.now()+tok.expires_in*1000));
+  H.Authorization="Bearer "+tok.access_token;
+  _startRefreshTimer();
+}
+function clearSession(){
+  sessionStorage.removeItem("bari_access_token");
+  sessionStorage.removeItem("bari_refresh_token");
+  sessionStorage.removeItem("bari_expires_at");
+  H.Authorization="Bearer "+SK;
+  if(_refreshTimer){clearInterval(_refreshTimer);_refreshTimer=null;}
+}
+async function refreshSession(){
+  var rt=sessionStorage.getItem("bari_refresh_token");
+  if(!rt){clearSession();renderLogin();return false;}
+  try{
+    var r=await fetch(SB+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{"Content-Type":"application/json","apikey":SK},body:JSON.stringify({refresh_token:rt})});
+    var tok=await r.json();
+    if(!r.ok||!tok.access_token){clearSession();renderLogin();return false;}
+    setSession(tok);
+    return true;
+  }catch(e){clearSession();renderLogin();return false;}
+}
+async function checkAuth(){
+  var p=sessionStorage.getItem("bari_perfil"),n=sessionStorage.getItem("bari_nome"),e=sessionStorage.getItem("bari_email"),i=sessionStorage.getItem("bari_id");
+  var at=sessionStorage.getItem("bari_access_token");
+  if(!p||!at)return false;
+  perfil=p;nomeUser=n;emailUser=e;userDbId=i;
+  var ea=sessionStorage.getItem("bari_equipe");
+  try{equipeAtiva=ea?JSON.parse(ea):null;}catch(_){equipeAtiva=null;}
+  H.Authorization="Bearer "+at;
+  var exp=parseInt(sessionStorage.getItem("bari_expires_at")||"0",10);
+  if(Date.now()>exp)return await refreshSession();
+  _startRefreshTimer();
+  return true;
+}
+async function logout(){
+  var at=sessionStorage.getItem("bari_access_token");
+  if(at){try{await fetch(SB+"/auth/v1/logout",{method:"POST",headers:{"Content-Type":"application/json","apikey":SK,"Authorization":"Bearer "+at}});}catch(_){}}
+  clearSession();
+  sessionStorage.clear();perfil=null;nomeUser=null;emailUser=null;userDbId=null;equipeAtiva=null;equipesDB=[];demandaEquipesDB={};renderLogin();
+}
 async function doLogin(){
   var email=(document.getElementById("login-email").value||"").trim().toLowerCase();
   var senha=document.getElementById("login-senha").value;
   if(!email||!senha){renderLogin("Preencha e-mail e senha.");return;}
   try{
-    var r=await fetch(SB+"/rest/v1/usuarios?email=eq."+encodeURIComponent(email)+"&senha=eq."+encodeURIComponent(senha)+"&ativo=eq.true&select=*",{headers:H});
-    var rows=await r.json();
-    if(!rows||!rows.length){renderLogin("E-mail ou senha incorretos.");return;}
-    var u=rows[0];perfil=u.perfil;nomeUser=u.nome;emailUser=u.email;userDbId=u.id;
+    var r=await fetch(SB+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"Content-Type":"application/json","apikey":SK},body:JSON.stringify({email:email,password:senha})});
+    var tok=await r.json();
+    if(!r.ok||!tok.access_token){renderLogin("E-mail ou senha incorretos.");return;}
+    setSession(tok);
+    var ur=await fetch(SB+"/rest/v1/usuarios?auth_id=eq."+encodeURIComponent(tok.user.id)+"&select=*",{headers:H});
+    var rows=await ur.json();
+    var u=rows&&rows[0];
+    if(!u||u.ativo!==true){clearSession();renderLogin("Conta inativa ou não encontrada.");return;}
+    perfil=u.perfil;nomeUser=u.nome;emailUser=u.email;userDbId=u.id;
     sessionStorage.setItem("bari_perfil",u.perfil);sessionStorage.setItem("bari_nome",u.nome);sessionStorage.setItem("bari_email",u.email);sessionStorage.setItem("bari_id",u.id);
     dbLog("Login","Acesso ao sistema");init();
   }catch(e){renderLogin("Erro ao conectar.");}
@@ -47,4 +120,4 @@ async function init(){
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   loadEtq();renderKanban();
 }
-if(checkAuth()){loadEtq();init();}else{renderLogin();}
+(async function(){if(await checkAuth()){loadEtq();init();}else{renderLogin();}})();

@@ -5,8 +5,13 @@ async function dbDel(id){var r=await fetch(SB+"/rest/v1/demandas?id=eq."+id,{met
 async function dbLog(a,d){await fetch(SB+"/rest/v1/logs",{method:"POST",headers:H,body:JSON.stringify({perfil,acao:a,detalhe:d})});}
 async function dbFetchLogs(){var r=await fetch(SB+"/rest/v1/logs?select=*&order=criado_em.desc&limit=100",{headers:H});if(!r.ok)throw new Error();return r.json();}
 async function dbFetchUsers(){var r=await fetch(SB+"/rest/v1/usuarios?select=*&order=nome",{headers:H});if(!r.ok)throw new Error();return r.json();}
-async function dbSaveUser(u){var r=await fetch(SB+"/rest/v1/usuarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify(u)});if(!r.ok)throw new Error();}
+async function dbSaveUser(u){var r=await fetch(SB+"/rest/v1/usuarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(u)});if(!r.ok)throw new Error();var rows=await r.json();return Array.isArray(rows)?rows[0]:rows;}
 async function dbDelUser(id){var r=await fetch(SB+"/rest/v1/usuarios?id=eq."+id,{method:"DELETE",headers:H});if(!r.ok)throw new Error();}
+async function dbAdminUsuario(payload){
+  var r=await fetch(SB+"/functions/v1/admin-usuarios",{method:"POST",headers:H,body:JSON.stringify(payload)});
+  if(!r.ok){var msg="Erro ao gerenciar conta";try{var j=await r.json();if(j&&j.error)msg=j.error;}catch(e){}throw new Error(msg);}
+  return r.json();
+}
 async function dbSaveCols(){var data={colunas:COLS};await fetch(SB+"/rest/v1/demandas",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id:"__cols__",data})});}
 async function dbLoadCols(){var r=await fetch(SB+"/rest/v1/demandas?id=eq.__cols__&select=data",{headers:H});if(!r.ok)return;var rows=await r.json();if(rows&&rows[0]&&rows[0].data&&rows[0].data.colunas)COLS=rows[0].data.colunas;}
 async function loadResp(){try{var r=await fetch(SB+"/rest/v1/usuarios?ativo=eq.true&select=id,sigla,nome,perfil",{headers:H});if(!r.ok)return;var rows=await r.json();var filtered=rows.filter(function(u){return u.sigla&&(u.perfil==="advogado"||u.perfil==="mestre");});responsaveis=filtered.map(function(u){return u.sigla;});usuariosFullDB=filtered;}catch(e){console.error("loadResp falhou:",e);}}
@@ -251,7 +256,7 @@ async function dbUpsertNotifConfig(c){var r=await fetch(SB+"/rest/v1/notif_confi
 async function enviarEmail(opts){
   var r=await fetch(SB+"/functions/v1/enviar-email",{
     method:"POST",
-    headers:{"Content-Type":"application/json","apikey":SK,"Authorization":"Bearer "+SK},
+    headers:H,
     body:JSON.stringify(Object.assign({criado_por:userDbId},opts))
   });
   if(!r.ok){var t=await r.text();throw new Error(t);}
