@@ -59,11 +59,13 @@ curl -X POST \
 
 Antes de rodar qualquer SQL de criação de tabela, verificar se a tabela já existe para evitar erro. Rodar os SQLs um por vez e confirmar sucesso antes de continuar.
 
+Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um header `User-Agent` (ex: `"curl/8.4.0"`), senão o Cloudflare bloqueia a requisição com `403 error code: 1010` (proteção de bot, o `User-Agent` padrão do Python é rejeitado).
+
 ## Tabelas Supabase (estado atual)
 
 - `demandas(id, data jsonb)` — cards como JSON blob; row especial `id="__cols__"` guarda config das colunas
 - `tarefas(id, card_id, texto, responsavel, data_inicio, data_fim, status, criado_em)`
-- `usuarios(id, nome, email, senha, perfil, sigla, ativo)`
+- `usuarios(id, nome, email, senha, perfil, sigla, ativo, auth_id)` — `senha` está sempre nula desde a migração para Supabase Auth (28/08/2026); autenticação real é via `auth.users`, ligada por `auth_id`. Nunca reintroduzir comparação de senha em texto plano nesta tabela
 - `clientes(id, numero, nome)`
 - `casos(id, numero, cliente_id, descricao, nome_consulta, objeto, situacao)`
 - `logs(id, perfil, acao, detalhe, criado_em)`
@@ -104,7 +106,10 @@ Antes de rodar qualquer SQL de criação de tabela, verificar se a tabela já ex
 - `modal-container` para modal principal; `modal-container2` para diálogos secundários sobrepostos
 - Drag-and-drop usa HTML5 Drag API nativo; ordem persistida via dbUpsert no drop
 - Edição inline (icell) usa padrão show/hide com _ef/_ecid rastreando o campo aberto
-- checkAuth() lê sessionStorage; login chama Supabase REST diretamente (senhas em texto plano, pendência de segurança)
+- Autenticação via Supabase Auth real (`/auth/v1/token`), não mais senha em texto plano. `H` (config.js) é mutado em memória após login/refresh (`H.Authorization = "Bearer "+access_token`); nenhuma das funções de `db.js` precisa saber disso, todas reusam `H` por referência
+- `checkAuth()` (app.js) é assíncrona, restaura sessão de `sessionStorage` e dispara refresh se expirada; `refreshSession()`/`setSession()`/`clearSession()` centralizam o ciclo de vida do token; há wrapper em `window.fetch` para retry automático em 401
+- RLS real habilitado em todas as tabelas (28/08/2026): `mestre` acesso total, `advogado` escopado por equipe (via `equipe_membros`/`demanda_equipes`/`equipe_id`, com `equipe_id IS NULL` = visível a todas as equipes), `cliente` leitura sem recorte por cliente específico. Helpers SQL `is_mestre()`, `minhas_equipes()`, `usuario_ativo()`, `pode_editar()` no schema `public`
+- Gestão de usuários (`pages.js`: `saveUser`/`delUser`) cria/atualiza/remove a conta correspondente no Supabase Auth via a Edge Function `admin-usuarios` (só aceita chamadas de um `mestre` autenticado)
 
 ## Funcionalidades já implementadas
 
@@ -120,8 +125,8 @@ Antes de rodar qualquer SQL de criação de tabela, verificar se a tabela já ex
 
 ## Pendências conhecidas
 
-- Segurança: RLS real no Supabase e Supabase Auth (autenticação atual via tabela usuarios com senha em texto plano)
 - Visibilidade por área: substituída pelo sistema de equipes descrito abaixo
+- `enviar-email` (Edge Function) existe no repositório mas nunca foi publicada no Supabase (retorna 404); recurso de e-mail provavelmente nunca funcionou em produção. Publicar via Management API antes de confiar nele (ver seção de Autenticação abaixo para o exemplo de deploy usado em `admin-usuarios`)
 
 ---
 
