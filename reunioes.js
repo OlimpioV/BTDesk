@@ -1,4 +1,8 @@
 // ── REUNIOES ──
+// Desativado em 31/08/2026 a pedido do usuario: secao "Pendencias anteriores"
+// fica fora da aba de reunioes, sem apagar o codigo (_buildPendenciaItem,
+// _buildPendenciaPoolItem, abrirPendenciasPoolModal etc continuam intactos).
+var FEATURE_PENDENCIAS_ANTERIORES=false;
 var _calMes=(new Date()).getMonth();
 var _calAno=(new Date()).getFullYear();
 var modelosDB=[];
@@ -619,12 +623,14 @@ function _buildReuniaoDetalhe(r){
       +'</div>';
   }
   // Participantes agora ficam no rodape do hero (cabecalho da reuniao).
-  html+='<div class="reun-section">'
-    +'<div class="reun-sechdr">'
-    +'<div class="reun-sectitles"><span class="reun-sec-eye">Acompanhamento</span><span class="reun-sec-ttl">Pendências anteriores</span></div>'
-    +'</div>'
-    +'<div id="reun-pendencias-area">Carregando...</div>'
-    +'</div>';
+  if(FEATURE_PENDENCIAS_ANTERIORES){
+    html+='<div class="reun-section">'
+      +'<div class="reun-sechdr">'
+      +'<div class="reun-sectitles"><span class="reun-sec-eye">Acompanhamento</span><span class="reun-sec-ttl">Pendências anteriores</span></div>'
+      +'</div>'
+      +'<div id="reun-pendencias-area">Carregando...</div>'
+      +'</div>';
+  }
   html+='<div class="reun-section">'
     +'<div class="reun-sechdr">'
     +'<div class="reun-sectitles"><span class="reun-sec-eye">O que será discutido</span><span class="reun-sec-ttl">Pautas</span></div>'
@@ -637,7 +643,7 @@ function _buildReuniaoDetalhe(r){
     +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);_loadPendenciasAnteriores(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
+  setTimeout(function(){_loadParticipantesArea(r.id);if(FEATURE_PENDENCIAS_ANTERIORES)_loadPendenciasAnteriores(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
   return html;
 }
 
