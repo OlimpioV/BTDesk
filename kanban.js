@@ -115,7 +115,6 @@ function delCardComment(cardId,cmtId,e){if(e)e.stopPropagation();modalConfirm("E
 function _fmtYMD(d){var m=d.getMonth()+1,dia=d.getDate();return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(dia<10?"0":"")+dia;}
 function _hojeStr(){return _fmtYMD(new Date());}
 function _addDiasStr(str,n){var p=str.split("-");var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));d.setDate(d.getDate()+n);return _fmtYMD(d);}
-function _fimSemanaStr(str){var p=str.split("-");var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));var delta=(5-d.getDay()+7)%7;d.setDate(d.getDate()+delta);return _fmtYMD(d);}
 function _colConcluidaId(){var c=COLS.find(function(x){return x.id==="concluido"||/conclu/i.test(x.label||"");});return c?c.id:"concluido";}
 function _colAndamentoId(){var c=COLS.find(function(x){return x.id==="andamento"||/andamento/i.test(x.label||"");});if(c)return c.id;var done=_colConcluidaId();var f=[].concat(COLS).filter(function(x){return x.id!==done;}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);})[0];return f?f.id:(COLS[0]&&COLS[0].id);}
 function _cardConcluido(card){return card.status===_colConcluidaId();}
@@ -134,7 +133,7 @@ async function _prazoDrop(colId,cid){
   var hoje=_hojeStr();
   if(colId==="hoje")card.dataFim=hoje;
   else if(colId==="amanha")card.dataFim=_addDiasStr(hoje,1);
-  else if(colId==="semana")card.dataFim=_fimSemanaStr(hoje);
+  else if(colId==="semana")card.dataFim=_addDiasStr(hoje,2);
   else if(colId==="sem_prazo")card.dataFim=null;
   else if(colId==="concluida")card.status=_colConcluidaId();
   if(colId!=="concluida"&&_cardConcluido(card))card.status=_colAndamentoId();
