@@ -141,42 +141,6 @@ button svg,
   max-height: calc(100vh - 32px);
 }
 
-.modal-trello > div[style*="display:grid"] {
-  grid-template-columns: minmax(0,1.25fr) minmax(260px,.75fr) !important;
-}
-
-.modal-cover {
-  height: 96px;
-  min-height: 96px;
-}
-
-.modal-cover > div {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.modal-cover > div:first-child {
-  right: 54%;
-  max-width: 44%;
-}
-
-.modal-cover > div:last-child {
-  left: auto;
-  max-width: 52%;
-  justify-content: flex-end;
-}
-
-.modal-cover .mcclose {
-  position: static !important;
-  min-height: 32px;
-}
-
-.modal-main {
-  padding: 20px 24px 28px;
-}
-
 .info-grid {
   gap: 8px;
 }
@@ -241,16 +205,7 @@ td div[style*="display:flex;gap:5px"] {
     justify-content: flex-start;
   }
 
-  .modal-trello > div[style*="display:grid"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  .modal-main {
-    border-right: 0 !important;
-  }
-
-  #tarefas-panel,
-  .modal-trello div[id^="tarefas-panel-"] {
+  #tarefas-panel {
     border-left: 0 !important;
     border-top: 1px solid #dfe1e6;
   }
@@ -286,31 +241,6 @@ td div[style*="display:flex;gap:5px"] {
 
   .modal-overlay {
     padding: 10px;
-  }
-
-  .modal-cover {
-    height: 118px;
-    min-height: 118px;
-  }
-
-  .modal-cover > div:first-child,
-  .modal-cover > div:last-child {
-    max-width: calc(100% - 20px);
-    right: 10px !important;
-    left: 10px !important;
-  }
-
-  .modal-cover > div:first-child {
-    top: 10px !important;
-  }
-
-  .modal-cover > div:last-child {
-    top: 52px !important;
-    justify-content: flex-start;
-  }
-
-  .modal-main {
-    padding: 16px;
   }
 
   .info-grid {

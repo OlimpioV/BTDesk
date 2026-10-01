@@ -183,15 +183,15 @@ async function saveObsModal(cardId){var ta=document.getElementById("obs-inp-"+ca
 function stopEditObs(cardId,val){var block=document.getElementById("obs-block-"+cardId);var textEl=document.getElementById("obs-txt-"+cardId);var inpEl=document.getElementById("obs-inp-"+cardId);if(block)block.classList.remove("open");if(inpEl)inpEl.style.display="none";if(textEl){textEl.style.display="";if(val!==null){if(val){textEl.className="obs-text";textEl.textContent=val;}else{textEl.className="obs-ph";textEl.textContent="Clique para adicionar observações...";}}}if(_ef==="obs"){_ef=null;_ecid=null;}}
 function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;var mc=document.getElementById("modal-container");var ov=mc.querySelector(".modal-overlay");_ef=null;_ecid=null;
   // Animacao de saida: so limpa se o mesmo modal ainda estiver na tela (outro pode ter sido aberto nesse meio tempo)
+  _mtPopAberto=null;
+  if(document.querySelector("#app.kanban-mode"))renderKanban();
   if(ov&&ov.querySelector(".modal-trello")&&!ov.classList.contains("mt-saindo")){ov.classList.remove("mt-entrando");ov.classList.add("mt-saindo");setTimeout(function(){if(ov.parentNode===mc)mc.innerHTML="";},170);}else mc.innerHTML="";}
 async function submitCmt(cardId){var el=document.getElementById("new-cmt");var txt=(el?el.value:"").trim();if(!txt){toast("Escreva um comentário",true);return;}try{await addCmt(cardId,txt);toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
 function startEditCmt(cid){editingCmtId=cid;renderModal();}
 function cancelEditCmt(){editingCmtId=null;renderModal();}
 async function saveEditCmt(cardId,cmtId){var el=document.getElementById("edit-cmt-txt");var txt=(el?el.value:"").trim();if(!txt){toast("Não pode ser vazio",true);return;}try{await editCmt(cardId,cmtId,txt);toast("Atualizado!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}}
 function confirmDelCmt(cmtId){modalConfirm("Excluir este comentário?",async function(){try{await delCmt(modalCardId,cmtId);toast("Excluído!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}});}
-async function toggleModalTipo(cardId,tipo){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.tipos=card.tipos||[];var idx=card.tipos.indexOf(tipo);if(idx>=0)card.tipos.splice(idx,1);else card.tipos.push(tipo);var cnt=document.getElementById("metq-count");if(cnt){cnt.textContent=card.tipos.length;cnt.style.display=card.tipos.length?"":"none";}try{await dbUpsert(card);}catch(e){toast("Erro",true);}var mcover=document.getElementById("mcover");if(mcover)mcover.style.background=coverColor(card);}
-function toggleEtqPop(e){if(e)e.stopPropagation();var w=document.getElementById("metq-wrap");if(w)w.classList.toggle("open");}
-document.addEventListener("click",function(e){var w=document.getElementById("metq-wrap");if(w&&w.classList.contains("open")&&!w.contains(e.target))w.classList.remove("open");},true);
+async function toggleModalTipo(cardId,tipo){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.tipos=card.tipos||[];var idx=card.tipos.indexOf(tipo);if(idx>=0)card.tipos.splice(idx,1);else card.tipos.push(tipo);renderModal();try{await dbUpsert(card);}catch(e){toast("Erro",true);}}
 async function updateStatus(cardId,val){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.status=val;if(modalCardId===cardId&&document.getElementById("mstatus"))renderModal();try{await dbUpsert(card);toast("Status atualizado!");}catch(e){toast("Erro",true);}}
 function confirmDelCard(id){var card=cards.find(function(c){return c.id===id;});modalConfirm('Excluir a demanda "'+(card?card.titulo:id)+'"?',async function(){try{await dbDelTarefasDoCard(id);await dbDel(id);await dbLog("Excluiu demanda",card?card.titulo:id);delete tarefasDB[id];cards=cards.filter(function(c){return c.id!==id;});closeModal();renderView();}catch(e){toast("Erro",true);}});}
 
@@ -233,55 +233,113 @@ function openCardModal(id){modalCardId=id;editingCmtId=null;_ef=null;_ecid=null;
 function renderModal(){
   var id=modalCardId;
   var card=cards.find(function(c){return c.id===id;});if(!card)return;
-  var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",dot:"#94a3b8",cover:"#e2e8f0",badgeBg:"#f1f5f9",badgeText:"#475569"};
+  var col=COLS.find(function(c){return c.id===card.status;})||{label:"—",dot:"#94a3b8"};
   var ce=perfil==="mestre"||perfil==="advogado";
-  var cmts=getCmts(card);var cv=coverColor(card);
+  var cmts=getCmts(card);var cv=coverColor(card);var ok=_cardConcluido(card);
   var cn=cliNome(card.clienteNum);var cd=casoDesc(card.casoNum,card.clienteNum);
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(card.status===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
-  var rO=responsaveis.map(function(r){return '<option value="'+r+'"'+(card.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
-  var tiposOpts=TIPOS.map(function(t){var sel=(card.tipos||[]).includes(t);var c=TC[t]||PALETA[0];return '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin-right:6px;margin-bottom:4px;"><input type="checkbox" '+(sel?"checked":"")+' onchange="toggleModalTipo(\''+id+'\',\''+t+'\')" style="width:auto;accent-color:'+c.border+';"/><span style="font-size:12px;font-weight:600;padding:2px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span></label>';}).join("");
-  var cmtHTML=cmts.length===0?'<div style="font-size:12px;color:var(--text3);padding:8px 0;">Nenhum comentário ainda</div>':cmts.map(function(c){var dt=new Date(c.data).toLocaleString("pt-BR");var ited=editingCmtId===c.id;var pode=canEditCmt(c.autor);return '<div style="display:flex;gap:9px;margin-bottom:12px;"><div style="width:28px;height:28px;border-radius:50%;background:'+col.dot+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">'+c.autor.charAt(0).toUpperCase()+'</div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;"><span style="font-size:12px;font-weight:700;color:#172b4d;">'+escHTML(c.autor)+'</span><span style="font-size:11px;color:var(--text3);">'+dt+'</span>'+(c.editado?'<span style="font-size:10px;color:var(--text3);">(editado)</span>':"")+'</div>'+(ited?'<div><textarea id="edit-cmt-txt" rows="2" style="width:100%;font-size:13px;padding:8px;border-radius:8px;margin-bottom:5px;resize:vertical;">'+escHTML(c.texto)+'</textarea><div style="display:flex;gap:5px;"><button class="btn" style="font-size:12px;padding:4px 10px;" onclick="cancelEditCmt()">Cancelar</button><button class="btn btn-primary" style="font-size:12px;padding:4px 10px;" onclick="saveEditCmt(\''+id+'\',\''+c.id+'\')">Salvar</button></div></div>':'<div style="background:#fff;border-radius:8px;padding:8px 11px;font-size:13px;color:#172b4d;line-height:1.5;box-shadow:0 1px 2px rgba(0,0,0,.08);overflow-wrap:anywhere;word-break:break-word;">'+escHTML(c.texto)+'</div>'+(pode?'<div style="display:flex;gap:8px;margin-top:4px;"><button onclick="startEditCmt(\''+c.id+'\')" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;">Editar</button><button onclick="confirmDelCmt(\''+c.id+'\')" style="font-size:11px;color:#dc2626;background:none;border:none;cursor:pointer;text-decoration:underline;">Excluir</button></div>':""))+'</div></div>';}).join("");
-  var newCmt=canComment()?'<div style="display:flex;gap:9px;margin-top:6px;"><div style="width:28px;height:28px;border-radius:50%;background:var(--bt-navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">'+emailUser.charAt(0).toUpperCase()+'</div><div style="flex:1;"><div class="cmt-wrap"><textarea id="new-cmt" rows="2" placeholder="Escreva um comentário..."></textarea></div><button class="btn btn-primary" style="font-size:12px;padding:5px 14px;" onclick="submitCmt(\''+id+'\')">Salvar</button></div></div>':"";
-  var sideHTML='<div class="mslabel">Ações</div>'+(ce?'<button class="msbtn" onclick="confirmDelCard(\''+id+'\')" style="color:#dc2626;">'+ic('trash')+' Excluir card</button>':"")+'<div class="mslabel">Status</div>'+(ce?'<select style="font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;border:none;width:100%;font-family:inherit;background:'+col.badgeBg+';color:'+col.badgeText+';" onchange="updateStatus(\''+id+'\',this.value)">'+sO+'</select>':'<div style="font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;background:'+col.badgeBg+';color:'+col.badgeText+';display:flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:'+col.dot+';"></span>'+col.label+'</div>')+'<div class="mslabel">Etiquetas</div>'+(ce?'<div style="background:#fff;border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;">'+tiposOpts+'</div>':(card.tipos&&card.tipos.length?'<div style="display:flex;flex-direction:column;gap:4px;">'+card.tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:5px 9px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("")+'</div>':'<span style="font-size:12px;color:var(--text3);">Nenhuma</span>'));
-  var hasTarefas=(getTarefas(card).length>0)||ce;
-  var mw="min(96vw,860px)";
-  var trashBtn=ce?'<button onclick="confirmDelCard(\''+id+'\')" style="background:rgba(0,0,0,.22);border:none;color:#fff;border-radius:8px;padding:6px 8px;cursor:pointer;display:flex;align-items:center;" title="Excluir card">'+ic("trash")+'</button>':"";
-  var coverBtn=ce?'<button onclick="openCoverPicker(\''+id+'\')" style="background:rgba(0,0,0,.22);border:none;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;">'+ic("palette")+' Cor</button>':"";
-  var statusEl='<label class="mstatus" id="mstatus" style="background:'+col.badgeBg+';color:'+col.badgeText+';'+(ce?'':'cursor:default;')+'"><span class="mstatus-dot" style="background:'+col.dot+';"></span>'+col.label+(ce?ic("chevdown")+'<select aria-label="Status" onchange="updateStatus(\''+id+'\',this.value)">'+sO+'</select>':'')+'</label>';
-  var nTipos=(card.tipos||[]).length;
-  var etqChip=function(t){var c=TC[t]||PALETA[0];return '<span class="metq-chip" style="background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+escHTML(t)+'</span>';};
-  var etqPop=ce
-    ?(TIPOS.length?TIPOS.map(function(t){var sel=(card.tipos||[]).includes(t);var c=TC[t]||PALETA[0];return '<label class="metq-opt"><input type="checkbox" '+(sel?'checked':'')+' onchange="toggleModalTipo(\''+id+'\',\''+escQ(t)+'\')" style="accent-color:'+c.border+';"/>'+etqChip(t)+'</label>';}).join(''):'<div class="metq-empty">Nenhuma etiqueta cadastrada</div>')
-    :(nTipos?card.tipos.map(function(t){return '<div class="metq-opt" style="cursor:default;">'+etqChip(t)+'</div>';}).join(''):'<div class="metq-empty">Nenhuma</div>');
-  var etqEl='<div class="metq-wrap" id="metq-wrap"><button type="button" class="metq-btn" onclick="toggleEtqPop(event)">'+ic("tag")+' Etiquetas<span class="metq-count" id="metq-count"'+(nTipos?'':' style="display:none;"')+'>'+nTipos+'</span>'+ic("chevdown")+'</button><div class="metq-pop" onclick="event.stopPropagation()">'+etqPop+'</div></div>';
-  var tarefasPanel='<div id="tarefas-panel-'+id+'" style="background:#ebecf0;padding:14px 12px;overflow-y:auto;border-left:1px solid #dfe1e6;">'+buildTarefasHTML(card,ce)+'</div>';
-  document.getElementById("modal-container").innerHTML=
-    '<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-trello" style="width:'+mw+';" onclick="event.stopPropagation()">'
-    +'<div class="modal-cover" style="background:'+cv+';" id="mcover">'
-    +'<div style="position:absolute;top:10px;left:12px;">'+coverBtn+'</div>'
-    +'<div style="position:absolute;top:10px;right:12px;display:flex;gap:6px;align-items:center;">'+trashBtn+'<button class="mcclose" onclick="closeModal()">'+ic("close")+' Fechar</button></div>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);">'
-    +'<div class="modal-main" style="border-right:1px solid #dfe1e6;">'
-    +'<div class="msec">'
-    +(ce?'<div class="ititle" id="mt-disp" onclick="startEditTitle(\''+id+'\')">'+escHTML(card.titulo)+'</div><textarea class="ititle-inp" id="mt-inp" rows="2" onkeydown="titleKd(event,\''+id+'\')">'+escHTML(card.titulo)+'</textarea>':'<div class="ititle" style="cursor:default;">'+escHTML(card.titulo)+'</div>')
-    +'<div class="mmeta">'+statusEl+etqEl+'</div>'
-    +'</div>'
-    +'<div class="msec"><div class="msec-title">'+ic("edit")+' Observações</div>'
-    +(ce?'<div class="obs-block" id="obs-block-'+id+'" onclick="startEditObs(\''+id+'\')">'+(card.obs?'<div class="obs-text" id="obs-txt-'+id+'">'+escHTML(card.obs)+'</div>':'<div class="obs-ph" id="obs-txt-'+id+'">Clique para adicionar observações...</div>')+'<textarea id="obs-inp-'+id+'" class="obs-ta" style="display:none;" onkeydown="obsKd(event,\''+id+'\')" placeholder="Escreva observações... (Ctrl+Enter salva, Esc cancela)">'+escHTML(card.obs||"")+'</textarea></div>':(card.obs?'<div class="obs-block" style="cursor:default;"><div class="obs-text">'+escHTML(card.obs)+'</div></div>':""))
-    +'</div>'
-    +'<div class="msec"><div class="msec-title">'+ic("briefcase")+' Detalhes</div><div class="info-grid">'
-    +icCell(id,"clienteNum","Cliente",card.clienteNum?(card.clienteNum+(cn?" \u2014 "+cn:"")):"—",ce,"ac")
-    +icCell(id,"casoNum","Caso",card.casoNum?(card.casoNum+(cd?" \u2014 "+trunc(cd,40):"")):"—",ce,"ac")
-    +icCell(id,"responsavel","Responsável",card.responsavel||"—",ce,"sel",rO)
+  var avCor=function(s){return typeof _avCor==="function"?_avCor(s):"#2b76e5";};
+  var etqChip=function(t){var c=TC[t]||PALETA[0];return '<span class="mt-chip" style="background:'+c.border+';">'+escHTML(t)+'</span>';};
+
+  // Capa: status a esquerda, cor/excluir/fechar a direita
+  var statusEl='<label class="mt-status" id="mstatus"'+(ce?'':' style="cursor:default;"')+'><span class="mt-status-dot" style="background:'+col.dot+';"></span>'+col.label+(ce?ic("chevdown")+'<select aria-label="Status" onchange="updateStatus(\''+id+'\',this.value)">'+sO+'</select>':'')+'</label>';
+  var capa='<div class="mt-capa" id="mcover" style="background:'+cv+';">'+statusEl+'<div class="mt-capa-acoes">'
+    +(ce?'<button class="mt-ib" title="Cor da capa" onclick="openCoverPicker(\''+id+'\')">'+ic("palette")+'</button><button class="mt-ib mt-ib-del" title="Excluir demanda" onclick="confirmDelCard(\''+id+'\')">'+ic("trash")+'</button>':'')
+    +'<button class="mt-ib" title="Fechar" onclick="closeModal()">'+ic("close")+'</button></div></div>';
+
+  // Titulo com circulo de concluir
+  var circ='<button class="mt-circ'+(ok?' ok':'')+'"'+(ce?' title="'+(ok?'Reabrir demanda':'Marcar como concluída')+'" onclick="toggleConcluidoModal(\''+id+'\')"':' disabled')+'>'+ic("check")+'</button>';
+  var titulo=ce?'<div class="ititle'+(ok?' mt-concl':'')+'" id="mt-disp" onclick="startEditTitle(\''+id+'\')">'+escHTML(card.titulo)+'</div><textarea class="ititle-inp" id="mt-inp" rows="2" onkeydown="titleKd(event,\''+id+'\')">'+escHTML(card.titulo)+'</textarea>':'<div class="ititle'+(ok?' mt-concl':'')+'" style="cursor:default;">'+escHTML(card.titulo)+'</div>';
+
+  // Popovers (etiquetas, responsavel, datas)
+  var popEtq=TIPOS.length?TIPOS.map(function(t){var sel=(card.tipos||[]).includes(t);return '<label class="mt-pop-op"><input type="checkbox" '+(sel?'checked':'')+' onchange="toggleModalTipo(\''+id+'\',\''+escQ(t)+'\')"/>'+etqChip(t)+'</label>';}).join(''):'<div class="mt-pop-vazio">Nenhuma etiqueta cadastrada</div>';
+  var popResp='<div class="mt-pop-m'+(card.responsavel?'':' sel')+'" onclick="setModalResp(\''+id+'\',\'\')"><span class="mt-av mt-av-vazio">'+ic("user")+'</span>Sem responsável</div>'+responsaveis.map(function(r){return '<div class="mt-pop-m'+(card.responsavel===r?' sel':'')+'" onclick="setModalResp(\''+id+'\',\''+escQ(r)+'\')"><span class="mt-av" style="background:'+avCor(r)+';">'+escHTML(r)+'</span>'+escHTML(r)+'</div>';}).join('');
+  var popDatas='<div class="mt-fl">Início</div><input type="date" class="mt-in" id="mtd-ini" value="'+(card.dataInicio||'')+'"/><div class="mt-fl" style="margin-top:8px;">Encerramento</div><input type="date" class="mt-in" id="mtd-fim" value="'+(card.dataFim||'')+'"/><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="setModalDatas(\''+id+'\')">Salvar</button><button class="mt-btn-txt" onclick="setModalDatas(\''+id+'\',true)">Remover</button></div>';
+  var pops='<div class="mt-pop" id="mtp-etq" onclick="event.stopPropagation()"><div class="mt-pop-h">Etiquetas</div>'+popEtq+'</div>'
+    +'<div class="mt-pop" id="mtp-resp" onclick="event.stopPropagation()"><div class="mt-pop-h">Responsável</div>'+popResp+'</div>'
+    +'<div class="mt-pop" id="mtp-datas" onclick="event.stopPropagation()"><div class="mt-pop-h">Datas</div>'+popDatas+'</div>';
+
+  var acoes=ce?'<div class="mt-acoes"><button class="mt-ab" onclick="mtPop(event,\'etq\')">'+ic("tag")+'Etiquetas</button><button class="mt-ab" onclick="openAddTarefa(\''+id+'\')">'+ic("check")+'Subtarefa</button><button class="mt-ab" onclick="mtPop(event,\'resp\')">'+ic("user")+'Responsável</button><button class="mt-ab" onclick="mtPop(event,\'datas\')">'+ic("clock")+'Datas</button></div>':'';
+
+  // Responsavel / etiquetas / datas
+  var selo=ok?'<span class="mt-selo ok">Concluído</span>':(_cardVencido(card)?'<span class="mt-selo atraso">Em atraso</span>':(card.dataFim&&card.dataFim===_hojeStr()?'<span class="mt-selo hoje">Vence hoje</span>':''));
+  var dtTxt=card.dataInicio&&card.dataFim?_fmtDataCurta(card.dataInicio)+" - "+_fmtDataCurta(card.dataFim):(card.dataFim?_fmtDataCurta(card.dataFim):(card.dataInicio?"Começou: "+_fmtDataCurta(card.dataInicio):"Sem datas"));
+  var mais=function(p){return ce?'<button class="mt-mais" onclick="mtPop(event,\''+p+'\')">'+ic("plus")+'</button>':'';};
+  var meta='<div class="mt-meta">'
+    +'<div><div class="mt-meta-l">Responsável</div><div class="mt-meta-v">'+(card.responsavel?'<span class="mt-av" title="'+escHTML(card.responsavel)+'" style="background:'+avCor(card.responsavel)+';">'+escHTML(card.responsavel)+'</span>':'')+mais("resp")+'</div></div>'
+    +'<div><div class="mt-meta-l">Etiquetas</div><div class="mt-meta-v">'+(card.tipos||[]).map(etqChip).join('')+mais("etq")+((card.tipos||[]).length||ce?'':'<span class="mt-vazio">Nenhuma</span>')+'</div></div>'
+    +'<div><div class="mt-meta-l">Datas</div><button class="mt-datas"'+(ce?' onclick="mtPop(event,\'datas\')"':' disabled')+'>'+escHTML(dtTxt)+selo+(ce?ic("chevdown"):'')+'</button></div>'
+    +'</div>';
+
+  // Detalhes
+  var detalhes='<div class="mt-sec"><div class="mt-sec-h">'+ic("briefcase")+'<h3>Detalhes</h3></div><div class="info-grid">'
+    +icCell(id,"clienteNum","Cliente",card.clienteNum?(card.clienteNum+(cn?" — "+cn:"")):"—",ce,"ac")
+    +icCell(id,"casoNum","Caso",card.casoNum?(card.casoNum+(cd?" — "+trunc(cd,40):"")):"—",ce,"ac")
     +icCell(id,"email","E-mail ref.",trunc(card.email,35)||"—",ce,"text")
-    +icCell(id,"dataInicio","Início",card.dataInicio||"—",ce,"date")
-    +icCell(id,"dataFim","Encerramento",card.dataFim||"—",ce,"date")
     +icCell(id,"horas","Horas",card.horas?(card.horas+"h"):"—",ce,"nstep")
-    +'</div></div>'
-    +_buildDemandaCamposGrid(card,ce)
-    +'<div class="msec"><div class="msec-title">'+ic("comment")+' Comentários <span style="background:#fff;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:500;margin-left:3px;">'+cmts.length+'</span></div>'+cmtHTML+newCmt+'</div>'
+    +'</div>'+_buildDemandaCamposGrid(card,ce)+'</div>';
+
+  // Observacoes
+  var obs='<div class="mt-sec"><div class="mt-sec-h">'+ic("desc")+'<h3>Observações</h3>'+(ce&&card.obs?'<button class="mt-btn-sec" onclick="startEditObs(\''+id+'\')">Editar</button>':'')+'</div>'
+    +(ce?'<div class="obs-block" id="obs-block-'+id+'" onclick="startEditObs(\''+id+'\')">'+(card.obs?'<div class="obs-text" id="obs-txt-'+id+'">'+escHTML(card.obs)+'</div>':'<div class="obs-ph" id="obs-txt-'+id+'">Adicione observações...</div>')+'<textarea id="obs-inp-'+id+'" class="obs-ta" style="display:none;" onkeydown="obsKd(event,\''+id+'\')" placeholder="Escreva observações... (Ctrl+Enter salva, Esc cancela)">'+escHTML(card.obs||"")+'</textarea></div>':(card.obs?'<div class="obs-block" style="cursor:default;"><div class="obs-text">'+escHTML(card.obs)+'</div></div>':'<div class="mt-vazio">Sem observações</div>'))
+    +'</div>';
+
+  // Comentarios (embaixo da coluna principal)
+  var cmtHTML=cmts.length===0?'<div class="mt-vazio">Nenhum comentário ainda</div>':cmts.slice().reverse().map(function(c){
+    var nome=(c.autor||"?").split("@")[0];var dt=new Date(c.data).toLocaleString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+    var ited=editingCmtId===c.id;var pode=canEditCmt(c.autor);
+    return '<div class="mt-cm"><span class="mt-av" style="background:'+avCor(c.autor||nome)+';">'+escHTML(nome.slice(0,2).toUpperCase())+'</span><div class="mt-cm-c"><div class="mt-cm-h"><b>'+escHTML(nome)+'</b><small>'+dt+(c.editado?' (editado)':'')+'</small></div>'
+      +(ited?'<textarea id="edit-cmt-txt" class="mt-ta" rows="2">'+escHTML(c.texto)+'</textarea><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="saveEditCmt(\''+id+'\',\''+c.id+'\')">Salvar</button><button class="mt-btn-txt" onclick="cancelEditCmt()">Cancelar</button></div>'
+        :'<div class="mt-cm-t">'+escHTML(c.texto)+'</div>'+(pode?'<div class="mt-cm-a"><a onclick="startEditCmt(\''+c.id+'\')">Editar</a> · <a onclick="confirmDelCmt(\''+c.id+'\')">Excluir</a></div>':''))
+      +'</div></div>';
+  }).join("");
+  var newCmt=canComment()?'<div class="mt-cm-novo"><span class="mt-av" style="background:var(--bt-navy);">'+escHTML(emailUser.charAt(0).toUpperCase())+'</span><div style="flex:1;min-width:0;"><textarea id="new-cmt" class="mt-ta" rows="2" placeholder="Escrever um comentário... (Ctrl+Enter envia)" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();submitCmt(\''+id+'\');}"></textarea><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="submitCmt(\''+id+'\')">Salvar</button></div></div></div>':"";
+  var comentarios='<div class="mt-sec"><div class="mt-sec-h">'+ic("comment")+'<h3>Comentários <span class="mt-cont">'+cmts.length+'</span></h3></div>'+newCmt+'<div class="mt-cm-lista">'+cmtHTML+'</div></div>';
+
+  document.getElementById("modal-container").innerHTML=
+    '<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-trello mt-dark" onclick="event.stopPropagation()">'
+    +capa
+    +'<div class="mt-corpo"><div class="mt-main" id="mt-main">'
+    +'<div class="mt-tit-row">'+circ+'<div class="mt-tit">'+titulo+'</div></div>'
+    +'<div class="mt-recuo">'+acoes+meta+detalhes+obs+comentarios+'</div>'
+    +pops
     +'</div>'
-    +tarefasPanel
+    +'<div class="mt-side" id="tarefas-panel-'+id+'">'+buildTarefasHTML(card,ce)+'</div>'
     +'</div></div></div>';
+  if(_mtPopAberto)mtPop(null,_mtPopAberto.id,_mtPopAberto);
+}
+
+// Popovers do modal: posicionados embaixo do botao clicado; sobrevivem a um renderModal (ex.: marcar etiqueta)
+var _mtPopAberto=null;
+function mtPop(e,pid,manter){
+  if(e)e.stopPropagation();
+  var pop=document.getElementById("mtp-"+pid),host=document.getElementById("mt-main");if(!pop||!host)return;
+  var jaAberto=pop.classList.contains("on");
+  document.querySelectorAll(".mt-pop.on").forEach(function(p){p.classList.remove("on");});
+  if(jaAberto&&!manter){_mtPopAberto=null;return;}
+  var pos=manter||null;
+  if(!pos&&e){var b=e.currentTarget.getBoundingClientRect(),h=host.getBoundingClientRect();pos={id:pid,left:b.left-h.left,top:b.bottom-h.top+6};}
+  if(!pos)return;
+  var maxL=host.clientWidth-312;pop.style.left=Math.max(8,Math.min(pos.left,maxL))+"px";pop.style.top=pos.top+"px";
+  pop.classList.add("on");_mtPopAberto={id:pid,left:pos.left,top:pos.top};
+}
+function mtPopFechar(){_mtPopAberto=null;document.querySelectorAll(".mt-pop.on").forEach(function(p){p.classList.remove("on");});}
+document.addEventListener("click",function(e){if(_mtPopAberto&&!e.target.closest(".mt-pop,[onclick*=mtPop]"))mtPopFechar();},true);
+async function toggleConcluidoModal(cardId){
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  card.status=_cardConcluido(card)?_colAndamentoId():_colConcluidaId();
+  renderModal();
+  try{await dbUpsert(card);toast(_cardConcluido(card)?"Demanda concluída!":"Demanda reaberta");}catch(e){toast("Erro",true);}
+}
+async function setModalResp(cardId,sigla){
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  card.responsavel=sigla||null;mtPopFechar();renderModal();
+  try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}
+}
+async function setModalDatas(cardId,remover){
+  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
+  var ini=document.getElementById("mtd-ini"),fim=document.getElementById("mtd-fim");
+  card.dataInicio=remover?null:((ini&&ini.value)||null);card.dataFim=remover?null:((fim&&fim.value)||null);
+  mtPopFechar();renderModal();
+  try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}
 }
