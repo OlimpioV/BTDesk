@@ -2414,26 +2414,26 @@ async function delComentarioProjeto(cId,projetoId){
 }
 
 // ── NOTIFICACOES ──
+// Menu do sino: abre embaixo do botao, no mesmo estilo dos menus do cabecalho
 function toggleNotifDropdown(){
   var existing=document.getElementById("notif-dropdown");
   if(existing){existing.remove();return;}
+  if(typeof _btFecharMenus==="function")_btFecharMenus();
   var naoLidas=(notificacoesDB||[]).filter(function(n){return !n.lida;});
   var todas=(notificacoesDB||[]).slice(0,15);
-  var itens=!todas.length?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma notificacao</div>':todas.map(function(n){
-    return '<div onclick="abrirNotificacao(\''+n.id+'\')" style="padding:10px 14px;border-bottom:1px solid var(--border);background:'+(n.lida?"#fff":"#eff6ff")+';cursor:pointer;">'
-      +'<div style="font-size:12px;color:var(--bt-navy);font-weight:'+(n.lida?"400":"600")+';">'+n.mensagem+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:2px;">'+new Date(n.criado_em).toLocaleDateString("pt-BR")+'</div>'
-      +'</div>';
+  var itens=!todas.length?'<div class="bt-mi-vazio">Nenhuma notificação</div>':todas.map(function(n){
+    return '<div class="bt-notif'+(n.lida?'':' nova')+'" onclick="abrirNotificacao(\''+n.id+'\')"><div class="bt-notif-t">'+escHTML(n.mensagem)+'</div><div class="bt-notif-d">'+new Date(n.criado_em).toLocaleDateString("pt-BR")+'</div></div>';
   }).join("");
   var drop=document.createElement("div");
-  drop.id="notif-dropdown";
-  drop.style.cssText="position:fixed;top:52px;right:14px;width:300px;max-height:400px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200;";
-  drop.innerHTML='<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">'
-    +'<div style="font-size:13px;font-weight:700;color:var(--bt-navy);">Notificacoes</div>'
-    +(naoLidas.length?'<button onclick="marcarTodasNotifLidas()" style="font-size:11px;background:none;border:none;color:var(--accent);cursor:pointer;">Marcar todas como lidas</button>':"")
-    +'</div>'+itens;
+  drop.id="notif-dropdown";drop.className="bt-menu bt-menu-notif";
+  var sino=document.getElementById("bt-sino");
+  if(sino){var r=sino.getBoundingClientRect();drop.style.top=(r.bottom+8)+"px";drop.style.right=Math.max(8,window.innerWidth-r.right-8)+"px";}
+  drop.innerHTML='<div class="bt-notif-h"><b>Notificações</b>'+(naoLidas.length?'<button onclick="marcarTodasNotifLidas()">Marcar todas como lidas</button>':'')+'</div>'+itens;
   document.body.appendChild(drop);
-  setTimeout(function(){document.addEventListener("click",function h(e){if(!drop.contains(e.target)){drop.remove();document.removeEventListener("click",h);}},true);},10);
+  setTimeout(function(){document.addEventListener("click",function h(e){
+    if(!document.body.contains(drop)){document.removeEventListener("click",h,true);return;}
+    if(!drop.contains(e.target)&&!(sino&&sino.contains(e.target))){drop.remove();document.removeEventListener("click",h,true);}
+  },true);},10);
 }
 async function marcarTodasNotifLidas(){
   try{

@@ -14,7 +14,6 @@ bell:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="curren
 meeting:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="2"/></svg>',
 };return m[t]||"";}
 
-function perfilBadge(p){if(p==="mestre")return '<span class="badge" style="background:rgba(168,85,247,.18);color:#d8b4fe;border:1px solid rgba(168,85,247,.2);">Mestre</span>';if(p==="advogado")return '<span class="badge" style="background:rgba(250,81,14,.18);color:#fed7aa;border:1px solid rgba(250,81,14,.2);">Advogado</span>';return '<span class="badge" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);">Cliente</span>';}
 
 function statusTarefaDefaults(){
   return [
@@ -143,64 +142,9 @@ function toolbarHTML(ce){
 }
 function bindFCI(){var el=document.getElementById("fci");if(!el)return;el.addEventListener("change",function(){filterCliente=this.value;filterCaso="";renderView();});el.addEventListener("keydown",function(e){if(e.key==="Enter"){filterCliente=this.value;filterCaso="";renderView();}});}
 
-function headerHTML(aba){
-  var ce=perfil==="mestre"||perfil==="advogado";
-  var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
-  if(ce){tabs+='<button class="tab '+(aba==="minhas-tarefas"?"active":"")+'" onclick="renderMinhasTarefas()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("check")+' Minhas tarefas</button>';}
-  if(ce){tabs+='<button class="tab '+(aba==="reunioes"?"active":"")+'" onclick="renderReunioes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("meeting")+' Reuniões</button>';}
-  if(ce){tabs+='<button class="tab '+(aba==="logs"?"active":"")+'" onclick="renderLogs()">Histórico</button><button class="tab '+(aba==="etq"?"active":"")+'" onclick="renderEtq()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("tag")+' Etiquetas</button><button class="tab '+(aba==="imp"?"active":"")+'" onclick="renderImp()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("upload")+' Importar</button>';}
-  if(perfil==="mestre")tabs+='<button class="tab '+(aba==="usr"?"active":"")+'" onclick="renderUsers()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("users")+' Usu\u00e1rios</button>';
-  if(perfil==="mestre")tabs+='<button class="tab '+(aba==="eq"?"active":"")+'" onclick="renderEquipes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("group")+' Equipes</button>';
-  if(perfil==="mestre")tabs+='<button class="tab '+(aba==="emails"?"active":"")+'" onclick="renderEmails()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("bell")+' E-mails</button>';
-  var logoSide='<div style="display:flex;align-items:center;padding:0 14px;border-right:1px solid rgba(255,255,255,.07);flex-shrink:0;background:rgba(0,0,0,.12);"><img src="logo-branco-negativo.png" style="height:68px;object-fit:contain;" onerror="this.style.display=\'none\'"/></div>';
-  var centerBlock='<div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;"><div style="font-family:var(--font-titulo);font-size:17px;font-weight:800;color:#fff;letter-spacing:.04em;">BTDesk</div><div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;">Controle o seu dia</div></div>';
-  var eqBtnHtml="";
-  if(perfil==="mestre"||perfil==="advogado"){
-    var eqNome=equipeAtiva?equipeAtiva.nome:(perfil==="mestre"?"Todas":"Equipe");
-    var eqCor=equipeAtiva?equipeAtiva.cor:"#94a3b8";
-    eqBtnHtml='<div style="position:relative;display:inline-block;" id="eq-wrap">'
-      +'<button id="eq-btn" onclick="toggleEquipeDropdown()" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);" onmouseover="this.style.background=\'rgba(255,255,255,.14)\'" onmouseout="this.style.background=\'rgba(255,255,255,.08)\'">'
-      +'<span style="width:8px;height:8px;border-radius:50%;background:'+eqCor+';flex-shrink:0;"></span>'+eqNome+ic("chevdown")
-      +'</button></div>';
-  }
-  var nNaoLidas=(notificacoesDB||[]).filter(function(n){return !n.lida;}).length;
-  var bellHtml='<button onclick="toggleNotifDropdown()" style="position:relative;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);cursor:pointer;" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("bell")+(nNaoLidas>0?'<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0 3px;">'+nNaoLidas+'</span>':"")+'</button>';
-  var rightBar='<div style="display:flex;align-items:center;gap:8px;">'+perfilBadge(perfil)+'<span style="font-size:11px;color:rgba(255,255,255,.3);">'+emailUser+'</span>'+eqBtnHtml+bellHtml+'<button onclick="openMyProfile()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("edit")+' Perfil</button><button onclick="logout()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(250,81,14,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("logout")+' Sair</button></div>';
-  return '<div style="background:linear-gradient(135deg,#1a2e3a 0%,#253f4f 60%,#2d4f63 100%);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;align-items:stretch;">'
-    +logoSide
-    +'<div style="flex:1;display:flex;flex-direction:column;min-width:0;">'
-    +'<div style="height:52px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;position:relative;border-bottom:1px solid rgba(255,255,255,.05);">'+centerBlock+rightBar+'</div>'
-    +'<div style="background:rgba(0,0,0,.15);padding:0 14px;display:flex;">'+tabs+'</div>'
-    +'</div></div>';
-}
-
 // Auth e perfil ainda ficam em app.js ate a proxima leva da Etapa 2.
 
 // ── EQUIPE SWITCHER ──
-function toggleEquipeDropdown(){
-  var wrap=document.getElementById("eq-wrap");if(!wrap)return;
-  var existing=document.getElementById("eq-dropdown");
-  if(existing){existing.remove();return;}
-  var opts="";
-  if(perfil==="mestre")opts+='<div onclick="switchEquipe(null)" style="padding:9px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f0f0f0;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
-    +'<span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;"></span>'
-    +'<span style="font-weight:'+(equipeAtiva===null?'700':'400')+';color:#172b4d;">Todas</span>'
-    +(equipeAtiva===null?'<span style="margin-left:auto;color:#253f4f;">'+ic("check")+'</span>':'')
-    +'</div>';
-  equipesDB.forEach(function(eq){
-    var sel=equipeAtiva&&equipeAtiva.id===eq.id;
-    opts+='<div onclick="switchEquipe(\''+eq.id+'\')" style="padding:9px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'
-      +'<span style="width:8px;height:8px;border-radius:50%;background:'+eq.cor+';flex-shrink:0;"></span>'
-      +'<span style="font-weight:'+(sel?'700':'400')+';color:#172b4d;">'+eq.nome+'</span>'
-      +(sel?'<span style="margin-left:auto;color:#253f4f;">'+ic("check")+'</span>':"")
-      +'</div>';
-  });
-  if(!equipesDB.length)opts='<div style="padding:10px 14px;font-size:12px;color:#94a3b8;">Nenhuma equipe cadastrada</div>';
-  var dd=document.createElement("div");dd.id="eq-dropdown";
-  dd.style.cssText="position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:#fff;border-radius:10px;border:1px solid #e2e8f0;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:500;overflow:hidden;";
-  dd.innerHTML=opts;wrap.appendChild(dd);
-  setTimeout(function(){document.addEventListener("click",function h(e){if(!wrap.contains(e.target)){dd.remove();document.removeEventListener("click",h);}},true);},10);
-}
 function switchEquipe(equipeId){
   var dd=document.getElementById("eq-dropdown");if(dd)dd.remove();
   if(equipeId===null){equipeAtiva=null;}
@@ -231,12 +175,12 @@ function _adminMenuHTML(aba){
   ];
   return itens.map(function(it){
     var active=aba===it.id;
-    return '<button onclick="'+it.fn+'" style="width:100%;display:flex;align-items:center;gap:8px;text-align:left;border:0;border-radius:8px;padding:9px 11px;font-size:13px;font-weight:'+(active?'750':'600')+';background:'+(active?'rgba(37,63,79,.10)':'transparent')+';color:'+(active?'var(--bt-navy)':'var(--text2)')+';cursor:pointer;">'+ic(it.icon)+' '+it.label+'</button>';
+    return '<button onclick="'+it.fn+'" style="width:100%;display:flex;align-items:center;justify-content:flex-start;gap:8px;text-align:left;border:0;border-radius:8px;padding:9px 11px;font-size:13px;font-weight:'+(active?'750':'600')+';background:'+(active?'rgba(37,63,79,.10)':'transparent')+';color:'+(active?'var(--bt-navy)':'var(--text2)')+';cursor:pointer;">'+ic(it.icon)+' '+it.label+'</button>';
   }).join("");
 }
 
 function _adminShellOpen(aba){
-  return '<div style="display:flex;min-height:calc(100vh - 118px);background:var(--surface);">'
+  return '<div style="display:flex;min-height:calc(100vh - 56px);background:var(--surface);">'
     +'<aside style="width:230px;flex-shrink:0;border-right:1px solid var(--border);background:#fff;padding:18px 12px;">'
     +'<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:0 10px 10px;">Administra\u00e7\u00e3o</div>'
     +'<div style="display:flex;flex-direction:column;gap:4px;">'+_adminMenuHTML(aba)+'</div>'
@@ -257,34 +201,84 @@ function renderAdministracao(sec){
   else renderUsers();
 }
 
-headerHTML=function(aba){
+// ── CABECALHO (barra unica de vidro) ──
+function _btLogoSVG(){
+  return '<svg class="bt-logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="btLogoG" x1="12" y1="0" x2="84" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff8204"/><stop offset="1" stop-color="#e20500"/></linearGradient></defs>'
+    +'<path fill="url(#btLogoG)" d="M12.5 10h12.6c15.6 20.4 16.8 59.6 0 80H12.5c-1 0-1.4-.9-.8-1.6C29 69 29 31 11.7 11.6c-.6-.7-.2-1.6.8-1.6z"/>'
+    +'<path fill="url(#btLogoG)" d="M43.4 10h11.3c10.6 23.8 10.6 56.2 0 80H43.4c-.9 0-1.3-.8-1-1.5C50.9 68 50.9 32 42.4 11.5c-.3-.7.1-1.5 1-1.5z"/>'
+    +'<rect fill="url(#btLogoG)" x="71" y="10" width="11.5" height="80" rx="1.6"/></svg>';
+}
+function _btIniciais(){
+  var n=(nomeUser||"").trim();
+  if(n){var p=n.split(/\s+/);return ((p[0]||"").charAt(0)+(p.length>1?p[p.length-1].charAt(0):"")).toUpperCase();}
+  return (emailUser||"?").charAt(0).toUpperCase();
+}
+var _btPilulaPos=null;
+function _btPilulaAjustar(animar){
+  var p=document.getElementById("bt-pilula"),a=document.querySelector(".bt-aba.on");
+  if(!p)return;
+  if(!a){p.style.opacity="0";return;}
+  if(!animar)p.style.transition="none";
+  p.style.opacity="1";p.style.left=a.offsetLeft+"px";p.style.width=a.offsetWidth+"px";
+  _btPilulaPos={left:a.offsetLeft,width:a.offsetWidth};
+  if(!animar){void p.offsetWidth;p.style.transition="";}
+}
+window.addEventListener("resize",function(){_btPilulaAjustar(false);});
+function headerHTML(aba){
   var ce=perfil==="mestre"||perfil==="advogado";
-  var tabs='<button class="tab '+(aba==="kanban"||aba==="lista"?"active":"")+'" onclick="renderView()">Demandas</button>';
-  if(ce)tabs+='<button class="tab '+(aba==="minhas-tarefas"?"active":"")+'" onclick="renderMinhasTarefas()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("check")+' Minhas tarefas</button>';
-  tabs+='<button class="tab '+(aba==="projetos"?"active":"")+'" onclick="renderProjetosEquipe()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("briefcase")+' Projetos</button>';
-  if(ce)tabs+='<button class="tab '+(aba==="reunioes"?"active":"")+'" onclick="renderReunioes()" style="display:inline-flex;align-items:center;gap:5px;">'+ic("meeting")+' Reuni\u00f5es</button>';
-  if(perfil==="mestre")tabs+='<button class="tab '+(_isAdminAba(aba)?"active":"")+'" onclick="renderAdministracao(\'usr\')" style="display:inline-flex;align-items:center;gap:5px;">'+ic("users")+' Administra\u00e7\u00e3o</button>';
-  var logoSide='<div style="display:flex;align-items:center;padding:0 14px;border-right:1px solid rgba(255,255,255,.07);flex-shrink:0;background:rgba(0,0,0,.12);"><img src="logo-branco-negativo.png" style="height:68px;object-fit:contain;" onerror="this.style.display=\'none\'"/></div>';
-  var centerBlock='<div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;"><div style="font-family:var(--font-titulo);font-size:17px;font-weight:800;color:#fff;letter-spacing:.04em;">BTDesk</div><div style="font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;">Controle o seu dia</div></div>';
-  var eqBtnHtml="";
-  if(perfil==="mestre"||perfil==="advogado"){
-    var eqNome=equipeAtiva?equipeAtiva.nome:(perfil==="mestre"?"Todas":"Equipe");
+  var aba_=function(on,fn,icone,txt){return '<button class="bt-aba'+(on?' on':'')+'" onclick="'+fn+'">'+ic(icone)+'<span>'+txt+'</span></button>';};
+  var abas=aba_(aba==="kanban"||aba==="lista","renderView()","kanban","Demandas");
+  if(ce)abas+=aba_(aba==="minhas-tarefas","renderMinhasTarefas()","check","Minhas tarefas");
+  abas+=aba_(aba==="projetos","renderProjetosEquipe()","briefcase","Projetos");
+  if(ce)abas+=aba_(aba==="reunioes","renderReunioes()","meeting","Reuniões");
+  if(perfil==="mestre")abas+=aba_(_isAdminAba(aba),"renderAdministracao(\'usr\')","users","Administração");
+  // a pilula nasce na posicao da aba anterior e desliza ate a atual
+  var pil=_btPilulaPos?' style="left:'+_btPilulaPos.left+'px;width:'+_btPilulaPos.width+'px;"':' style="opacity:0;"';
+  var eq="";
+  if(ce){
+    var eqNome=equipeAtiva?equipeAtiva.nome:(perfil==="mestre"?"Todas as equipes":"Equipe");
     var eqCor=equipeAtiva?equipeAtiva.cor:"#94a3b8";
-    eqBtnHtml='<div style="position:relative;display:inline-block;" id="eq-wrap">'
-      +'<button id="eq-btn" onclick="toggleEquipeDropdown()" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);" onmouseover="this.style.background=\'rgba(255,255,255,.14)\'" onmouseout="this.style.background=\'rgba(255,255,255,.08)\'">'
-      +'<span style="width:8px;height:8px;border-radius:50%;background:'+eqCor+';flex-shrink:0;"></span>'+eqNome+ic("chevdown")
-      +'</button></div>';
+    eq='<div class="bt-rel" id="eq-wrap"><button class="bt-eq" id="eq-btn" onclick="toggleEquipeDropdown()" title="Equipe ativa"><span class="bt-eq-dot" style="background:'+eqCor+';"></span><span class="bt-eq-nome">'+escHTML(eqNome)+'</span>'+ic("chevdown")+'</button></div>';
   }
   var nNaoLidas=(notificacoesDB||[]).filter(function(n){return !n.lida;}).length;
-  var bellHtml='<button onclick="toggleNotifDropdown()" style="position:relative;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);cursor:pointer;" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("bell")+(nNaoLidas>0?'<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0 3px;">'+nNaoLidas+'</span>':"")+'</button>';
-  var rightBar='<div style="display:flex;align-items:center;gap:8px;">'+perfilBadge(perfil)+'<span style="font-size:11px;color:rgba(255,255,255,.3);">'+emailUser+'</span>'+eqBtnHtml+bellHtml+'<button onclick="openMyProfile()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(255,255,255,.12)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("edit")+' Perfil</button><button onclick="logout()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);" onmouseover="this.style.background=\'rgba(250,81,14,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.06)\'">'+ic("logout")+' Sair</button></div>';
-  var html='<div style="background:linear-gradient(135deg,#1a2e3a 0%,#253f4f 60%,#2d4f63 100%);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;align-items:stretch;">'
-    +logoSide
-    +'<div style="flex:1;display:flex;flex-direction:column;min-width:0;">'
-    +'<div style="height:52px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;position:relative;border-bottom:1px solid rgba(255,255,255,.05);">'+centerBlock+rightBar+'</div>'
-    +'<div style="background:rgba(0,0,0,.15);padding:0 14px;display:flex;">'+tabs+'</div>'
-    +'</div></div>';
+  var sino='<button class="bt-sino" id="bt-sino" onclick="toggleNotifDropdown()" title="Notificações">'+ic("bell")+(nNaoLidas?'<span class="bt-badge">'+(nNaoLidas>9?'9+':nNaoLidas)+'</span>':'')+'</button>';
+  var av='<div class="bt-rel" id="bt-user-wrap"><button class="bt-av" id="bt-av" onclick="toggleUserMenu()" title="Conta">'+escHTML(_btIniciais())+'</button></div>';
+  var html='<header class="bt-top"><button class="bt-marca" onclick="renderView()" title="Início">'+_btLogoSVG()+'<b>BTDesk</b></button><span class="bt-sep"></span>'
+    +'<nav class="bt-abas"><span class="bt-pilula" id="bt-pilula"'+pil+'></span>'+abas+'</nav>'
+    +'<div class="bt-dir">'+eq+sino+av+'</div></header>';
+  setTimeout(function(){_btPilulaAjustar(!!_btPilulaPos);},0);
   if(perfil==="mestre"&&_isAdminAba(aba))html+=_adminShellOpen(aba);
   return html;
-};
+}
+function _btFecharMenus(){["eq-dropdown","bt-user-menu"].forEach(function(id){var e=document.getElementById(id);if(e)e.remove();});document.querySelectorAll(".bt-eq.on,.bt-av.on").forEach(function(b){b.classList.remove("on");});}
+function _btFecharAoClicarFora(wrap,menu){
+  setTimeout(function(){document.addEventListener("click",function h(e){if(!document.body.contains(menu)){document.removeEventListener("click",h,true);return;}if(!wrap.contains(e.target)){_btFecharMenus();document.removeEventListener("click",h,true);}},true);},10);
+}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")_btFecharMenus();});
+function toggleEquipeDropdown(){
+  var wrap=document.getElementById("eq-wrap");if(!wrap)return;
+  if(document.getElementById("eq-dropdown")){_btFecharMenus();return;}
+  _btFecharMenus();
+  var item=function(id,nome,cor,sel){return '<button class="bt-mi" onclick="switchEquipe('+(id===null?'null':'\''+id+'\'')+')"><span class="bt-eq-dot" style="background:'+cor+';"></span><span>'+escHTML(nome)+'</span>'+(sel?'<span class="bt-ok">'+ic("check")+'</span>':'')+'</button>';};
+  var opts='<div class="bt-mi-tit">Equipe ativa</div>';
+  if(perfil==="mestre")opts+=item(null,"Todas as equipes","#94a3b8",equipeAtiva===null);
+  equipesDB.forEach(function(e){opts+=item(e.id,e.nome,e.cor,!!(equipeAtiva&&equipeAtiva.id===e.id));});
+  if(!equipesDB.length)opts+='<div class="bt-mi-vazio">Nenhuma equipe cadastrada</div>';
+  var dd=document.createElement("div");dd.id="eq-dropdown";dd.className="bt-menu";dd.innerHTML=opts;
+  wrap.appendChild(dd);document.getElementById("eq-btn").classList.add("on");
+  _btFecharAoClicarFora(wrap,dd);
+}
+function toggleUserMenu(){
+  var wrap=document.getElementById("bt-user-wrap");if(!wrap)return;
+  if(document.getElementById("bt-user-menu")){_btFecharMenus();return;}
+  _btFecharMenus();
+  var tags={mestre:"Mestre",advogado:"Advogado",cliente:"Cliente"};
+  var m=document.createElement("div");m.id="bt-user-menu";m.className="bt-menu";
+  m.innerHTML='<div class="bt-menu-h"><span class="bt-av bt-av-g">'+escHTML(_btIniciais())+'</span><div><b>'+escHTML(nomeUser||emailUser||"")+'</b><small>'+escHTML(emailUser||"")+'</small><span class="bt-perfil bt-perfil-'+escHTML(perfil||"")+'">'+escHTML(tags[perfil]||perfil||"")+'</span></div></div>'
+    +'<button class="bt-mi" onclick="_btFecharMenus();openMyProfile()">'+ic("edit")+'<span>Meu perfil</span></button>'
+    +'<div class="bt-mi-sep"></div>'
+    +'<button class="bt-mi bt-mi-sair" onclick="_btFecharMenus();logout()">'+ic("logout")+'<span>Sair</span></button>';
+  wrap.appendChild(m);document.getElementById("bt-av").classList.add("on");
+  _btFecharAoClicarFora(wrap,m);
+}
 
