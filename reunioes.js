@@ -2806,54 +2806,157 @@ async function salvarSnapshotReuniao(reuniaoId){
     return snapTarefas;
   }catch(_){return null;}
 }
-async function gerarAta(reuniaoId){
-  var r=reunioesDB.find(function(x){return x.id===reuniaoId;});if(!r)return;
-  await salvarSnapshotReuniao(reuniaoId);
-  var rps=await dbFetchReuniaoPautas(reuniaoId);
-  var snapTarefas=_getSnapshotTarefas(rps);
-  var tarefas=snapTarefas?snapTarefas.tarefas:[];
-  var catMap=(snapTarefas&&snapTarefas.categorias)||{"sem_cat":"Geral"};
+// ── ATA APRESENTAVEL ──
+// Abre uma aba com a ata formatada para impressao (e salvar em PDF pelo navegador).
+// Usa o snapshot da reuniao (projetos, subtarefas e atualizacoes) e destaca o que foi registrado NESTA reuniao.
+var _ATA_CSS='*{box-sizing:border-box;margin:0;padding:0}'
+  +'body{font-family:"Segoe UI",-apple-system,Roboto,Arial,sans-serif;color:#1f2937;background:#eef1f5;font-size:13px;line-height:1.5}'
+  +'.barra{position:sticky;top:0;z-index:5;display:flex;gap:8px;justify-content:center;padding:10px;background:#1d2125}'
+  +'.barra button{height:34px;padding:0 16px;border-radius:6px;border:none;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}'
+  +'.b1{background:#579dff;color:#1d2125}.b2{background:#2c333a;color:#dee4ea}'
+  +'.folha{width:210mm;min-height:297mm;margin:18px auto;background:#fff;padding:16mm 16mm 14mm;box-shadow:0 4px 20px rgba(0,0,0,.12)}'
+  +'.topo{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:12px;border-bottom:3px solid #fa510e}'
+  +'.topo img{height:56px;max-width:260px;object-fit:contain}'
+  +'.topo .tag{font-size:11px;font-weight:700;letter-spacing:.14em;color:#fa510e;text-transform:uppercase;text-align:right}'
+  +'h1{font-size:22px;color:#14232d;margin:16px 0 4px;line-height:1.25}'
+  +'.meta{display:flex;flex-wrap:wrap;gap:6px 16px;color:#475569;font-size:12.5px}'
+  +'.st{display:inline-block;padding:1px 9px;border-radius:10px;font-size:11px;font-weight:700;color:#fff}'
+  +'h2{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#253f4f;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}'
+  +'.parts{display:flex;flex-wrap:wrap;gap:6px}.parts span{padding:2px 10px;border:1px solid #d6dde6;border-radius:12px;font-size:12px}'
+  +'.obs{white-space:pre-wrap;color:#334155}'
+  +'.campos{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}.campos div{font-size:12.5px}.campos b{display:block;font-size:10.5px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em}'
+  +'.pauta{margin-bottom:8px}.pauta b{color:#14232d}.pauta div{white-space:pre-wrap;color:#334155;padding-left:14px}'
+  +'.cat{font-size:13px;font-weight:700;color:#fa510e;margin:14px 0 6px}'
+  +'.proj{border:1px solid #e2e8f0;border-left:4px solid #253f4f;border-radius:6px;padding:10px 12px;margin-bottom:10px;page-break-inside:avoid}'
+  +'.proj h3{font-size:14.5px;color:#14232d}'
+  +'.pm{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:#475569;margin-top:2px}.pm .atr{color:#c9372c;font-weight:700}'
+  +'.desc{margin-top:6px;color:#334155;white-space:pre-wrap;font-size:12.5px}'
+  +'.reg{margin-top:8px;padding:7px 10px;border-radius:6px;background:#fff7ed;border:1px solid #fed7aa}'
+  +'.reg-h{font-size:10.5px;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}'
+  +'.reg p{white-space:pre-wrap}.reg p+p{margin-top:4px}.reg small{color:#9a3412;font-weight:600}'
+  +'table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}'
+  +'th{text-align:left;font-size:10.5px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:4px 6px;border-bottom:1px solid #e2e8f0}'
+  +'td{padding:5px 6px;border-bottom:1px solid #f1f5f9;vertical-align:top}'
+  +'td.feita{color:#94a3b8;text-decoration:line-through}td .atr{color:#c9372c;font-weight:700}'
+  +'tr.sub-reg td{border-bottom:1px solid #f1f5f9;padding-top:0}'
+  +'.cmt{margin-bottom:8px}.cmt b{color:#14232d}.cmt small{color:#64748b;margin-left:6px}.cmt p{white-space:pre-wrap;color:#334155}'
+  +'.vazio{color:#94a3b8;font-style:italic}'
+  +'.rodape{margin-top:24px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:10.5px;color:#94a3b8;display:flex;justify-content:space-between}'
+  +'@page{size:A4;margin:12mm}'
+  +'@media print{body{background:#fff}.barra{display:none}.folha{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}}';
+function _ataEsc(s){return escHTML(s==null?"":String(s));}
+function _ataDataLonga(d){
+  if(!d)return "";
+  var p=d.split("-"),dt=new Date(+p[0],+p[1]-1,+p[2]);
+  var dias=["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+  var meses=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  return dias[dt.getDay()]+", "+(+p[2])+" de "+meses[+p[1]-1]+" de "+p[0];
+}
+function _ataRegHTML(cmts,reuniaoId){
+  var l=(cmts||[]).filter(function(c){return c.reuniao_id===reuniaoId&&!c.excluido_em;});
+  if(!l.length)return "";
+  return '<div class="reg"><div class="reg-h">Registrado nesta reunião</div>'+l.map(function(c){var u=c.usuarios||{};return '<p><small>'+_ataEsc(u.sigla||u.nome||"")+':</small> '+_ataEsc(c.texto)+'</p>';}).join("")+'</div>';
+}
+function _ataTexto(r,tarefas,catMap,rps){
   var dataFmt=_fmtData(r.data);
-  var linhas=["ATA DE REUNI\u00c3O","","T\u00edtulo: "+(r.titulo||("Reuni\u00e3o de "+dataFmt)),"Data: "+dataFmt+" \u00e0s "+r.hora.slice(0,5),"Status: "+r.status,""];
-  if(r.observacoes){linhas.push("Observacoes: "+r.observacoes);linhas.push("");}
-  linhas.push("PAUTAS DISCUTIDAS","");
+  var linhas=["ATA DE REUNIÃO","","Título: "+(r.titulo||("Reunião de "+dataFmt)),"Data: "+dataFmt+" às "+(r.hora||"").slice(0,5),"Status: "+r.status,""];
+  if(r.observacoes){linhas.push("Observações: "+r.observacoes,"");}
   rps.forEach(function(rp,i){
+    var notas=rp.snapshot_json&&rp.snapshot_json.notas;if(!notas)return;
     var pauta=pautasDB.find(function(p){return p.id===rp.pauta_id;})||{titulo:"Pauta "+(i+1)};
-    linhas.push((i+1)+". "+pauta.titulo);
-    var notas=rp.snapshot_json&&rp.snapshot_json.notas;
-    if(notas){notas.split("\n").forEach(function(l){linhas.push("   "+l);});}
+    linhas.push("Pauta: "+pauta.titulo);notas.split("\n").forEach(function(l){linhas.push("   "+l);});linhas.push("");
+  });
+  linhas.push("PROJETOS E TAREFAS","");
+  if(!tarefas.length)linhas.push("Nenhuma tarefa vinculada a esta reunião.","");
+  tarefas.forEach(function(t,i){
+    var subs=t.subtarefas||[],pg=statusTarefaProgresso(subs);
+    linhas.push((i+1)+". "+(t.texto||"Tarefa sem título"));
+    linhas.push("   Categoria: "+(catMap[t.pauta_categoria_id||"sem_cat"]||"Geral"));
+    linhas.push("   Responsáveis: "+(respsDe(t).join(", ")||"Sem responsável"));
+    linhas.push("   Status: "+statusTarefaLabel(t.status)+" · Prazo: "+(t.data_fim?_fmtDateBr(t.data_fim):"Sem prazo"));
+    if(subs.length)linhas.push("   Progresso: "+pg.feitas+"/"+pg.total+" subtarefas concluídas");
+    (t.comentarios||[]).filter(function(c){return c.reuniao_id===r.id;}).forEach(function(c){linhas.push("   Registrado: "+c.texto);});
+    subs.forEach(function(s){
+      linhas.push("   - "+s.texto+" ["+statusTarefaLabel(s.status)+(respsDe(s).length?" · "+respsDe(s).join(", "):"")+(s.data_fim?" · "+_fmtDateBr(s.data_fim):"")+"]");
+      (s.comentarios||[]).filter(function(c){return c.reuniao_id===r.id;}).forEach(function(c){linhas.push("       Registrado: "+c.texto);});
+    });
     linhas.push("");
   });
-  linhas.push("TAREFAS DA REUNIAO","");
-  if(!tarefas.length){
-    linhas.push("Nenhuma tarefa vinculada a esta reuni\u00e3o.","");
-  } else {
-    tarefas.forEach(function(t,i){
-      var catId=t.pauta_categoria_id||"sem_cat";
-      var subs=t.subtarefas||[];
-      var _pga=statusTarefaProgresso(subs),concluidas=_pga.feitas;
-      linhas.push((i+1)+". "+(t.texto||"Tarefa sem titulo"));
-      var pautaTitulo=t.campos_valores&&t.campos_valores.pauta_titulo;
-      linhas.push("   Categoria/pauta: "+(pautaTitulo||catMap[catId]||"Geral"));
-      linhas.push("   Respons\u00e1vel: "+(t.responsavel||"Sem respons\u00e1vel"));
-      linhas.push("   Status: "+statusTarefaLabel(t.status));
-      linhas.push("   Prazo: "+(t.data_fim?_fmtDateBr(t.data_fim):"Sem prazo"));
-      if(t.data_inicio)linhas.push("   Inicio: "+_fmtDateBr(t.data_inicio));
-      if(subs.length)linhas.push("   Progresso: "+concluidas+"/"+_pga.total+" subtarefas concluidas");
-      if(t.descricao){
-        linhas.push("   Descri\u00e7\u00e3o:");
-        String(t.descricao).split("\n").forEach(function(l){linhas.push("      "+l);});
-      }
-      linhas.push("");
+  linhas.push("--- Fim da ata ---");
+  return linhas.join("\n");
+}
+async function gerarAta(reuniaoId){
+  var r=reunioesDB.find(function(x){return x.id===reuniaoId;});if(!r)return;
+  // a aba e aberta ja no clique (depois de um await o navegador bloquearia o pop-up)
+  var w=window.open("","_blank");
+  if(!w){toast("Permita pop-ups deste site para abrir a ata",true);return;}
+  w.document.write('<!doctype html><meta charset="utf-8"><title>Gerando ata...</title><body style="font-family:Segoe UI,Arial;padding:40px;color:#475569">Gerando a ata...</body>');
+  try{
+    await salvarSnapshotReuniao(reuniaoId);
+    var rps=await dbFetchReuniaoPautas(reuniaoId);
+    var snap=_getSnapshotTarefas(rps);
+    var tarefas=snap?snap.tarefas:[];
+    var catMap=(snap&&snap.categorias)||{"sem_cat":"Geral"};
+    var parts=[],cmtsR=[];
+    try{parts=await dbFetchReuniaoParticipantes(reuniaoId);}catch(_){}
+    try{cmtsR=await dbFetchReuniaoComentarios(reuniaoId);}catch(_){}
+    var hoje=new Date().toISOString().slice(0,10);
+    var tp=_reunTipo(r);
+    var stCor={agendada:"#2b76e5",realizada:"#16a34a",cancelada:"#e2445c"}[r.status]||"#64748b";
+    var stLbl={agendada:"Agendada",realizada:"Realizada",cancelada:"Cancelada"}[r.status]||r.status;
+    var logo=new URL("logo.png",location.href).href;
+    var h='<div class="barra"><button class="b1" onclick="window.print()">Imprimir / salvar em PDF</button><button class="b2" id="baixar-txt">Baixar .txt</button></div>'
+      +'<div class="folha"><div class="topo"><img src="'+logo+'" alt="Barcellos Tucunduva Advogados"><div class="tag">Ata de reunião'+(tp.label&&!/^reuni[aã]o$/i.test(tp.label)?'<br>'+_ataEsc(tp.label):'')+'</div></div>'
+      +'<h1>'+_ataEsc(r.titulo||("Reunião de "+_fmtData(r.data)))+'</h1>'
+      +'<div class="meta"><span>'+_ataDataLonga(r.data)+'</span><span>'+_ataEsc((r.hora||"").slice(0,5))+'</span><span class="st" style="background:'+stCor+'">'+_ataEsc(stLbl)+'</span>'+(equipeAtiva?'<span>Equipe: '+_ataEsc(equipeAtiva.nome)+'</span>':'')+'</div>';
+    h+='<h2>Participantes</h2>'+(parts.length?'<div class="parts">'+parts.map(function(p){var u=p.usuarios||{};return '<span>'+_ataEsc(u.nome||u.sigla||"?")+(u.sigla&&u.nome?' ('+_ataEsc(u.sigla)+')':'')+'</span>';}).join("")+'</div>':'<div class="vazio">Nenhum participante registrado.</div>');
+    if(r.observacoes)h+='<h2>Observações</h2><div class="obs">'+_ataEsc(r.observacoes)+'</div>';
+    var campos=((r.modelo_snapshot&&r.modelo_snapshot.campos)||[]).filter(function(c){var v=(r.campos_valores||{})[c.id];return v!==undefined&&v!==null&&v!=="";});
+    if(campos.length)h+='<h2>Informações</h2><div class="campos">'+campos.map(function(c){return '<div><b>'+_ataEsc(c.label)+'</b>'+_tcolRenderVal(c,(r.campos_valores||{})[c.id])+'</div>';}).join("")+'</div>';
+    var notas=rps.map(function(rp,i){var n=rp.snapshot_json&&rp.snapshot_json.notas;if(!n)return "";var p=pautasDB.find(function(x){return x.id===rp.pauta_id;})||{titulo:"Pauta "+(i+1)};return '<div class="pauta"><b>'+_ataEsc(p.titulo)+'</b><div>'+_ataEsc(n)+'</div></div>';}).join("");
+    if(notas)h+='<h2>Pautas</h2>'+notas;
+    h+='<h2>Projetos e tarefas</h2>';
+    if(!tarefas.length)h+='<div class="vazio">Nenhuma tarefa vinculada a esta reunião.</div>';
+    var grupos={},ordem=[];
+    tarefas.forEach(function(t){var k=(t.campos_valores&&t.campos_valores.pauta_titulo)||catMap[t.pauta_categoria_id||"sem_cat"]||"Geral";if(!grupos[k]){grupos[k]=[];ordem.push(k);}grupos[k].push(t);});
+    ordem.forEach(function(k){
+      if(ordem.length>1||k!=="Geral")h+='<div class="cat">'+_ataEsc(k)+'</div>';
+      grupos[k].forEach(function(t){
+        var subs=t.subtarefas||[],pg=statusTarefaProgresso(subs);
+        var atr=t.data_fim&&!statusTarefaFinalizador(t.status)&&t.data_fim<hoje;
+        h+='<div class="proj" style="border-left-color:'+statusTarefaCor(t.status,"#253f4f")+'"><h3>'+_ataEsc(t.texto)+'</h3><div class="pm"><span>'+_ataEsc(statusTarefaLabel(t.status))+'</span>'
+          +'<span>Responsáveis: '+_ataEsc(respsDe(t).join(", ")||"Sem responsável")+'</span>'
+          +'<span'+(atr?' class="atr"':'')+'>Prazo: '+(t.data_fim?_fmtDateBr(t.data_fim)+(atr?' (atrasado)':''):'sem prazo')+'</span>'
+          +(pg.total?'<span>Subtarefas: '+pg.feitas+'/'+pg.total+'</span>':'')+'</div>'
+          +(t.descricao?'<div class="desc">'+_ataEsc(t.descricao)+'</div>':'')
+          +_ataRegHTML(t.comentarios,r.id);
+        if(subs.length){
+          h+='<table><tr><th style="width:46%">Subtarefa</th><th>Responsáveis</th><th>Status</th><th>Prazo</th></tr>';
+          subs.forEach(function(s){
+            var sAtr=s.data_fim&&!statusTarefaFinalizador(s.status)&&s.data_fim<hoje;
+            h+='<tr><td class="'+(statusTarefaFinalizador(s.status)?'feita':'')+'">'+_ataEsc(s.texto)+'</td><td>'+_ataEsc(respsDe(s).join(", ")||"-")+'</td><td>'+_ataEsc(statusTarefaLabel(s.status))+'</td><td>'+(s.data_fim?(sAtr?'<span class="atr">'+_fmtDateBr(s.data_fim)+'</span>':_fmtDateBr(s.data_fim)):'-')+'</td></tr>';
+            var reg=_ataRegHTML(s.comentarios,r.id);
+            if(reg)h+='<tr class="sub-reg"><td colspan="4">'+reg+'</td></tr>';
+          });
+          h+='</table>';
+        }
+        h+='</div>';
+      });
     });
+    if(cmtsR.length)h+='<h2>Comentários gerais</h2>'+cmtsR.map(function(c){var u=c.usuarios||{};return '<div class="cmt"><b>'+_ataEsc(u.nome||u.sigla||"?")+'</b><small>'+new Date(c.criado_em).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+'</small><p>'+_ataEsc(c.texto)+'</p></div>';}).join("");
+    h+='<div class="rodape"><span>BTDesk · Barcellos Tucunduva Advogados</span><span>Gerada em '+new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})+(nomeUser?' por '+_ataEsc(nomeUser):'')+'</span></div></div>';
+    var titulo="Ata "+(r.titulo||"Reunião")+" "+_fmtData(r.data);
+    w.document.open();
+    w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>'+_ataEsc(titulo)+'</title><style>'+_ATA_CSS+'</style></head><body>'+h+'</body></html>');
+    w.document.close();
+    var texto=_ataTexto(r,tarefas,catMap,rps),nomeTxt="ata-"+_fmtData(r.data).replace(/\//g,"-")+".txt";
+    var bt=w.document.getElementById("baixar-txt");
+    if(bt)bt.onclick=function(){var blob=new Blob([texto],{type:"text/plain;charset=utf-8"});var url=URL.createObjectURL(blob);var a=w.document.createElement("a");a.href=url;a.download=nomeTxt;w.document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1000);};
+    toast("Ata gerada!");
+  }catch(e){
+    try{w.document.body.innerHTML='<p style="font-family:Arial;padding:40px;color:#c9372c">Não foi possível gerar a ata. Feche esta aba e tente novamente.</p>';}catch(_){}
+    toast("Erro ao gerar a ata",true);
   }
-  linhas.push("","--- Fim da ata ---");
-  var texto=linhas.join("\n");
-  var blob=new Blob([texto],{type:"text/plain;charset=utf-8"});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");a.href=url;a.download="ata-"+dataFmt.replace(/\//g,"-")+".txt";a.click();
-  setTimeout(function(){URL.revokeObjectURL(url);},1000);
-  toast("Ata gerada!");
 }
 
 // ── PAUTAS SECTION ──
@@ -4139,7 +4242,7 @@ function _buildReuniaoComtsHTML(cmts,reuniaoId,ce,ehPassado){
     html+='<div style="display:flex;gap:6px;align-items:flex-start;">';
     html+='<div class="av av-sm" style="background:'+_avCor(userDbId||'')+';flex-shrink:0;">'+meIni+'</div>';
     html+='<textarea id="rcmt-new" rows="2" placeholder="Comentar sobre a reuni\u00e3o..." style="flex:1;resize:none;font-size:13px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;"></textarea>';
-    html+='<button onclick="_addReuniaoComentario(\''+reuniaoId+'\')" style="font-size:11px;padding:6px 12px;border-radius:6px;border:none;background:var(--bt-navy);color:#fff;cursor:pointer;flex-shrink:0;">Enviar</button>';
+    html+='<button onclick="_addReuniaoComentario(\''+reuniaoId+'\')" class="rbtn rbtn-primary rbtn-sm">Enviar</button>';
     html+='</div></div>';
   }
   return html;
