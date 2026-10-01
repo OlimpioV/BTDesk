@@ -69,6 +69,7 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 - `clientes(id, numero, nome)`
 - `casos(id, numero, cliente_id, descricao, nome_consulta, objeto, situacao)`
 - `logs(id, perfil, acao, detalhe, criado_em)`
+- `estrutura_config(id, data jsonb, atualizado_em)`: configurações globais por linha (`demanda_modelo`, `subtarefa_modelo`, `projeto_modelo`, `etiquetas`)
 
 ## Arquivos JS (ordem de carregamento no index.html)
 
@@ -89,7 +90,7 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 
 - `cards` — array em memória de todos os cards
 - `COLS` — colunas ativas do kanban (carregadas do Supabase, registro __cols__)
-- `TC` / `TIPOS` — mapa de cores de etiquetas; entradas customizadas em localStorage (chave bari_etiquetas_v1)
+- `TC` / `TIPOS` — mapa de etiquetas (nome → cor), mapa completo salvo no Supabase em `estrutura_config` (`id="etiquetas"`, `data.tc`), compartilhado por todos os usuários. `loadEtq()`/`saveEtq()` (config.js) são assíncronas; `TC_DEF` e a chave antiga de localStorage `bari_etiquetas_v1` só servem para a migração automática no primeiro login de um mestre (01/10/2026). Renomear etiqueta grava via `dbUpsert` as demandas afetadas
 - `perfil` / `nomeUser` / `emailUser` / `userDbId` — sessão atual em sessionStorage
 - `responsaveis`, `clientesDB`, `casosDB` — dados de referência carregados no startup
 - `viewMode` — "kanban" ou "lista"
