@@ -86,10 +86,95 @@ async function doLogin(){
     dbLog("Login","Acesso ao sistema");init();
   }catch(e){renderLogin("Erro ao conectar.");}
 }
-function renderLogin(erro){
+function _loginShell(inner){
   var app=document.getElementById("app");app.className="login-mode";
-  app.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:url(BTpapeldeparede.png) center/contain no-repeat,linear-gradient(135deg,#1a2e3a,#253f4f);position:relative;"><div style="position:fixed;inset:0;background:rgba(15,26,35,.55);backdrop-filter:blur(2px);z-index:0;"></div><div style="position:relative;z-index:1;width:min(400px,92vw);"><div style="background:rgba(255,255,255,.94);backdrop-filter:blur(20px);border-radius:20px;padding:40px 44px;box-shadow:0 20px 60px rgba(0,0,0,.3);"><div style="text-align:center;margin-bottom:30px;"><div style="font-family:var(--font-titulo);font-size:28px;font-weight:700;color:#1a2e3a;letter-spacing:.03em;">BTDesk</div><div style="font-size:12px;color:#94a3b8;margin-top:4px;letter-spacing:.06em;text-transform:uppercase;">Barcellos Tucunduva</div></div><div style="height:1px;background:linear-gradient(90deg,transparent,rgba(250,81,14,.3),transparent);margin-bottom:26px;"></div><div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com.br" onkeydown="if(event.key===\'Enter\')document.getElementById(\'login-senha\').focus()" style="padding:11px 14px;"/></div><div class="field"><label>Senha</label><input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key===\'Enter\')doLogin()" style="padding:11px 14px;"/></div>'+(erro?'<div style="font-size:13px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 13px;margin-bottom:14px;">'+erro+'</div>':"")+'<button onclick="doLogin()" style="width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;border-radius:10px;border:none;background:linear-gradient(135deg,#253f4f,#1a2e3a);color:#fff;cursor:pointer;">Entrar</button><p style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:22px;">2026 © Barcellos Tucunduva</p></div></div></div>';
-  setTimeout(function(){var el=document.getElementById("login-email");if(el)el.focus();},100);
+  app.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:url(BTpapeldeparede.png) center/contain no-repeat,linear-gradient(135deg,#1a2e3a,#253f4f);position:relative;"><div style="position:fixed;inset:0;background:rgba(15,26,35,.55);backdrop-filter:blur(2px);z-index:0;"></div><div style="position:relative;z-index:1;width:min(400px,92vw);"><div style="background:rgba(255,255,255,.94);backdrop-filter:blur(20px);border-radius:20px;padding:40px 44px;box-shadow:0 20px 60px rgba(0,0,0,.3);"><div style="text-align:center;margin-bottom:30px;"><div style="font-family:var(--font-titulo);font-size:28px;font-weight:700;color:#1a2e3a;letter-spacing:.03em;">BTDesk</div><div style="font-size:12px;color:#94a3b8;margin-top:4px;letter-spacing:.06em;text-transform:uppercase;">Barcellos Tucunduva</div></div><div style="height:1px;background:linear-gradient(90deg,transparent,rgba(250,81,14,.3),transparent);margin-bottom:26px;"></div>'
+    +inner+'<p style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:22px;">2026 © Barcellos Tucunduva</p></div></div></div>';
+}
+function _loginMsg(erro,ok){
+  if(erro)return '<div style="font-size:13px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 13px;margin-bottom:14px;">'+erro+'</div>';
+  if(ok)return '<div style="font-size:13px;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 13px;margin-bottom:14px;">'+ok+'</div>';
+  return "";
+}
+var _loginBtn='width:100%;padding:12px;font-size:14px;font-weight:600;font-family:inherit;border-radius:10px;border:none;background:linear-gradient(135deg,#253f4f,#1a2e3a);color:#fff;cursor:pointer;';
+var _loginLink='display:block;margin:14px auto 0;border:none;background:none;font-size:13px;font-family:inherit;color:#64748b;text-decoration:underline;cursor:pointer;';
+function renderLogin(erro,ok,emailPre){
+  _loginShell('<div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com.br" value="'+escHTML(emailPre||"")+'" onkeydown="if(event.key===\'Enter\')document.getElementById(\'login-senha\').focus()" style="padding:11px 14px;"/></div>'
+    +'<div class="field"><label>Senha</label><input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key===\'Enter\')doLogin()" style="padding:11px 14px;"/></div>'
+    +_loginMsg(erro,ok)
+    +'<button onclick="doLogin()" style="'+_loginBtn+'">Entrar</button>'
+    +'<button onclick="renderEsqueciSenha()" style="'+_loginLink+'">Esqueci minha senha</button>');
+  setTimeout(function(){var el=document.getElementById(emailPre?"login-senha":"login-email");if(el)el.focus();},100);
+}
+
+// ── ESQUECI MINHA SENHA (Supabase Auth: /recover envia o link; o link volta com #type=recovery) ──
+function renderEsqueciSenha(erro,ok){
+  var em=(document.getElementById("login-email")||{}).value||"";
+  _loginShell('<div style="font-size:16px;font-weight:700;color:#1a2e3a;margin-bottom:6px;">Esqueci minha senha</div>'
+    +'<p style="font-size:13px;color:#64748b;margin-bottom:16px;">Informe seu e-mail. Se ele estiver cadastrado, você vai receber um link para criar uma senha nova.</p>'
+    +'<div class="field"><label>E-mail</label><input type="email" id="rec-email" placeholder="seu@email.com.br" value="'+escHTML(em)+'" onkeydown="if(event.key===\'Enter\')enviarRecuperacaoSenha()" style="padding:11px 14px;"/></div>'
+    +_loginMsg(erro,ok)
+    +'<button id="rec-btn" onclick="enviarRecuperacaoSenha()" style="'+_loginBtn+'">Enviar link</button>'
+    +'<button onclick="renderLogin()" style="'+_loginLink+'">Voltar ao login</button>');
+  setTimeout(function(){var el=document.getElementById("rec-email");if(el)el.focus();},100);
+}
+async function enviarRecuperacaoSenha(){
+  var email=((document.getElementById("rec-email")||{}).value||"").trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){renderEsqueciSenha("Informe um e-mail válido.");return;}
+  var btn=document.getElementById("rec-btn");if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+  var volta=location.origin+location.pathname;
+  try{
+    var r=await fetch(SB+"/auth/v1/recover?redirect_to="+encodeURIComponent(volta),{method:"POST",headers:{"Content-Type":"application/json","apikey":SK},body:JSON.stringify({email:email})});
+    if(r.status===429){renderEsqueciSenha("Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.");return;}
+    // resposta igual para e-mail cadastrado ou nao, para nao revelar quem tem conta
+    renderEsqueciSenha(null,"Pronto. Se <b>"+escHTML(email)+"</b> estiver cadastrado, o link chega em alguns minutos. Confira também a caixa de spam.");
+  }catch(e){renderEsqueciSenha("Erro ao conectar. Tente novamente.");}
+}
+function renderNovaSenha(token,erro){
+  _loginShell('<div style="font-size:16px;font-weight:700;color:#1a2e3a;margin-bottom:6px;">Definir nova senha</div>'
+    +'<p style="font-size:13px;color:#64748b;margin-bottom:16px;">Escolha uma senha com pelo menos 8 caracteres.</p>'
+    +'<div class="field"><label>Nova senha</label><input type="password" id="ns-senha" autocomplete="new-password" onkeydown="if(event.key===\'Enter\')document.getElementById(\'ns-conf\').focus()" style="padding:11px 14px;"/></div>'
+    +'<div class="field"><label>Confirme a nova senha</label><input type="password" id="ns-conf" autocomplete="new-password" onkeydown="if(event.key===\'Enter\')salvarNovaSenha()" style="padding:11px 14px;"/></div>'
+    +_loginMsg(erro)
+    +'<button id="ns-btn" onclick="salvarNovaSenha()" style="'+_loginBtn+'">Salvar nova senha</button>'
+    +'<button onclick="_recToken=null;renderLogin()" style="'+_loginLink+'">Cancelar</button>');
+  _recToken=token;
+  setTimeout(function(){var el=document.getElementById("ns-senha");if(el)el.focus();},100);
+}
+var _recToken=null;
+async function salvarNovaSenha(){
+  var s=(document.getElementById("ns-senha")||{}).value||"",c=(document.getElementById("ns-conf")||{}).value||"";
+  if(s.length<8){renderNovaSenha(_recToken,"A senha precisa ter pelo menos 8 caracteres.");return;}
+  if(s!==c){renderNovaSenha(_recToken,"As duas senhas não são iguais.");return;}
+  var btn=document.getElementById("ns-btn");if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+  try{
+    var r=await fetch(SB+"/auth/v1/user",{method:"PUT",headers:{"Content-Type":"application/json","apikey":SK,"Authorization":"Bearer "+_recToken},body:JSON.stringify({password:s})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!r.ok){
+      var cod=j.error_code||j.code||"";
+      var msg=cod==="same_password"?"A senha nova precisa ser diferente da anterior.":(cod==="weak_password"?"Senha fraca. Use letras e números.":(r.status===401||r.status===403?"O link expirou. Peça um novo em \"Esqueci minha senha\".":"Não foi possível salvar a senha."));
+      renderNovaSenha(_recToken,msg);return;
+    }
+    // encerra a sessao temporaria do link; a pessoa entra normalmente com a senha nova
+    try{await fetch(SB+"/auth/v1/logout",{method:"POST",headers:{"Content-Type":"application/json","apikey":SK,"Authorization":"Bearer "+_recToken}});}catch(_){}
+    _recToken=null;
+    renderLogin(null,"Senha alterada! Entre com a senha nova.",(j&&j.email)||"");
+  }catch(e){renderNovaSenha(_recToken,"Erro ao conectar. Tente novamente.");}
+}
+// Le o retorno do link de recuperacao (#access_token=...&type=recovery ou #error=...) e limpa a URL
+function _tratarRetornoRecuperacao(){
+  var h=location.hash||"";if(h.length<2)return false;
+  var p=new URLSearchParams(h.slice(1));
+  if(p.get("type")==="recovery"&&p.get("access_token")){
+    history.replaceState(null,"",location.pathname+location.search);
+    renderNovaSenha(p.get("access_token"));return true;
+  }
+  if(p.get("error")||p.get("error_code")){
+    history.replaceState(null,"",location.pathname+location.search);
+    renderEsqueciSenha(p.get("error_code")==="otp_expired"?"Este link expirou ou já foi usado. Peça um novo abaixo.":"Não foi possível validar o link. Peça um novo abaixo.");
+    return true;
+  }
+  return false;
 }
 
 // ── INIT ──
@@ -121,4 +206,4 @@ async function init(){
   renderKanban();
   abrirCardDaUrl();
 }
-(async function(){if(await checkAuth()){init();}else{renderLogin();}})();
+(async function(){if(_tratarRetornoRecuperacao())return;if(await checkAuth()){init();}else{renderLogin();}})();
