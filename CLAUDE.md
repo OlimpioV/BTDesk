@@ -63,7 +63,7 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 
 ## Tabelas Supabase (estado atual)
 
-- `demandas(id, data jsonb)` — cards como JSON blob; row especial `id="__cols__"` guarda config das colunas
+- `demandas(id, data jsonb)` — cards como JSON blob; row especial `id="__cols__"` guarda config das colunas. Card arquivado tem `data.arquivado=true` e `data.arquivadoEm` (ISO); `getFiltered()` (ui.js) e o pool de pendências de reuniões ignoram arquivados, e eles só aparecem na tela "Arquivados" do kanban (restaurar/excluir)
 - `tarefas(id, card_id, texto, responsavel, data_inicio, data_fim, status, criado_em)`
 - `usuarios(id, nome, email, senha, perfil, sigla, ativo, auth_id)` — `senha` está sempre nula desde a migração para Supabase Auth (28/08/2026); autenticação real é via `auth.users`, ligada por `auth_id`. Nunca reintroduzir comparação de senha em texto plano nesta tabela
 - `clientes(id, numero, nome)`
@@ -124,6 +124,10 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 - Importação de planilha Excel
 - Log de ações
 - Gestão de usuários e etiquetas
+- Visual do kanban e do modal em tema escuro inspirado no Trello (estilos consolidados em `styles.css`; capas pastel antigas exibidas na versão sólida via `coverSolida()` em ui.js, sem regravar o banco)
+- Menu de ações do card (lápis ou clique direito, bloco "ACOES DO CARD" em kanban.js): abrir, etiquetas, responsável, capa, datas, mover, copiar (só estrutura ou com subtarefas; comentários não são copiados), copiar link e arquivar
+- "+ Adicionar um cartão" no rodapé das colunas (modo Status); quando quem cria é `advogado`, o cartão nasce com a sigla dele como responsável, senão o RLS de `demandas` o esconderia
+- Link direto `?card=ID`: `abrirCardDaUrl()` (kanban.js) é chamado no fim do `init()` e abre o modal do cartão
 
 ## Pendências conhecidas
 
