@@ -3198,7 +3198,6 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='</div><span class="bpct">'+_conc+'/'+subtarefas.length+'</span></div>';
   } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   if(ce&&!ehPassado){
-    html+='<button onclick="event.stopPropagation();_editarTarefaPauta(\''+t.id+'\')" class="rt-edit-btn inline-edit-hit" title="Editar projeto">'+ic("edit")+'<span>Editar</span></button>';
     html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>';
   }
   html+='</div>';
@@ -3763,7 +3762,7 @@ function _statusPorArrasto(status,delta){
 function _tarefaDragStart(ev,tarefaId,isSub,parentId,ehPassado){
   if(ehPassado)return;
   var alvo=ev.target;
-  if(alvo&&alvo.closest&&alvo.closest("button,input,textarea,select,a,.statcell,.substat,.rt-menu-btn,.rt-edit-btn,.inline-edit-hit"))return;
+  if(alvo&&alvo.closest&&alvo.closest("button,input,textarea,select,a,.statcell,.substat,.rt-menu-btn,.inline-edit-hit"))return;
   var row=alvo&&alvo.closest?(alvo.closest(".brow")||alvo.closest(".subrow")):null;
   if(!row)return;
   _dragTarefaState={id:tarefaId,isSub:!!isSub,parentId:parentId||null,ehPassado:!!ehPassado,startX:ev.clientX,row:row,moved:false};
