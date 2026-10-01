@@ -71,6 +71,7 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 - `clientes(id, numero, nome)`
 - `casos(id, numero, cliente_id, descricao, nome_consulta, objeto, situacao)`
 - `logs(id, perfil, acao, detalhe, criado_em)`
+- `tarefa_comentarios(id, tarefa_id, usuario_id, texto, criado_em, editado_em, reuniao_id, versoes jsonb, excluido_em, excluido_por)` — "Atualizações" de projetos e subtarefas em Reuniões/Projetos (01/10/2026). `reuniao_id` = reunião em que foi registrada. Editar só pelo autor; excluir pelo autor ou mestre, sempre lógica (`excluido_em`/`excluido_por`, nunca DELETE). A trigger `trg_tarefa_comentarios_versionar` guarda a versão anterior em `versoes` a cada mudança de texto e impede reescrever o histórico; o app só envia o texto novo. Leituras filtram `excluido_em=is.null`
 - `estrutura_config(id, data jsonb, atualizado_em)`: configurações globais por linha (`demanda_modelo`, `subtarefa_modelo`, `projeto_modelo`, `etiquetas`)
 
 ## Arquivos JS (ordem de carregamento no index.html)

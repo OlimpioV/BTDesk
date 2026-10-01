@@ -14,7 +14,7 @@ var _tarefasPautaCache={};
 var _subtarefasCache={};
 var _tarefaExpandida={};
 var _tarefaCmtsCache={};
-var _tarefaCmtsExpanded={};
+
 var _subCollapsed={};
 var _anterioresAberto=false;
 var _modelosAdminContext=false;
@@ -141,9 +141,11 @@ async function _prepararProjetosTarefas(tarefas,carregarComentarios){
       try{_subtarefasCache[t.id]=await dbFetchSubtarefas(t.id);}catch(_){_subtarefasCache[t.id]=[];}
     }
     _subCollapsed[t.id]=false;
-    if(carregarComentarios&&_tarefaCmtsCache[t.id]===undefined){
-      try{_tarefaCmtsCache[t.id]=await dbFetchTarefaComentarios(t.id);}catch(_){_tarefaCmtsCache[t.id]=[];}
-    }
+  }
+  if(carregarComentarios){
+    var _ids=[];
+    (tarefas||[]).forEach(function(t){if(!(t.id in _tarefaCmtsCache))_ids.push(t.id);(_subtarefasCache[t.id]||[]).forEach(function(x){if(!(x.id in _tarefaCmtsCache))_ids.push(x.id);});});
+    await _atuPrefetch(_ids);
   }
 }
 
@@ -1635,24 +1637,19 @@ function _tiposOpts(sel){
     +'<option value="avisos_gerais"'+(sel==='avisos_gerais'?' selected':'')+'>Avisos gerais</option>';
 }
 var _apCatSel=null;var _apReuniao=null;var _gpEditando=null;var _apPautasCtx=[];
+// Gerenciar pautas (tema escuro): categorias com "selecionados de total"; itens com situacao,
+// ultima reuniao em que foram discutidos e ultima atualizacao; busca, ordem, "so os meus" e sugestao.
+var _GP_PARADO_DIAS=28;
+var _gpTotais={},_gpItens=[],_gpInfo={},_gpLinked={},_gpBusca="",_gpOrdem="parado",_gpMeus=false;
+function _gpReuniaoAtual(){return (reunioesDB||[]).find(function(r){return r.id===_apReuniao;})||reuniaoAtiva||{};}
 async function openGerenciarPautas(reuniaoId){
-  _apReuniao=reuniaoId;
+  _apReuniao=reuniaoId;_gpBusca="";_gpMeus=false;
+  var r=_gpReuniaoAtual();
   var mc=document.getElementById("modal-container");
-  mc.innerHTML='<div class="modal-overlay" onclick="_apAplicar()"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,860px);min-width:min(95vw,800px);min-height:600px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">'
-    +'<div style="padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;">'
-    +'<div style="font-size:16px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);">Gerenciar Pautas</div>'
-    +'<button onclick="_apAplicar()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button>'
-    +'</div>'
-    +'<div id="ap-body" style="display:flex;flex:1;overflow:hidden;min-height:320px;">'
-    +'<div style="padding:20px;text-align:center;color:var(--text3);width:100%;">Carregando...</div>'
-    +'</div>'
-    +'<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">'
-    +'<span id="ap-sel-count" style="font-size:12px;color:var(--text3);"></span>'
-    +'<div style="display:flex;gap:8px;">'
-    +'<button class="btn" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn btn-primary" onclick="_apAplicar()">Confirmar seleção</button>'
-    +'</div>'
-    +'</div>'
+  mc.innerHTML='<div class="modal-overlay" onclick="if(event.target===this)_apAplicar()"><div class="gp-box" onclick="event.stopPropagation()">'
+    +'<div class="gp-h"><h2>Gerenciar pautas'+(r.data?'<small>'+escHTML((r.titulo||"Reunião")+" · "+_fmtDateBrShort(r.data))+'</small>':'')+'</h2><button class="gp-x" title="Fechar" onclick="_apAplicar()">'+ic("close")+'</button></div>'
+    +'<div id="ap-body" class="gp-b"><div class="gp-vazio" style="width:100%;">Carregando...</div></div>'
+    +'<div class="gp-f"><span id="ap-sel-count"></span><button class="gp-btn gp-btn-azul" onclick="_apAplicar()">Confirmar seleção</button></div>'
     +'</div></div>';
   var eqId=equipeAtiva?equipeAtiva.id:null;
   try{
@@ -1665,7 +1662,7 @@ async function openGerenciarPautas(reuniaoId){
       });
     }catch(_){_apPautasCtx=[];}
     _apRenderDoisPaineis(reuniaoId,cats,cats[0]?cats[0].id:null);
-  }catch(e){var b=document.getElementById("ap-body");if(b)b.innerHTML='<div style="padding:20px;color:var(--text3);">Erro ao carregar.</div>';}
+  }catch(e){var b=document.getElementById("ap-body");if(b)b.innerHTML='<div class="gp-vazio" style="width:100%;">Erro ao carregar.</div>';}
 }
 async function _apAplicar(){
   var reuniaoId=_apReuniao;
@@ -1675,35 +1672,31 @@ async function _apAplicar(){
 function openAdicionarPauta(reuniaoId){openGerenciarPautas(reuniaoId);}
 var _apCats=[];
 function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
-  _apCatSel=catSelId;
-  _apCats=cats;
+  _apCatSel=catSelId;_apCats=cats;
   var body=document.getElementById("ap-body");if(!body)return;
+  body.innerHTML='<div class="gp-cats"><div id="ap-cats" class="gp-cats-l"></div><div id="ap-nova-cat-area" class="gp-cat-nova">'+_apNovaCatBtn()+'</div></div>'
+    +'<div class="gp-itens">'
+    +'<div class="gp-ferr"><input class="gp-busca" id="gp-busca" placeholder="Buscar nesta categoria..." oninput="_gpBusca=this.value;_gpRenderLista()"/>'
+    +'<select class="gp-sel" title="Ordenar" onchange="_gpOrdem=this.value;_gpRenderLista()"><option value="parado"'+(_gpOrdem==="parado"?' selected':'')+'>Mais tempo sem discutir</option><option value="prazo"'+(_gpOrdem==="prazo"?' selected':'')+'>Prazo mais próximo</option><option value="nome"'+(_gpOrdem==="nome"?' selected':'')+'>Nome</option></select>'
+    +'<button class="gp-tog'+(_gpMeus?' on':'')+'" onclick="_gpMeus=!_gpMeus;this.classList.toggle(\'on\',_gpMeus);_gpRenderLista()">Só os meus</button>'
+    +'<button class="gp-tog" title="Marca itens atrasados, com prazo nos próximos 7 dias ou sem discussão há '+(_GP_PARADO_DIAS/7)+' semanas ou mais (todas as categorias)" onclick="_gpSugerir()">'+ic("spark")+' Sugerir pauta</button></div>'
+    +'<div id="ap-items" class="gp-lista"></div></div>';
   _apRenderCatList(cats,catSelId);
-  body.innerHTML=document.getElementById("ap-cats-wrap")?body.innerHTML:'';
-  var leftHTML='<div id="ap-cats-wrap" style="width:220px;min-width:180px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);">'
-    +'<div id="ap-cats" style="flex:1;overflow-y:auto;"></div>'
-    +'<div id="ap-nova-cat-area" style="border-top:1px solid var(--border);padding:8px 10px;">'
-    +'<button onclick="_apMostrarNovaCategoria()" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova categoria</button>'
-    +'</div></div>';
-  body.innerHTML=leftHTML+'<div id="ap-items" style="flex:1;overflow-y:auto;padding:4px 0;max-height:500px;"></div>';
-  _apRenderCatList(cats,catSelId);
+  _gpCarregarTotais();
   _gpRefreshBadges();
-  if(!cats.length){
-    document.getElementById("ap-items").innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;width:100%;">Nenhuma categoria. Crie a primeira.</div>';
-  } else if(catSelId){
-    _gpLoadItens(catSelId);
-  }
+  if(!cats.length)document.getElementById("ap-items").innerHTML='<div class="gp-vazio">Nenhuma categoria. Crie a primeira.</div>';
+  else if(catSelId)_gpLoadItens(catSelId);
 }
+function _apNovaCatBtn(){return '<button class="gp-cat-add" onclick="_apMostrarNovaCategoria()">'+ic("plus")+' Nova categoria</button>';}
 function _apRenderCatList(cats,catSelId){
   var el=document.getElementById("ap-cats");if(!el)return;
-  if(!cats.length){el.innerHTML='';return;}
   el.innerHTML=cats.map(function(cat){
     var sel=cat.id===(catSelId||_apCatSel);
-    return '<div id="ap-cat-row-'+cat.id+'" style="padding:8px 10px;display:flex;align-items:center;gap:4px;background:'+(sel?'#fff':'')+';border-left:3px solid '+(sel?'var(--bt-orange)':'transparent')+';">'
-      +'<span id="ap-cat-nome-'+cat.id+'" title="'+cat.nome.replace(/"/g,'&quot;')+'" onclick="_apSelectCat(\''+cat.id+'\')" style="font-size:13px;font-weight:'+(sel?'700':'400')+';color:var(--bt-navy);flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cat.nome+'</span>'
-      +'<span id="ap-cat-badge-'+cat.id+'" class="badge-count">...</span>'
-      +'<button onclick="event.stopPropagation();_apIniciarEditCat(\''+cat.id+'\',\''+cat.nome.replace(/'/g,"\\'")+'\')" title="Editar categoria" aria-label="Editar categoria" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#2563eb\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("edit")+'</button>'
-      +'<button onclick="event.stopPropagation();_apDeletarCategoria(\''+cat.id+'\')" title="Excluir categoria" aria-label="Excluir categoria" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text3);font-size:13px;flex-shrink:0;" onmouseover="this.style.color=\'#dc2626\'" onmouseout="this.style.color=\'var(--text3)\'">'+ic("trash")+'</button>'
+    return '<div id="ap-cat-row-'+cat.id+'" class="gp-cat'+(sel?' on':'')+'" onclick="_apSelectCat(\''+cat.id+'\')">'
+      +'<span class="gp-cat-n" title="'+escHTML(cat.nome)+'">'+escHTML(cat.nome)+'</span>'
+      +'<span id="ap-cat-badge-'+cat.id+'" class="gp-cont">…</span>'
+      +'<button class="gp-ib" title="Editar categoria" onclick="event.stopPropagation();_apIniciarEditCat(\''+cat.id+'\',\''+escQ(cat.nome)+'\')">'+ic("edit")+'</button>'
+      +'<button class="gp-ib gp-ib-del" title="Excluir categoria" onclick="event.stopPropagation();_apDeletarCategoria(\''+cat.id+'\')">'+ic("trash")+'</button>'
       +'</div>';
   }).join("");
 }
@@ -1715,10 +1708,11 @@ function _apSelectCat(catId){
 }
 function _apIniciarEditCat(catId,nomeAtual){
   var row=document.getElementById("ap-cat-row-"+catId);if(!row)return;
-  row.innerHTML='<input id="ap-cat-edit-input" value="'+nomeAtual.replace(/"/g,'&quot;')+'" style="flex:1;font-size:13px;padding:2px 5px;border:1.5px solid var(--bt-orange);border-radius:4px;min-width:0;"/>'
-    +'<button onclick="_apSalvarEditCat(\''+catId+'\')" title="Salvar" style="background:none;border:none;cursor:pointer;color:#22c55e;font-size:14px;padding:2px;flex-shrink:0;">&#10003;</button>'
-    +'<button onclick="_apCancelarEditCat(\''+catId+'\',\''+nomeAtual.replace(/'/g,"\\'")+'\');" title="Cancelar" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px;padding:2px;flex-shrink:0;">&#10005;</button>';
-  var inp=document.getElementById("ap-cat-edit-input");if(inp)inp.focus();
+  row.onclick=null;
+  row.innerHTML='<input id="ap-cat-edit-input" class="gp-in" value="'+escHTML(nomeAtual)+'" onclick="event.stopPropagation()" onkeydown="if(event.key===\'Enter\')_apSalvarEditCat(\''+catId+'\');if(event.key===\'Escape\')_apCancelarEditCat(\''+catId+'\')"/>'
+    +'<button class="gp-ib gp-ib-ok" title="Salvar" onclick="event.stopPropagation();_apSalvarEditCat(\''+catId+'\')">&#10003;</button>'
+    +'<button class="gp-ib" title="Cancelar" onclick="event.stopPropagation();_apCancelarEditCat(\''+catId+'\')">&#10005;</button>';
+  var inp=document.getElementById("ap-cat-edit-input");if(inp){inp.focus();inp.select();}
 }
 async function _apSalvarEditCat(catId){
   var inp=document.getElementById("ap-cat-edit-input");
@@ -1727,43 +1721,28 @@ async function _apSalvarEditCat(catId){
   try{
     await dbUpsertPautaCategoria({id:catId,nome:nome});
     _apCats=_apCats.map(function(c){return c.id===catId?Object.assign({},c,{nome:nome}):c;});
-    _apRenderCatList(_apCats,_apCatSel);
-    _gpRefreshBadges();
+    _apRenderCatList(_apCats,_apCatSel);_gpRefreshBadges();
     toast("Categoria salva!");
   }catch(e){toast("Erro ao salvar",true);}
 }
-function _apCancelarEditCat(catId,nomeOriginal){
-  _apRenderCatList(_apCats,_apCatSel);
-  _gpRefreshBadges();
-}
+function _apCancelarEditCat(){_apRenderCatList(_apCats,_apCatSel);_gpRefreshBadges();}
 async function _apDeletarCategoria(catId){
   modalConfirm("Excluir esta categoria e todos os seus itens?",async function(){
     try{
       await dbDelPautaCategoria(catId);
-      _apCats=_apCats.filter(function(c){return c.id!==catId;});
-      var novasel=_apCatSel===catId?(_apCats[0]?_apCats[0].id:null):_apCatSel;
-      _apCatSel=novasel;
-      _apRenderCatList(_apCats,novasel);
-      _gpRefreshBadges();
-      if(novasel){_gpLoadItens(novasel);}
-      else{var el=document.getElementById("ap-items");if(el)el.innerHTML='<div style="padding:20px;color:var(--text3);text-align:center;">Nenhuma categoria.</div>';}
-      toast("Categoria excluida!");
+      toast("Categoria excluída!");
     }catch(e){toast("Erro ao excluir",true);}
+    openGerenciarPautas(_apReuniao);
   });
 }
 function _apMostrarNovaCategoria(){
   var el=document.getElementById("ap-nova-cat-area");if(!el)return;
-  el.innerHTML='<div style="display:flex;gap:4px;align-items:center;">'
-    +'<input id="ap-nova-cat-input" placeholder="Nome da categoria" style="flex:1;font-size:12px;padding:3px 6px;border:1.5px solid var(--bt-orange);border-radius:4px;min-width:0;"/>'
-    +'<button onclick="_apSalvarNovaCategoria()" title="Salvar" style="background:none;border:none;cursor:pointer;color:#22c55e;font-size:14px;padding:2px;flex-shrink:0;">&#10003;</button>'
-    +'<button onclick="_apCancelarNovaCategoria()" title="Cancelar" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px;padding:2px;flex-shrink:0;">&#10005;</button>'
-    +'</div>';
+  el.innerHTML='<div class="gp-cat-edit"><input id="ap-nova-cat-input" class="gp-in" placeholder="Nome da categoria" onkeydown="if(event.key===\'Enter\')_apSalvarNovaCategoria();if(event.key===\'Escape\')_apCancelarNovaCategoria()"/>'
+    +'<button class="gp-ib gp-ib-ok" title="Salvar" onclick="_apSalvarNovaCategoria()">&#10003;</button>'
+    +'<button class="gp-ib" title="Cancelar" onclick="_apCancelarNovaCategoria()">&#10005;</button></div>';
   var inp=document.getElementById("ap-nova-cat-input");if(inp)inp.focus();
 }
-function _apCancelarNovaCategoria(){
-  var el=document.getElementById("ap-nova-cat-area");if(!el)return;
-  el.innerHTML='<button onclick="_apMostrarNovaCategoria()" style="font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;padding:2px 4px;display:inline-flex;align-items:center;gap:3px;">'+ic("plus")+' Nova categoria</button>';
-}
+function _apCancelarNovaCategoria(){var el=document.getElementById("ap-nova-cat-area");if(el)el.innerHTML=_apNovaCatBtn();}
 async function _apSalvarNovaCategoria(){
   var inp=document.getElementById("ap-nova-cat-input");
   var nome=(inp?inp.value||"":"").trim();
@@ -1772,80 +1751,144 @@ async function _apSalvarNovaCategoria(){
   try{
     var cat=await dbUpsertPautaCategoria({nome:nome,tipo:'livre',equipe_id:eqId,ordem:_apCats.length+1});
     if(!cat||!cat.id){toast("Erro ao criar",true);return;}
-    _apCats.push(cat);
-    _apRenderCatList(_apCats,_apCatSel);
-    _gpRefreshBadges();
-    _apCancelarNovaCategoria();
+    _apCats.push(cat);_gpTotais[cat.id]=0;
+    _apRenderCatList(_apCats,_apCatSel);_gpRefreshBadges();_apCancelarNovaCategoria();
     toast("Categoria criada!");
   }catch(e){toast("Erro ao criar categoria",true);}
+}
+async function _gpCarregarTotais(){
+  var ids=_apCats.map(function(c){return c.id;});if(!ids.length)return;
+  try{
+    var r=await fetch(SB+"/rest/v1/tarefas?pauta_categoria_id=in.("+ids.join(",")+")&parent_id=is.null&select=pauta_categoria_id",{headers:H});
+    var rows=r.ok?await r.json():[];
+    _gpTotais={};ids.forEach(function(id){_gpTotais[id]=0;});
+    rows.forEach(function(x){_gpTotais[x.pauta_categoria_id]=(_gpTotais[x.pauta_categoria_id]||0)+1;});
+    _gpRefreshBadges();
+  }catch(_){}
 }
 function _gpRefreshBadges(){
   var reuniaoId=_apReuniao;if(!reuniaoId)return;
   fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefas(pauta_categoria_id)",{headers:H})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(rows){
-      var counts={};
-      rows.forEach(function(row){var t=row.tarefas;var cid=t&&t.pauta_categoria_id;if(cid){if(!counts[cid])counts[cid]=0;counts[cid]++;}});
-      var total=0;
-      _apCats.forEach(function(cat){var c=counts[cat.id]||0;total+=c;var b=document.getElementById("ap-cat-badge-"+cat.id);if(b){b.textContent=c;b.className=c===0?'badge-count zero':'badge-count';}});
-      var catCount=0;_apCats.forEach(function(cat){if((counts[cat.id]||0)>0)catCount++;});
-      var msg='';if(total>0){msg=total+' tarefa'+(total===1?'':'s')+' selecionada'+(total===1?'':'s')+' em '+catCount+' categoria'+(catCount===1?'':'s');}
-      var sc=document.getElementById("ap-sel-count");if(sc)sc.textContent=msg;
+      var counts={},total=0,catCount=0;
+      rows.forEach(function(row){var t=row.tarefas;var cid=t&&t.pauta_categoria_id;if(cid)counts[cid]=(counts[cid]||0)+1;});
+      _apCats.forEach(function(cat){
+        var c=counts[cat.id]||0,tot=_gpTotais[cat.id];total+=c;if(c)catCount++;
+        var b=document.getElementById("ap-cat-badge-"+cat.id);
+        if(b){b.textContent=tot===undefined?String(c):(tot?c+" de "+tot:"vazia");b.className="gp-cont"+(c?" tem":"");}
+      });
+      var sc=document.getElementById("ap-sel-count");
+      if(sc)sc.textContent=total?total+(total===1?' item selecionado':' itens selecionados')+' em '+catCount+(catCount===1?' categoria':' categorias'):'Nenhum item selecionado';
     }).catch(function(){});
+}
+// Enriquecimento dos itens: progresso das subtarefas, ultima reuniao anterior e ultima atualizacao
+async function _gpEnriquecer(itens){
+  var info={},ids=itens.map(function(t){return t.id;});
+  ids.forEach(function(id){info[id]={feitas:0,total:0,ult:null,up:null};});
+  if(!ids.length)return info;
+  var atual=_gpReuniaoAtual(),subIds=[],paiDe={};
+  try{
+    var rs=await fetch(SB+"/rest/v1/tarefas?parent_id=in.("+ids.join(",")+")&select=id,parent_id,status",{headers:H});
+    var subs=rs.ok?await rs.json():[];
+    subs.forEach(function(s){paiDe[s.id]=s.parent_id;subIds.push(s.id);});
+    ids.forEach(function(id){var pg=statusTarefaProgresso(subs.filter(function(s){return s.parent_id===id;}));info[id].feitas=pg.feitas;info[id].total=pg.total;});
+  }catch(_){}
+  try{
+    var links=await dbFetchReunioesPorTarefas(ids);
+    links.forEach(function(l){
+      var r=l.reunioes;if(!r||r.id===_apReuniao||!r.data)return;
+      if(atual.data&&r.data>atual.data)return;
+      var i=info[l.tarefa_id];if(i&&(!i.ult||r.data>i.ult))i.ult=r.data;
+    });
+  }catch(_){}
+  try{
+    var ups=await dbFetchAtualizacoes(ids.concat(subIds));
+    ups.forEach(function(c){var dono=info[c.tarefa_id]?c.tarefa_id:paiDe[c.tarefa_id];var i=info[dono];if(i&&(!i.up||String(c.criado_em)>String(i.up.criado_em)))i.up=c;});
+  }catch(_){}
+  return info;
+}
+function _gpDiasDesde(data){var p=data.split("-");var d=new Date(+p[0],+p[1]-1,+p[2]);var h=new Date();h.setHours(0,0,0,0);return Math.round((h-d)/864e5);}
+function _gpUltHTML(i){
+  if(!i||!i.ult)return '<span class="gp-ult velho">● Nunca discutido</span>';
+  var n=_gpDiasDesde(i.ult),v=n>=_GP_PARADO_DIAS;
+  return '<span class="gp-ult'+(v?' velho':'')+'" title="Última reunião em que entrou na pauta">'+(v?'● ':'')+'Discutido em '+_fmtDateBrShort(i.ult)+' ('+(n<7?(n<=0?'hoje':'há '+n+(n===1?' dia':' dias')):'há '+Math.round(n/7)+' sem.')+')</span>';
 }
 async function _gpLoadItens(catId){
   var el=document.getElementById("ap-items");if(!el)return;
-  el.innerHTML='<div style="padding:16px;"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>';
+  el.innerHTML='<div class="gp-vazio">Carregando...</div>';
   var reuniaoId=_apReuniao;
   try{
     var r1=await fetch(SB+"/rest/v1/tarefas?pauta_categoria_id=eq."+catId+"&parent_id=is.null&order=criado_em",{headers:H});
     var itens=r1.ok?await r1.json():[];
     var r2=await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+reuniaoId+"&select=tarefa_id",{headers:H});
     var linked=r2.ok?await r2.json():[];
-    var linkedIds={};linked.forEach(function(x){linkedIds[x.tarefa_id]=true;});
-    var catObj=_apCats.find(function(c){return c.id===catId;})||null;
-    var catNome=catObj?catObj.nome:'';
-    var headerHTML='<div style="padding:12px 16px 8px;border-bottom:1px solid #f1f5f9;">'
-      +'<div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;">'+catNome+'</div>'
-      +'</div>';
-    var respOpts='<option value="">Sem respons\u00e1vel</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
-    var pautaOpts='<option value="">Sem pauta espec\u00edfica</option>'+(_apPautasCtx||[]).map(function(p){return '<option value="'+p.reuniao_pauta_id+'">'+p.titulo+'</option>';}).join("");
-    var formHTML='<div id="gp-novo-item-form" style="display:none;padding:12px 14px;border-bottom:2px solid var(--bt-orange);background:#fffbf5;">'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">T\u00edtulo *</label>'
-      +'<input id="gp-ni-titulo" placeholder="T\u00edtulo da tarefa..." style="font-size:13px;"/></div>'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Descri\u00e7\u00e3o</label>'
-      +'<textarea id="gp-ni-descricao" rows="2" placeholder="Descri\u00e7\u00e3o opcional..." style="font-size:13px;resize:vertical;"></textarea></div>'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Respons\u00e1vel *</label>'
-      +'<select id="gp-ni-resp" style="font-size:13px;">'+respOpts+'</select></div>'
-      +'<div class="field" style="margin-bottom:7px;"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Pauta da reuni\u00e3o</label>'
-      +'<select id="gp-ni-pauta" style="font-size:13px;">'+pautaOpts+'</select></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
-      +'<div class="field"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Inicio</label>'
-      +'<input id="gp-ni-inicio" type="date" style="font-size:13px;"/></div>'
-      +'<div class="field"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;">Encerramento *</label>'
-      +'<input id="gp-ni-fim" type="date" style="font-size:13px;"/></div>'
-      +'</div>'
-      +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
-      +'<button onclick="_gpCancelarNovaTarefa()" style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">Cancelar</button>'
-      +'<button onclick="_gpSalvarNovaTarefa(\''+catId+'\')" class="btn" style="font-size:11px;">Salvar</button>'
-      +'</div></div>';
-    var btnHTML='<button class="rt-cat-add-btn" onclick="_gpMostrarNovaTarefa()">'+ic("plus")+' Nova tarefa</button>';
-    var listaHTML=itens.length?itens.map(function(t){
-      var isLinked=!!linkedIds[t.id];
-      var rAvatar='';
-      if(t.responsavel){
-        var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
-        var ini=t.responsavel.slice(0,2).toUpperCase();
-        rAvatar='<div class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';flex-shrink:0;font-size:10px;width:22px;height:22px;min-width:22px;">'+ini+'</div>';
-      }
-      return '<div id="gp-row-'+t.id+'" style="display:flex;align-items:center;gap:10px;padding:8px 1rem;border-bottom:0.5px solid var(--border);">'
-        +'<input type="checkbox"'+(isLinked?' checked':'')+' onchange="_gpToggleReuniaoTarefa(\''+reuniaoId+'\',\''+t.id+'\',this.checked,\''+catId+'\')" style="cursor:pointer;accent-color:var(--bt-orange);flex-shrink:0;">'
-        +'<span style="font-size:13px;font-weight:500;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_inlineHtml(t.texto)+'</span>'
-        +rAvatar
-        +'</div>';
-    }).join(""):'<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">Nenhuma tarefa nesta categoria. Crie a primeira.</div>';
-    el.innerHTML=headerHTML+formHTML+btnHTML+listaHTML;
-  }catch(e){if(el)el.innerHTML='<div style="padding:16px;color:var(--text3);">Erro ao carregar.</div>';}
+    _gpLinked={};linked.forEach(function(x){_gpLinked[x.tarefa_id]=true;});
+    _gpItens=itens;_gpInfo={};
+    _gpRenderLista();
+    _gpInfo=await _gpEnriquecer(itens);
+    if(_apCatSel===catId)_gpRenderLista();
+  }catch(e){if(el)el.innerHTML='<div class="gp-vazio">Erro ao carregar.</div>';}
+}
+function _gpNovoFormHTML(catId){
+  var respOpts='<option value="">Selecione...</option>'+(responsaveis||[]).map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join("");
+  var pautaOpts='<option value="">Sem pauta específica</option>'+(_apPautasCtx||[]).map(function(p){return '<option value="'+p.reuniao_pauta_id+'">'+escHTML(p.titulo)+'</option>';}).join("");
+  return '<div id="gp-novo-item-form" class="gp-form" style="display:none;">'
+    +'<div><div class="gp-fl">Título *</div><input id="gp-ni-titulo" class="gp-in" placeholder="Título da tarefa..."/></div>'
+    +'<div><div class="gp-fl">Descrição</div><textarea id="gp-ni-descricao" class="gp-in gp-in-ta" rows="2" placeholder="Descrição opcional..."></textarea></div>'
+    +'<div class="gp-g2"><div><div class="gp-fl">Responsável *</div><select id="gp-ni-resp" class="gp-in">'+respOpts+'</select></div><div><div class="gp-fl">Pauta da reunião</div><select id="gp-ni-pauta" class="gp-in">'+pautaOpts+'</select></div></div>'
+    +'<div class="gp-g2"><div><div class="gp-fl">Início</div><input id="gp-ni-inicio" type="date" class="gp-in"/></div><div><div class="gp-fl">Encerramento *</div><input id="gp-ni-fim" type="date" class="gp-in"/></div></div>'
+    +'<div class="gp-form-f"><button class="gp-btn gp-btn-txt" onclick="_gpCancelarNovaTarefa()">Cancelar</button><button class="gp-btn gp-btn-azul" onclick="_gpSalvarNovaTarefa(\''+catId+'\')">Salvar</button></div></div>';
+}
+function _gpRenderLista(){
+  var el=document.getElementById("ap-items");if(!el)return;
+  var catId=_apCatSel,reuniaoId=_apReuniao,hoje=new Date().toISOString().slice(0,10),eu=_mtUserSigla();
+  var q=(_gpBusca||"").toLowerCase().trim();
+  var form=document.getElementById("gp-novo-item-form");var formAberto=form&&form.style.display!=="none";
+  var l=_gpItens.filter(function(t){return (!q||(t.texto||"").toLowerCase().indexOf(q)>=0)&&(!_gpMeus||respsDe(t).indexOf(eu)>=0);});
+  l.sort(function(a,b){
+    if(_gpOrdem==="nome")return (a.texto||"").localeCompare(b.texto||"");
+    if(_gpOrdem==="prazo")return (a.data_fim||"9999").localeCompare(b.data_fim||"9999");
+    var ua=(_gpInfo[a.id]||{}).ult||"0000",ub=(_gpInfo[b.id]||{}).ult||"0000";return ua.localeCompare(ub);
+  });
+  var carregado=Object.keys(_gpInfo).length>0;
+  var rows=l.map(function(t){
+    var i=_gpInfo[t.id],atr=t.data_fim&&!statusTarefaFinalizador(t.status)&&t.data_fim<hoje,resps=respsDe(t);
+    var pct=i&&i.total?Math.round(i.feitas/i.total*100):0;
+    return '<label class="gp-it" id="gp-row-'+t.id+'"><input type="checkbox"'+(_gpLinked[t.id]?' checked':'')+' onchange="_gpLinked[\''+t.id+'\']=this.checked;_gpToggleReuniaoTarefa(\''+reuniaoId+'\',\''+t.id+'\',this.checked,\''+catId+'\')"/>'
+      +'<div class="gp-it-c"><div class="gp-it-t">'+_inlineHtml(t.texto)+'</div><div class="gp-it-m">'
+      +'<span class="gp-pill"><i style="background:'+statusTarefaCor(t.status,"#94a3b8")+';"></i>'+escHTML(statusTarefaLabel(t.status))+'</span>'
+      +(t.data_fim?'<span class="'+(atr?'gp-atr':'')+'">'+(atr?'Atrasado · ':'Vence ')+_fmtDateBrShort(t.data_fim)+'</span>':'')
+      +(i&&i.total?'<span class="gp-prog"><b><i style="width:'+pct+'%;"></i></b>'+i.feitas+'/'+i.total+'</span>':'')
+      +(carregado?_gpUltHTML(i):'')
+      +'</div>'+(i&&i.up?'<div class="gp-up">Última atualização ('+_atuDataBR(i.up.criado_em)+'): <em>'+escHTML(trunc(i.up.texto,120))+'</em></div>':'')+'</div>'
+      +'<span class="gp-avs">'+resps.map(function(r){return '<span class="av gp-av" title="'+escHTML(r)+'" style="background:'+_avCor(r)+';">'+escHTML(r.slice(0,3))+'</span>';}).join("")+'</span></label>';
+  }).join("");
+  el.innerHTML=_gpNovoFormHTML(catId)+'<button class="gp-add" onclick="_gpMostrarNovaTarefa()">'+ic("plus")+' Nova tarefa</button>'
+    +(rows||'<div class="gp-vazio">'+(_gpItens.length?'Nenhum item com esse filtro.':'Nenhuma tarefa nesta categoria. Crie a primeira.')+'</div>');
+  if(formAberto)_gpMostrarNovaTarefa();
+}
+// Sugere pauta em todas as categorias: atrasados, prazo em ate 7 dias ou parados ha 4+ semanas (ignora concluidos)
+async function _gpSugerir(){
+  var ids=_apCats.map(function(c){return c.id;});if(!ids.length)return;
+  toast("Analisando itens...");
+  try{
+    var r=await fetch(SB+"/rest/v1/tarefas?pauta_categoria_id=in.("+ids.join(",")+")&parent_id=is.null&select=id,status,data_fim,pauta_categoria_id",{headers:H});
+    var todos=r.ok?await r.json():[];
+    var r2=await fetch(SB+"/rest/v1/reuniao_tarefas?reuniao_id=eq."+_apReuniao+"&select=tarefa_id",{headers:H});
+    var ja={};(r2.ok?await r2.json():[]).forEach(function(x){ja[x.tarefa_id]=true;});
+    var info=await _gpEnriquecer(todos.filter(function(t){return !ja[t.id];}));
+    var lim=new Date();lim.setDate(lim.getDate()+7);var limStr=lim.toISOString().slice(0,10);
+    var alvo=todos.filter(function(t){
+      if(ja[t.id]||statusTarefaFinalizador(t.status))return false;
+      var i=info[t.id]||{};
+      return (t.data_fim&&t.data_fim<=limStr)||!i.ult||_gpDiasDesde(i.ult)>=_GP_PARADO_DIAS;
+    });
+    if(!alvo.length){toast("Nenhum item precisa entrar na pauta agora");return;}
+    for(var k=0;k<alvo.length;k++){_gpLinked[alvo[k].id]=true;await _gpToggleReuniaoTarefa(_apReuniao,alvo[k].id,true,alvo[k].pauta_categoria_id);}
+    _gpRenderLista();_gpRefreshBadges();
+    toast(alvo.length+(alvo.length===1?" item sugerido e marcado":" itens sugeridos e marcados")+". Revise antes de confirmar.");
+  }catch(_){toast("Erro ao sugerir pauta",true);}
 }
 function _gpMostrarNovaTarefa(){
   var f=document.getElementById("gp-novo-item-form");if(!f)return;
@@ -3298,6 +3341,7 @@ function _buildTarefaCard(t,ce,ehPassado){
           } else if(canEdit){
           html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add inline-edit-hit" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descri\u00e7\u00e3o</span>';
           }
+          html+=_atuSubLinhaHTML(s,t.id,canEdit,ehPassado);
           html+='</div></div>';
           html+='<div id="tp-sresp-'+s.id+'" class="subcell subcell-resp'+(canEdit?' inline-edit-hit':'')+'"'
             +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar respons\u00e1vel"':'')+'>';
@@ -3327,6 +3371,7 @@ function _buildTarefaCard(t,ce,ehPassado){
             });
             html+='</div>';
           }
+          if(_atuAberta[s.id])html+=_atuSubTimelineHTML(s,t.id,ehPassado);
         }
       });
     }
@@ -3339,12 +3384,8 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='</div>';
     html+='</div>';
 
-    // comentarios da tarefa
-    html+='<div id="tp-cmts-'+t.id+'" class="cmts">';
-    html+='<div class="cl-lbl">Comentários</div>';
-    if(cmts===null){html+='<div style="font-size:11px;color:var(--text3);padding:4px 0;">Carregando comentarios...</div>';}
-    else{html+=_buildTarefaCmtsHTML(cmts,t.id,ce,ehPassado);}
-    html+='</div>';
+    // atualizacoes do projeto e das subtarefas
+    html+=_atuProjetoHTML(t,subtarefas||[],ehPassado);
   }
 
   if(_temExp){html+='</div>';}// fecha brow-exp
@@ -3404,7 +3445,7 @@ async function _toggleSubExpand(tarefaId,ehPassado){
     try{
       _subtarefasCache[tarefaId]=await dbFetchSubtarefas(tarefaId);
       _subCollapsed[tarefaId]=false;
-      try{_tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);}catch(_){_tarefaCmtsCache[tarefaId]=[];}
+      await _atuPrefetch([tarefaId].concat((_subtarefasCache[tarefaId]||[]).map(function(x){return x.id;})));
       _reloadTarefaCard(tarefaId,ehPassado);
     }catch(_){toast("Erro ao carregar subtarefas",true);}
   }
@@ -3514,9 +3555,6 @@ async function _quickSaveSubtarefa(parentId,ehPassado){
     _reloadTarefaCard(parentId,ehPassado);
     toast("Subtarefa adicionada!");
   }catch(_){toast("Erro ao adicionar subtarefa",true);}
-}
-function _cmtKeydown(evt,tarefaId,ehPassado){
-  if(evt.key==='Enter'&&!evt.shiftKey){evt.preventDefault();_addTarefaComentario(tarefaId,ehPassado);}
 }
 
 // ── EDICAO INLINE DE TITULO ──
@@ -3882,112 +3920,122 @@ function _abrirMenuTarefa(evt,tarefaId,isSub,parentId,ehPassado){
   var d=document.createElement("div");d.innerHTML=html;document.body.appendChild(d.firstChild);
 }
 
-// ── COMENTARIOS DE TAREFA ──
-async function _toggleTarefaCmts(tarefaId,ehPassado){
-  _tarefaCmtsExpanded[tarefaId]=!_tarefaCmtsExpanded[tarefaId];
-  var rId=_tarefaCacheKey();
-  var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
-  if(!t)return;
-  var ce=perfil==="mestre"||perfil==="advogado";
-  var el=document.getElementById("tp-card-"+tarefaId);if(!el)return;
-  el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
-  if(_tarefaCmtsExpanded[tarefaId]&&_tarefaCmtsCache[tarefaId]===undefined){
+// ── ATUALIZACOES (historico por projeto e subtarefa) ──
+// Cada atualizacao e uma linha de tarefa_comentarios: reuniao_id marca a reuniao em que foi registrada;
+// editar guarda a versao anterior em "versoes"; excluir so marca excluido_em/excluido_por (nada e apagado).
+var _atuAberta={},_atuEditando=null,_atuVersoes={},_atuFiltro={},_atuCarregando={};
+function _atuLista(id){return (_tarefaCmtsCache[id]||[]).filter(function(c){return !c.excluido_em;}).slice().sort(function(a,b){return String(b.criado_em||"").localeCompare(String(a.criado_em||""));});}
+function _atuDataBR(iso){if(!iso)return "";var d=new Date(iso);return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});}
+function _atuDataHoraBR(iso){if(!iso)return "";var d=new Date(iso);return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});}
+function _atuReuniaoNome(rid){var r=(reunioesDB||[]).find(function(x){return x.id===rid;})||(reuniaoAtiva&&reuniaoAtiva.id===rid?reuniaoAtiva:null);return r?((r.titulo||"Reunião")+" · "+_fmtDateBrShort(r.data)):"Reunião";}
+function _atuReuniaoTag(rid){return rid?'<span class="atu-tag">'+ic("meeting")+escHTML(_atuReuniaoNome(rid))+'</span>':'<span class="atu-fora">fora de reunião</span>';}
+async function _atuPrefetch(ids){
+  ids=(ids||[]).filter(Boolean);if(!ids.length)return;
+  try{
+    var rows=await dbFetchAtualizacoes(ids);
+    ids.forEach(function(id){_tarefaCmtsCache[id]=[];});
+    rows.forEach(function(c){(_tarefaCmtsCache[c.tarefa_id]=_tarefaCmtsCache[c.tarefa_id]||[]).push(c);});
+  }catch(_){ids.forEach(function(id){if(!(id in _tarefaCmtsCache))_tarefaCmtsCache[id]=[];});}
+}
+function _atuRerender(cardId,ehPassado){
+  var t=(_tarefasPautaCache[_tarefaCacheKey()]||[]).find(function(x){return x.id===cardId;});
+  var el=document.getElementById("tp-card-"+cardId);
+  if(el&&t)el.innerHTML=_buildTarefaCard(t,perfil==="mestre"||perfil==="advogado",!!ehPassado);
+}
+// Editar: so o autor. Excluir: o autor ou um mestre.
+function _atuPodeEditar(c,ehPassado){return !ehPassado&&(perfil==="mestre"||perfil==="advogado")&&c.usuario_id===userDbId;}
+function _atuPodeExcluir(c,ehPassado){return !ehPassado&&(perfil==="mestre"||(perfil==="advogado"&&c.usuario_id===userDbId));}
+function _atuItemHTML(c,cardId,ehPassado,rotulo){
+  var u=c.usuarios||{};var sig=u.sigla||u.nome||"?";
+  var vs=Array.isArray(c.versoes)?c.versoes:[];
+  var h='<div class="atu-ev"><span class="av atu-av" style="background:'+_avCor(c.usuario_id||sig)+';">'+escHTML(String(sig).slice(0,3).toUpperCase())+'</span><div class="atu-c">'
+    +'<div class="atu-h"><b>'+escHTML(sig)+'</b><span>'+_atuDataBR(c.criado_em)+'</span>'+_atuReuniaoTag(c.reuniao_id)+(rotulo?'<span class="atu-sub">'+escHTML(rotulo)+'</span>':'')
+    +(vs.length?'<button class="atu-ed" title="Ver versões anteriores" onclick="event.stopPropagation();_atuVersoes[\''+c.id+'\']=!_atuVersoes[\''+c.id+'\'];_atuRerender(\''+cardId+'\','+!!ehPassado+')">editado</button>':'')+'</div>';
+  if(_atuEditando===c.id){
+    h+='<textarea class="atu-ta" id="atu-ed-'+c.id+'" rows="2">'+escHTML(c.texto)+'</textarea><div class="atu-acts"><span></span><div><button class="rbtn rbtn-ghost rbtn-sm" onclick="_atuEditando=null;_atuRerender(\''+cardId+'\','+!!ehPassado+')">Cancelar</button><button class="rbtn rbtn-primary rbtn-sm" onclick="_atuSalvarEdicao(\''+c.id+'\',\''+c.tarefa_id+'\',\''+cardId+'\','+!!ehPassado+')">Salvar</button></div></div>';
+  }else{
+    h+='<div class="atu-t">'+_inlineHtml(c.texto)+'</div>';
+    var _ae=[];
+    if(_atuPodeEditar(c,ehPassado))_ae.push('<a onclick="_atuEditando=\''+c.id+'\';_atuRerender(\''+cardId+'\','+!!ehPassado+')">Editar</a>');
+    if(_atuPodeExcluir(c,ehPassado))_ae.push('<a onclick="_atuExcluir(\''+c.id+'\',\''+c.tarefa_id+'\',\''+cardId+'\','+!!ehPassado+')">Excluir</a>');
+    if(_ae.length)h+='<div class="atu-a">'+_ae.join(" · ")+'</div>';
+  }
+  if(_atuVersoes[c.id]&&vs.length){
+    h+='<div class="atu-versoes"><div class="atu-versoes-h">Versões anteriores</div>'+vs.map(function(v){return '<div><span>Até '+_atuDataHoraBR(v.ate)+(v.editado_por?' (alterado por '+escHTML(v.editado_por)+')':'')+':</span> <s>'+escHTML(v.texto)+'</s></div>';}).join("")+'</div>';
+  }
+  return h+'</div></div>';
+}
+function _atuNovaHTML(tarefaId,cardId,ehPassado){
+  if(ehPassado||!(perfil==="mestre"||perfil==="advogado"))return "";
+  var rid=_tarefaPayloadReuniaoId();
+  return '<div class="atu-nova"><textarea class="atu-ta" id="atu-nova-'+tarefaId+'" rows="2" placeholder="O que foi falado sobre isto? (Ctrl+Enter registra)" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+');}"></textarea>'
+    +'<div class="atu-acts"><span class="atu-ctx">'+(rid?'Será registrada na <b>'+escHTML(_atuReuniaoNome(rid))+'</b>':'Será registrada fora de reunião')+'</span><button class="rbtn rbtn-primary rbtn-sm" onclick="_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+')">Registrar</button></div></div>';
+}
+// Linha curta embaixo do nome da subtarefa: ultima atualizacao (ou "+ atualizacao")
+function _atuSubLinhaHTML(s,cardId,canEdit,ehPassado){
+  var l=_atuLista(s.id),ab=!!_atuAberta[s.id];
+  var clk=' onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+cardId+'\','+!!ehPassado+')"';
+  if(!l.length)return canEdit?'<span class="atu-ult vazio inline-edit-hit"'+clk+'>+ atualização</span>':'';
+  var u=l[0];
+  return '<span class="atu-ult inline-edit-hit'+(ab?' on':'')+'"'+clk+' title="Ver atualizações desta subtarefa"><b>'+_atuDataBR(u.criado_em)+'</b><span class="atu-ult-t">'+escHTML(trunc(u.texto,110))+'</span><em>'+l.length+ic("chevdown")+'</em></span>';
+}
+function _atuSubTimelineHTML(s,cardId,ehPassado){
+  var l=_atuLista(s.id);
+  return '<div class="atu-tl" onpointerdown="event.stopPropagation()">'+_atuNovaHTML(s.id,cardId,ehPassado)
+    +(l.length?l.map(function(c){return _atuItemHTML(c,cardId,ehPassado,null);}).join(""):'<div class="atu-vazio">Nenhuma atualização ainda.</div>')+'</div>';
+}
+// Bloco do projeto: atualizacoes do projeto + das subtarefas (com o nome da subtarefa), com filtro
+function _atuProjetoHTML(t,subs,ehPassado){
+  var ids=[t.id].concat((subs||[]).map(function(s){return s.id;}));
+  var falta=ids.filter(function(id){return !(id in _tarefaCmtsCache);});
+  if(falta.length&&!_atuCarregando[t.id]){
+    _atuCarregando[t.id]=true;
+    setTimeout(function(){_atuPrefetch(falta).then(function(){_atuCarregando[t.id]=false;_atuRerender(t.id,ehPassado);});},0);
+  }
+  var f=_atuFiltro[t.id]||"tudo";
+  var itens=_atuLista(t.id).map(function(c){return [c,null];});
+  if(f==="tudo")(subs||[]).forEach(function(s){_atuLista(s.id).forEach(function(c){itens.push([c,s.texto]);});});
+  itens.sort(function(a,b){return String(b[0].criado_em||"").localeCompare(String(a[0].criado_em||""));});
+  var h='<div id="tp-cmts-'+t.id+'" class="cmts atu-proj"><div class="atu-proj-h"><div class="cl-lbl">Atualizações</div>';
+  if(subs&&subs.length)h+='<div class="atu-filtro"><button class="'+(f==="tudo"?"on":"")+'" onclick="_atuFiltro[\''+t.id+'\']=\'tudo\';_atuRerender(\''+t.id+'\','+!!ehPassado+')">Projeto e subtarefas</button><button class="'+(f==="proj"?"on":"")+'" onclick="_atuFiltro[\''+t.id+'\']=\'proj\';_atuRerender(\''+t.id+'\','+!!ehPassado+')">Só do projeto</button></div>';
+  h+='</div>'+_atuNovaHTML(t.id,t.id,ehPassado);
+  if(falta.length&&!itens.length)h+='<div class="atu-vazio">Carregando...</div>';
+  else h+=itens.length?itens.map(function(x){return _atuItemHTML(x[0],t.id,ehPassado,x[1]);}).join(""):'<div class="atu-vazio">Nenhuma atualização ainda.</div>';
+  return h+'</div>';
+}
+function _atuToggle(subId,cardId,ehPassado){
+  _atuAberta[subId]=!_atuAberta[subId];_atuEditando=null;
+  _atuRerender(cardId,ehPassado);
+  if(_atuAberta[subId]){var ta=document.getElementById("atu-nova-"+subId);if(ta)ta.focus();}
+}
+async function _atuAdicionar(tarefaId,cardId,ehPassado){
+  var ta=document.getElementById("atu-nova-"+tarefaId);var txt=(ta?ta.value:"").trim();
+  if(!txt){toast("Escreva a atualização",true);if(ta)ta.focus();return;}
+  var payload={tarefa_id:tarefaId,usuario_id:userDbId,texto:txt};
+  var rid=_tarefaPayloadReuniaoId();if(rid)payload.reuniao_id=rid;
+  try{await dbUpsertTarefaComentario(payload);await _atuPrefetch([tarefaId]);_atuRerender(cardId,ehPassado);toast("Atualização registrada!");}
+  catch(_){toast("Erro ao registrar",true);}
+}
+async function _atuSalvarEdicao(cId,tarefaId,cardId,ehPassado){
+  var c=(_tarefaCmtsCache[tarefaId]||[]).find(function(x){return x.id===cId;});if(!c)return;
+  var el=document.getElementById("atu-ed-"+cId);var txt=(el?el.value:"").trim();
+  if(!txt){toast("O texto não pode ficar vazio",true);return;}
+  if(txt===c.texto){_atuEditando=null;_atuRerender(cardId,ehPassado);return;}
+  // A versao anterior e guardada pelo banco (trigger trg_tarefa_comentarios_versionar); o app so envia o texto novo
+  try{
+    await dbPatchTarefaComentario(cId,{texto:txt});
+    await _atuPrefetch([tarefaId]);
+    _atuEditando=null;_atuRerender(cardId,ehPassado);toast("Atualização editada");
+  }catch(_){toast("Erro ao salvar",true);}
+}
+function _atuExcluir(cId,tarefaId,cardId,ehPassado){
+  modalConfirm("Excluir esta atualização? Ela some da linha do tempo, mas continua guardada no histórico.",async function(){
     try{
-      _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
-      el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
-    }catch(_){}
-  }
-}
-function _buildTarefaCmtsHTML(cmts,tarefaId,ce,ehPassado){
-  var html='';
-  if(!cmts.length){
-    html+='<div class="pauta-empty">Nenhum comentario ainda.</div>';
-  } else {
-    cmts.forEach(function(c){
-      var u=c.usuarios||{};
-      var dt=new Date(c.criado_em);var dtStr=dt.toLocaleDateString("pt-BR")+' '+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-      var canEdit=(c.usuario_id===userDbId||perfil==='mestre'||perfil==='advogado')&&ce&&!ehPassado;
-      var sigla=(u.sigla||u.nome||'?').slice(0,2).toUpperCase();
-      var avCor=_avCor(c.usuario_id||sigla);
-      html+='<div id="tcmt-'+c.id+'" class="cmt">';
-      html+='<div class="av" style="width:30px;height:30px;font-size:11px;background:'+avCor+';flex-shrink:0;">'+sigla+'</div>';
-      html+='<div class="cmt-body">';
-      html+='<div class="cmt-head">';
-      html+='<span class="cmt-nm">'+(u.sigla||u.nome||'?')+'</span>';
-      html+='<div style="display:flex;gap:4px;align-items:center;">';
-      html+='<span class="cmt-dt">'+dtStr+'</span>';
-      if(canEdit)html+='<button onclick="_editTarefaComentarioInline(\''+c.id+'\',\''+tarefaId+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;">'+ic("edit")+'</button>';
-      if(canEdit)html+='<button onclick="_delTarefaComentario(\''+c.id+'\',\''+tarefaId+'\','+!!ehPassado+')" style="font-size:10px;padding:1px 4px;border-radius:4px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">'+ic("trash")+'</button>';
-      html+='</div></div>';
-      html+='<div class="cmt-tx">'+_inlineHtml(c.texto)+'</div>';
-      html+='</div></div>';
-    });
-  }
-  if(ce&&!ehPassado){
-    var myAv=(nomeUser||'').slice(0,2).toUpperCase()||'EU';
-    var myAvCor=_avCor(userDbId||myAv);
-    html+='<div class="cmt-box">';
-    html+='<div class="av" style="width:30px;height:30px;font-size:11px;background:'+myAvCor+';flex-shrink:0;">'+myAv+'</div>';
-    html+='<input id="tcmt-new-'+tarefaId+'" placeholder="Comentar..." onkeydown="_cmtKeydown(event,\''+tarefaId+'\','+!!ehPassado+')">';
-    html+='<button onclick="_addTarefaComentario(\''+tarefaId+'\','+!!ehPassado+')" class="rbtn rbtn-primary rbtn-sm">Enviar</button>';
-    html+='</div>';
-  }
-  return html;
-}
-async function _addTarefaComentario(tarefaId,ehPassado){
-  var ta=document.getElementById("tcmt-new-"+tarefaId);
-  var txt=(ta?ta.value||"":"").trim();if(!txt){toast("Escreva um comentário",true);return;}
-  try{
-    await dbUpsertTarefaComentario({tarefa_id:tarefaId,usuario_id:userDbId,texto:txt});
-    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
-    var rId=_tarefaCacheKey();
-    var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
-    var ce=perfil==="mestre"||perfil==="advogado";
-    var el=document.getElementById("tp-card-"+tarefaId);
-    if(el&&t)el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
-    toast("Comentário adicionado!");
-  }catch(_){toast("Erro",true);}
-}
-async function _editTarefaComentarioInline(cId,tarefaId,ehPassado){
-  var el=document.getElementById("tcmt-"+cId);if(!el)return;
-  try{
-    var cmts=await dbFetchTarefaComentarios(tarefaId);
-    var c=cmts.find(function(x){return x.id===cId;});if(!c)return;
-    el.innerHTML='<div style="display:flex;flex:1;flex-direction:column;gap:4px;padding:4px 0;">'
-      +'<textarea id="tcmt-edit-'+cId+'" rows="3" style="font-size:13px;resize:none;border:1px solid var(--border);border-radius:6px;padding:6px 10px;">'+_inlineHtml(c.texto)+'</textarea>'
-      +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
-      +'<button onclick="_reloadTarefaCmts(\''+tarefaId+'\','+!!ehPassado+')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;">Cancelar</button>'
-      +'<button onclick="_saveTarefaComentario(\''+cId+'\',\''+tarefaId+'\','+!!ehPassado+')" class="btn btn-primary" style="font-size:11px;">Salvar</button>'
-      +'</div></div>';
-  }catch(_){toast("Erro",true);}
-}
-async function _saveTarefaComentario(cId,tarefaId,ehPassado){
-  var txt=(document.getElementById("tcmt-edit-"+cId).value||"").trim();
-  if(!txt){toast("Texto nao pode ser vazio",true);return;}
-  try{
-    await dbUpsertTarefaComentario({id:cId,texto:txt});
-    _reloadTarefaCmts(tarefaId,ehPassado);
-    toast("Coment\u00e1rio editado!");
-  }catch(_){toast("Erro",true);}
-}
-function _delTarefaComentario(cId,tarefaId,ehPassado){
-  modalConfirm("Excluir este coment\u00e1rio?",async function(){
-    try{
-      await dbDelTarefaComentario(cId);
-      _reloadTarefaCmts(tarefaId,ehPassado);
-      toast("Coment\u00e1rio exclu\u00eddo!");
-    }catch(_){toast("Erro",true);}
+      await dbPatchTarefaComentario(cId,{excluido_em:new Date().toISOString(),excluido_por:userDbId});
+      _tarefaCmtsCache[tarefaId]=(_tarefaCmtsCache[tarefaId]||[]).filter(function(x){return x.id!==cId;});
+      _atuRerender(cardId,ehPassado);toast("Atualização excluída");
+    }catch(_){toast("Erro ao excluir",true);}
   });
-}
-async function _reloadTarefaCmts(tarefaId,ehPassado){
-  try{
-    _tarefaCmtsCache[tarefaId]=await dbFetchTarefaComentarios(tarefaId);
-    var rId=_tarefaCacheKey();
-    var t=(_tarefasPautaCache[rId]||[]).find(function(x){return x.id===tarefaId;});
-    var ce=perfil==="mestre"||perfil==="advogado";
-    var el=document.getElementById("tp-card-"+tarefaId);
-    if(el&&t)el.innerHTML=_buildTarefaCard(t,ce,!!ehPassado);
-  }catch(_){}
 }
 
 // ── COMENTARIOS DA REUNIAO ──
