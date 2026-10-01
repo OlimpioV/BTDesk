@@ -70,18 +70,30 @@ function taskChipHTML(card){
   var tarefas=getTarefas(card);if(!tarefas.length)return "";
   var total=tarefas.length;
   var done=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
-  return '<span class="cf-item" title="Subtarefas concluídas">'+ic("check")+" "+done+"/"+total+"</span>";
+  return '<span class="bdg'+(done===total?' bdg-ok':'')+'" title="Subtarefas concluídas">'+ic("check")+done+"/"+total+"</span>";
 }
-function _fmtDataBR(d){return d?String(d).split("-").reverse().join("/"):"";}
+var _MESES_CURTOS=["jan.","fev.","mar.","abr.","mai.","jun.","jul.","ago.","set.","out.","nov.","dez."];
+function _fmtDataCurta(d){if(!d)return "";var p=String(d).split("-");if(p.length<3)return d;var s=parseInt(p[2],10)+" de "+_MESES_CURTOS[parseInt(p[1],10)-1];if(p[0]!==String(new Date().getFullYear()))s+=" de "+p[0];return s;}
+function _prazoBadgeHTML(card){
+  if(!card.dataFim&&!card.dataInicio)return "";
+  var txt=card.dataInicio&&card.dataFim?_fmtDataCurta(card.dataInicio)+" - "+_fmtDataCurta(card.dataFim):(card.dataFim?_fmtDataCurta(card.dataFim):"Começou: "+_fmtDataCurta(card.dataInicio));
+  var cls=_cardConcluido(card)?" bdg-data-ok":(_cardVencido(card)?" bdg-data-atraso":(card.dataFim===_hojeStr()?" bdg-data-hoje":""));
+  return '<span class="bdg bdg-data'+cls+'" title="'+escHTML(txt)+'">'+ic("clock")+'<span class="bdg-tx">'+escHTML(txt)+'</span></span>';
+}
 function buildCardHTML(card,ce){
-  var cv=coverColor(card);var labels=buildLabels(card);
+  var cv=coverColor(card);var labels=buildLabels(card);var ok=_cardConcluido(card);
   var cn=card.clienteNum?cliNome(card.clienteNum):"";
   var num=card.clienteNum?(card.clienteNum+(card.casoNum?"/"+card.casoNum:"")):"";
-  var sub=num||cn?escHTML(num+(num&&cn?" · ":"")+cn):'<span class="card-vazio">Sem cliente</span>';
-  var resp=card.responsavel?escHTML(card.responsavel):'<span class="card-vazio">Sem responsável</span>';
-  var horas=card.horas?'<span class="card-pill" title="Horas">'+ic("clock")+" "+card.horas+"h</span>":"";
-  var prazo=card.dataFim?'<span class="cf-item" title="Encerramento">'+ic("cal")+" "+_fmtDataBR(card.dataFim)+"</span>":'<span class="cf-item card-vazio">'+ic("cal")+" Sem prazo</span>";
-  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'" title="'+escHTML(card.titulo)+'">'+escHTML(card.titulo)+'</div><div class="card-sub">'+sub+'</div><div class="card-row">'+ic("user")+'<span class="card-row-txt">'+resp+'</span>'+horas+'</div><div class="card-foot">'+prazo+taskChipHTML(card)+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
+  var sub=num||cn?'<div class="card-sub">'+escHTML(num+(num&&cn?" · ":"")+cn)+'</div>':"";
+  var tit='<div class="card-title'+(ok?' card-title-ok':'')+'" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>';
+  if(ok)tit='<div class="card-title-wrap">'+ic("check")+tit+'</div>';
+  var resp=card.responsavel?'<span class="card-membro" title="'+escHTML(card.responsavel)+'" style="background:'+(typeof _avCor==="function"?_avCor(card.responsavel):"#2b76e5")+';">'+escHTML(card.responsavel)+'</span>':"";
+  var badges=_prazoBadgeHTML(card)
+    +(card.obs?'<span class="bdg" title="Tem observações">'+ic("desc")+'</span>':"")
+    +taskChipHTML(card)
+    +(card.horas?'<span class="bdg" title="Horas">'+ic("hourglass")+card.horas+'h</span>':"")
+    +resp;
+  return '<div class="card-item'+(ok?' card-ok':'')+'" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+tit+sub+'<div class="card-badges">'+badges+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
 }
 
 // ── COMENTARIOS INLINE NO CARD ──
@@ -161,16 +173,16 @@ function renderKanban(){
     var isEmpty=porPrazo?false:cards.filter(function(c){return c.status===col.id;}).length===0;
     var inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div>';
     colCards.forEach(function(card,i){inner+=buildCardHTML(card,ce)+'<div class="card-drop-ind" id="ind-'+col.id+'-'+(i+1)+'"></div>';});
-    if(colCards.length===0)inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div><div style="border:1.5px dashed rgba(255,255,255,.15);border-radius:10px;padding:16px;text-align:center;font-size:12px;color:rgba(255,255,255,.3);">'+(ce?(porPrazo?'Arraste aqui':'Solte aqui'):'Nenhuma')+'</div>';
+    if(colCards.length===0)inner='<div class="card-drop-ind" id="ind-'+col.id+'-0"></div><div class="col-vazio">'+(ce?(porPrazo?'Arraste aqui':'Solte aqui'):'Nenhuma')+'</div>';
     var header;
     if(porPrazo){
-      header='<div class="col-header" style="cursor:default;"><span style="width:9px;height:9px;border-radius:50%;background:'+col.dot+';box-shadow:0 0 5px '+col.dot+'70;flex-shrink:0;"></span><div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fff;font-family:var(--font-titulo);">'+col.label+'</div><span class="col-count">'+colCards.length+'</span></div>';
+      header='<div class="col-header" style="cursor:default;"><span class="col-dot" style="background:'+col.dot+';"></span><span class="col-title">'+col.label+'</span><span class="col-count">'+colCards.length+'</span></div>';
     } else {
       header='<div class="col-header" id="col-hdr-'+col.id+'" draggable="'+(isMestre?"true":"false")+'"'
         +(isMestre?' ondragstart="onColDragStart(event,\''+col.id+'\')" ondragend="onColDragEnd(event,\''+col.id+'\')"':"")
         +' ondragover="onColDragOver(event,\''+col.id+'\')" ondrop="onColDrop(event,\''+col.id+'\')">'
-        +'<span style="width:9px;height:9px;border-radius:50%;background:'+col.dot+';box-shadow:0 0 5px '+col.dot+'70;flex-shrink:0;cursor:'+(isMestre?"pointer":"default")+';" '+(isMestre?'onclick="toggleCP(\''+col.id+'\',event)" title="Trocar cor"':"")+' ></span>'
-        +'<div id="col-title-'+col.id+'" style="flex:1;min-width:0;">'+colTitleInner(col)+'</div>'
+        +'<span class="col-dot" style="background:'+col.dot+';cursor:'+(isMestre?"pointer":"default")+';" '+(isMestre?'onclick="toggleCP(\''+col.id+'\',event)" title="Trocar cor"':"")+' ></span>'
+        +'<div id="col-title-'+col.id+'" class="col-title-box">'+colTitleInner(col)+'</div>'
         +'<span class="col-count">'+colCards.length+'</span>'
         +(isMestre&&isEmpty?'<button onclick="delColuna(\''+col.id+'\',event)" style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;padding:2px 4px;border-radius:5px;" title="Excluir coluna" onmouseover="this.style.color=\'#fca5a5\'" onmouseout="this.style.color=\'rgba(255,255,255,.35)\'">'+ic('trash')+'</button>':"")
         +'</div>';
@@ -218,3 +230,20 @@ function toggleListaRow(cardId){
   var isOpen=row.style.display!=="none";
   row.style.display=isOpen?"none":"table-row";
 }
+
+// ── INCLINACAO 3D DO CARD SEGUINDO O MOUSE ──
+(function(){
+  var MAX=6,atual=null,reduz=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function solta(el){if(!el)return;el.classList.remove("tilting");el.style.transform="";}
+  document.addEventListener("mousemove",function(e){
+    if(reduz)return;
+    var el=e.target.closest?e.target.closest("#app.kanban-mode .card-item"):null;
+    if(el!==atual){solta(atual);atual=el;}
+    if(!el||dragCardId||e.target.closest(".card-cmts"))return solta(el);
+    var r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+    el.classList.add("tilting");
+    el.style.transform="perspective(700px) rotateX("+(-y*MAX).toFixed(2)+"deg) rotateY("+(x*MAX).toFixed(2)+"deg) translateY(-2px)";
+  });
+  document.addEventListener("mouseleave",function(){solta(atual);atual=null;});
+  document.addEventListener("dragstart",function(){solta(atual);atual=null;},true);
+})();

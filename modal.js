@@ -181,7 +181,9 @@ function startEditObs(cardId){if(_ef&&_ef!=="obs")closeIcell(_ef,true);_ef="obs"
 function obsKd(e,cardId){if(e.key==="Escape"){e.preventDefault();stopEditObs(cardId,null);}if(e.key==="Enter"&&e.ctrlKey){e.preventDefault();saveObsModal(cardId);}}
 async function saveObsModal(cardId){var ta=document.getElementById("obs-inp-"+cardId);var val=ta?ta.value:"";var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.obs=val;stopEditObs(cardId,val);var faceObs=document.getElementById("co-"+cardId);if(faceObs){if(val){faceObs.style.display="";faceObs.textContent=trunc(val,90);}else{faceObs.style.display="none";}}try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}}
 function stopEditObs(cardId,val){var block=document.getElementById("obs-block-"+cardId);var textEl=document.getElementById("obs-txt-"+cardId);var inpEl=document.getElementById("obs-inp-"+cardId);if(block)block.classList.remove("open");if(inpEl)inpEl.style.display="none";if(textEl){textEl.style.display="";if(val!==null){if(val){textEl.className="obs-text";textEl.textContent=val;}else{textEl.className="obs-ph";textEl.textContent="Clique para adicionar observações...";}}}if(_ef==="obs"){_ef=null;_ecid=null;}}
-function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;document.getElementById("modal-container").innerHTML="";_ef=null;_ecid=null;}
+function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;var mc=document.getElementById("modal-container");var ov=mc.querySelector(".modal-overlay");_ef=null;_ecid=null;
+  // Animacao de saida: so limpa se o mesmo modal ainda estiver na tela (outro pode ter sido aberto nesse meio tempo)
+  if(ov&&ov.querySelector(".modal-trello")&&!ov.classList.contains("mt-saindo")){ov.classList.remove("mt-entrando");ov.classList.add("mt-saindo");setTimeout(function(){if(ov.parentNode===mc)mc.innerHTML="";},170);}else mc.innerHTML="";}
 async function submitCmt(cardId){var el=document.getElementById("new-cmt");var txt=(el?el.value:"").trim();if(!txt){toast("Escreva um comentário",true);return;}try{await addCmt(cardId,txt);toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
 function startEditCmt(cid){editingCmtId=cid;renderModal();}
 function cancelEditCmt(){editingCmtId=null;renderModal();}
@@ -208,7 +210,7 @@ function openCoverPicker(cardId){
   var swRow=document.createElement("div");swRow.style.cssText="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;";
   COL_COLORS.forEach(function(cc){
     var sw=document.createElement("div");var sel=card.coverColor===cc.cover;
-    sw.style.cssText="width:28px;height:28px;border-radius:50%;background:"+cc.cover+";cursor:pointer;border:2px solid "+(sel?"#253f4f":"transparent")+";transition:transform .12s;";
+    sw.style.cssText="width:28px;height:28px;border-radius:50%;background:"+coverSolida(cc.cover)+";cursor:pointer;border:2px solid "+(sel?"#253f4f":"transparent")+";transition:transform .12s;";
     sw.onmouseover=function(){this.style.transform="scale(1.2)";};sw.onmouseout=function(){this.style.transform="scale(1)";};
     sw.onclick=function(){_mc2Close();applyCoverColor(cardId,cc.cover);};
     swRow.appendChild(sw);
@@ -227,7 +229,7 @@ async function applyCoverColor(cardId,color){
   try{await dbUpsert(card);}catch(e){toast("Erro",true);}
 }
 
-function openCardModal(id){modalCardId=id;editingCmtId=null;_ef=null;_ecid=null;renderModal();}
+function openCardModal(id){modalCardId=id;editingCmtId=null;_ef=null;_ecid=null;renderModal();var ov=document.querySelector("#modal-container .modal-overlay");if(ov)ov.classList.add("mt-entrando");}
 function renderModal(){
   var id=modalCardId;
   var card=cards.find(function(c){return c.id===id;});if(!card)return;

@@ -128,39 +128,6 @@ button svg,
   padding-inline: 0;
 }
 
-.col-wrap {
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.085);
-}
-
-.col-header {
-  min-height: 42px;
-}
-
-.col-title {
-  line-height: 1.2;
-}
-
-.card-item {
-  border-radius: 8px;
-  border: 1px solid rgba(15,23,42,.05);
-}
-
-.card-cover {
-  height: 5px;
-}
-
-.card-body {
-  padding: 10px 11px 11px;
-}
-
-.chip,
-.cc {
-  min-height: 22px;
-  align-items: center;
-}
-
 .modal-overlay {
   padding: 24px 16px;
 }
