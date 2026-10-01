@@ -187,8 +187,10 @@ function startEditCmt(cid){editingCmtId=cid;renderModal();}
 function cancelEditCmt(){editingCmtId=null;renderModal();}
 async function saveEditCmt(cardId,cmtId){var el=document.getElementById("edit-cmt-txt");var txt=(el?el.value:"").trim();if(!txt){toast("Não pode ser vazio",true);return;}try{await editCmt(cardId,cmtId,txt);toast("Atualizado!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}}
 function confirmDelCmt(cmtId){modalConfirm("Excluir este comentário?",async function(){try{await delCmt(modalCardId,cmtId);toast("Excluído!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}});}
-async function toggleModalTipo(cardId,tipo){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.tipos=card.tipos||[];var idx=card.tipos.indexOf(tipo);if(idx>=0)card.tipos.splice(idx,1);else card.tipos.push(tipo);try{await dbUpsert(card);}catch(e){toast("Erro",true);}var mcover=document.getElementById("mcover");if(mcover)mcover.style.background=coverColor(card);}
-async function updateStatus(cardId,val){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.status=val;try{await dbUpsert(card);toast("Status atualizado!");}catch(e){toast("Erro",true);}}
+async function toggleModalTipo(cardId,tipo){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.tipos=card.tipos||[];var idx=card.tipos.indexOf(tipo);if(idx>=0)card.tipos.splice(idx,1);else card.tipos.push(tipo);var cnt=document.getElementById("metq-count");if(cnt){cnt.textContent=card.tipos.length;cnt.style.display=card.tipos.length?"":"none";}try{await dbUpsert(card);}catch(e){toast("Erro",true);}var mcover=document.getElementById("mcover");if(mcover)mcover.style.background=coverColor(card);}
+function toggleEtqPop(e){if(e)e.stopPropagation();var w=document.getElementById("metq-wrap");if(w)w.classList.toggle("open");}
+document.addEventListener("click",function(e){var w=document.getElementById("metq-wrap");if(w&&w.classList.contains("open")&&!w.contains(e.target))w.classList.remove("open");},true);
+async function updateStatus(cardId,val){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.status=val;if(modalCardId===cardId&&document.getElementById("mstatus"))renderModal();try{await dbUpsert(card);toast("Status atualizado!");}catch(e){toast("Erro",true);}}
 function confirmDelCard(id){var card=cards.find(function(c){return c.id===id;});modalConfirm('Excluir a demanda "'+(card?card.titulo:id)+'"?',async function(){try{await dbDelTarefasDoCard(id);await dbDel(id);await dbLog("Excluiu demanda",card?card.titulo:id);delete tarefasDB[id];cards=cards.filter(function(c){return c.id!==id;});closeModal();renderView();}catch(e){toast("Erro",true);}});}
 
 // ── COVER COLOR ──
@@ -243,12 +245,13 @@ function renderModal(){
   var mw="min(96vw,860px)";
   var trashBtn=ce?'<button onclick="confirmDelCard(\''+id+'\')" style="background:rgba(0,0,0,.22);border:none;color:#fff;border-radius:8px;padding:6px 8px;cursor:pointer;display:flex;align-items:center;" title="Excluir card">'+ic("trash")+'</button>':"";
   var coverBtn=ce?'<button onclick="openCoverPicker(\''+id+'\')" style="background:rgba(0,0,0,.22);border:none;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;">'+ic("palette")+' Cor</button>':"";
-  var statusEl=ce
-    ?'<select style="font-size:12px;font-weight:700;padding:5px 10px;border-radius:8px;border:none;font-family:inherit;background:'+col.badgeBg+';color:'+col.badgeText+';cursor:pointer;" onchange="updateStatus(\''+id+'\',this.value)">'+sO+'</select>'
-    :'<div style="font-size:12px;font-weight:700;padding:5px 10px;border-radius:8px;background:'+col.badgeBg+';color:'+col.badgeText+';display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:'+col.dot+';flex-shrink:0;"></span>'+col.label+'</div>';
-  var etqEl=ce
-    ?'<div style="display:flex;flex-wrap:wrap;gap:4px;">'+tiposOpts+'</div>'
-    :(card.tipos&&card.tipos.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;">'+card.tipos.map(function(t){var c=TC[t]||PALETA[0];return '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+t+'</span>';}).join("")+'</div>':'<span style="font-size:12px;color:var(--text3);">Nenhuma</span>');
+  var statusEl='<label class="mstatus" id="mstatus" style="background:'+col.badgeBg+';color:'+col.badgeText+';'+(ce?'':'cursor:default;')+'"><span class="mstatus-dot" style="background:'+col.dot+';"></span>'+col.label+(ce?ic("chevdown")+'<select aria-label="Status" onchange="updateStatus(\''+id+'\',this.value)">'+sO+'</select>':'')+'</label>';
+  var nTipos=(card.tipos||[]).length;
+  var etqChip=function(t){var c=TC[t]||PALETA[0];return '<span class="metq-chip" style="background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';">'+escHTML(t)+'</span>';};
+  var etqPop=ce
+    ?(TIPOS.length?TIPOS.map(function(t){var sel=(card.tipos||[]).includes(t);var c=TC[t]||PALETA[0];return '<label class="metq-opt"><input type="checkbox" '+(sel?'checked':'')+' onchange="toggleModalTipo(\''+id+'\',\''+escQ(t)+'\')" style="accent-color:'+c.border+';"/>'+etqChip(t)+'</label>';}).join(''):'<div class="metq-empty">Nenhuma etiqueta cadastrada</div>')
+    :(nTipos?card.tipos.map(function(t){return '<div class="metq-opt" style="cursor:default;">'+etqChip(t)+'</div>';}).join(''):'<div class="metq-empty">Nenhuma</div>');
+  var etqEl='<div class="metq-wrap" id="metq-wrap"><button type="button" class="metq-btn" onclick="toggleEtqPop(event)">'+ic("tag")+' Etiquetas<span class="metq-count" id="metq-count"'+(nTipos?'':' style="display:none;"')+'>'+nTipos+'</span>'+ic("chevdown")+'</button><div class="metq-pop" onclick="event.stopPropagation()">'+etqPop+'</div></div>';
   var tarefasPanel='<div id="tarefas-panel-'+id+'" style="background:#ebecf0;padding:14px 12px;overflow-y:auto;border-left:1px solid #dfe1e6;">'+buildTarefasHTML(card,ce)+'</div>';
   document.getElementById("modal-container").innerHTML=
     '<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-trello" style="width:'+mw+';" onclick="event.stopPropagation()">'
@@ -260,7 +263,7 @@ function renderModal(){
     +'<div class="modal-main" style="border-right:1px solid #dfe1e6;">'
     +'<div class="msec">'
     +(ce?'<div class="ititle" id="mt-disp" onclick="startEditTitle(\''+id+'\')">'+escHTML(card.titulo)+'</div><textarea class="ititle-inp" id="mt-inp" rows="2" onkeydown="titleKd(event,\''+id+'\')">'+escHTML(card.titulo)+'</textarea>':'<div class="ititle" style="cursor:default;">'+escHTML(card.titulo)+'</div>')
-    +'<div style="margin-top:8px;">'+statusEl+'</div>'
+    +'<div class="mmeta">'+statusEl+etqEl+'</div>'
     +'</div>'
     +'<div class="msec"><div class="msec-title">'+ic("edit")+' Observações</div>'
     +(ce?'<div class="obs-block" id="obs-block-'+id+'" onclick="startEditObs(\''+id+'\')">'+(card.obs?'<div class="obs-text" id="obs-txt-'+id+'">'+escHTML(card.obs)+'</div>':'<div class="obs-ph" id="obs-txt-'+id+'">Clique para adicionar observações...</div>')+'<textarea id="obs-inp-'+id+'" class="obs-ta" style="display:none;" onkeydown="obsKd(event,\''+id+'\')" placeholder="Escreva observações... (Ctrl+Enter salva, Esc cancela)">'+escHTML(card.obs||"")+'</textarea></div>':(card.obs?'<div class="obs-block" style="cursor:default;"><div class="obs-text">'+escHTML(card.obs)+'</div></div>':""))
@@ -275,7 +278,6 @@ function renderModal(){
     +icCell(id,"horas","Horas",card.horas?(card.horas+"h"):"—",ce,"nstep")
     +'</div></div>'
     +_buildDemandaCamposGrid(card,ce)
-    +'<div class="msec"><div class="msec-title">'+ic("tag")+' Etiquetas</div>'+etqEl+'</div>'
     +'<div class="msec"><div class="msec-title">'+ic("comment")+' Comentários <span style="background:#fff;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:500;margin-left:3px;">'+cmts.length+'</span></div>'+cmtHTML+newCmt+'</div>'
     +'</div>'
     +tarefasPanel

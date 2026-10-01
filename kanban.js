@@ -25,7 +25,7 @@ function onColDrop(e,colId){
   var cid=dragCardId;
   if(!cid)return;
   dragCardId=null;
-  if(agruparPor==="prazo"){_dOvColId=null;_dOvIdx=null;_prazoDrop(colId,cid);return;}
+  if(agruparPor==="prazo"){var pIdx=(_dOvColId===colId)?_dOvIdx:null;_dOvColId=null;_dOvIdx=null;_prazoDrop(colId,cid,pIdx);return;}
   var card=cards.find(function(c){return c.id===cid;});if(!card){return;}
   var col=cards.filter(function(c){return c.status===colId&&c.id!==cid;}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});
   var ins=(_dOvColId===colId&&_dOvIdx!=null)?_dOvIdx:col.length;
@@ -68,19 +68,20 @@ function buildLabels(card){if(!card.tipos||!card.tipos.length)return "";var exp=
 function renderView(){if(viewMode==="lista")renderLista();else renderKanban();}
 function taskChipHTML(card){
   var tarefas=getTarefas(card);if(!tarefas.length)return "";
-  var today=new Date().toISOString().split("T")[0];
   var total=tarefas.length;
   var done=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
-  var atrasada=tarefas.some(function(t){return !statusTarefaFinalizador(t.status)&&t.dataFim&&t.dataFim<today;});
-  if(atrasada)return '<span class="chip" style="background:#fef2f2;color:#dc2626;font-weight:700;">'+ic("check")+" "+done+"/"+total+" \u00b7 atraso</span>";
-  if(done===total)return '<span class="chip" style="background:#dcfce7;color:#15803d;font-weight:700;">'+ic("check")+" "+done+"/"+total+" \u00b7 ok</span>";
-  return '<span class="chip">'+ic("check")+" "+done+"/"+total+"</span>";
+  return '<span class="cf-item" title="Subtarefas concluídas">'+ic("check")+" "+done+"/"+total+"</span>";
 }
+function _fmtDataBR(d){return d?String(d).split("-").reverse().join("/"):"";}
 function buildCardHTML(card,ce){
-  var nc=getCmts(card).length;var cv=coverColor(card);var labels=buildLabels(card);var cc2=ccHTML(card);
-  var obsP=card.obs?'<div class="card-obs" id="co-'+card.id+'">'+escHTML(trunc(card.obs,90))+'</div>':'<div class="card-obs" id="co-'+card.id+'" style="display:none;"></div>';
-  var taskChip=taskChipHTML(card);
-  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>'+obsP+'<div class="card-meta">'+(cc2||"")+(card.responsavel?'<span class="chip">'+ic("user")+" "+card.responsavel+"</span>":"")+(card.horas?'<span class="chip">'+ic("clock")+" "+card.horas+"h</span>":"")+(card.dataFim?'<span class="chip"'+(_cardVencido(card)?' style="background:#fef2f2;color:#dc2626;font-weight:700;"':'')+'>'+ic("cal")+" "+card.dataFim+(_cardVencido(card)?" · venceu":"")+'</span>':"")+(taskChip||"")+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
+  var cv=coverColor(card);var labels=buildLabels(card);
+  var cn=card.clienteNum?cliNome(card.clienteNum):"";
+  var num=card.clienteNum?(card.clienteNum+(card.casoNum?"/"+card.casoNum:"")):"";
+  var sub=num||cn?escHTML(num+(num&&cn?" · ":"")+cn):'<span class="card-vazio">Sem cliente</span>';
+  var resp=card.responsavel?escHTML(card.responsavel):'<span class="card-vazio">Sem responsável</span>';
+  var horas=card.horas?'<span class="card-pill" title="Horas">'+ic("clock")+" "+card.horas+"h</span>":"";
+  var prazo=card.dataFim?'<span class="cf-item" title="Encerramento">'+ic("cal")+" "+_fmtDataBR(card.dataFim)+"</span>":'<span class="cf-item card-vazio">'+ic("cal")+" Sem prazo</span>";
+  return '<div class="card-item" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+'<div class="card-title" id="ct-'+card.id+'" title="'+escHTML(card.titulo)+'">'+escHTML(card.titulo)+'</div><div class="card-sub">'+sub+'</div><div class="card-row">'+ic("user")+'<span class="card-row-txt">'+resp+'</span>'+horas+'</div><div class="card-foot">'+prazo+taskChipHTML(card)+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
 }
 
 // ── COMENTARIOS INLINE NO CARD ──
@@ -127,8 +128,14 @@ function _prazoBucket(card){
   if(d===_addDiasStr(hoje,1))return "amanha";
   return "semana";
 }
-function _prazoCardSort(a,b){var da=a.dataFim||"9999-99-99",db=b.dataFim||"9999-99-99";if(da!==db)return da<db?-1:1;return (a.titulo||"").localeCompare(b.titulo||"");}
-async function _prazoDrop(colId,cid){
+function _prazoCardSort(a,b){
+  var oa=a.ordemPrazo,ob=b.ordemPrazo;
+  if(oa!=null&&ob!=null)return oa-ob;
+  if(oa!=null)return -1;
+  if(ob!=null)return 1;
+  var da=a.dataFim||"9999-99-99",db=b.dataFim||"9999-99-99";if(da!==db)return da<db?-1:1;return (a.titulo||"").localeCompare(b.titulo||"");
+}
+async function _prazoDrop(colId,cid,insIdx){
   var card=cards.find(function(c){return c.id===cid;});if(!card)return;
   var hoje=_hojeStr();
   if(colId==="hoje")card.dataFim=hoje;
@@ -137,8 +144,12 @@ async function _prazoDrop(colId,cid){
   else if(colId==="sem_prazo")card.dataFim=null;
   else if(colId==="concluida")card.status=_colConcluidaId();
   if(colId!=="concluida"&&_cardConcluido(card))card.status=_colAndamentoId();
+  var bucket=cards.filter(function(c){return _prazoBucket(c)===colId&&c.id!==cid;}).sort(_prazoCardSort);
+  var ins=(insIdx!=null)?Math.min(insIdx,bucket.length):bucket.length;
+  bucket.splice(ins,0,card);
+  bucket.forEach(function(c,i){c.ordemPrazo=i;});
   renderKanban();
-  try{await dbUpsert(card);}catch(e){toast("Erro ao salvar",true);}
+  try{await Promise.all(bucket.map(function(c){return dbUpsert(c);}));}catch(e){toast("Erro ao salvar",true);}
 }
 
 function renderKanban(){
