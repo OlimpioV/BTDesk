@@ -191,6 +191,16 @@ async function loadProjetoModelo(){
   try{projetoModeloDB=await dbFetchProjetoModelo();}
   catch(e){projetoModeloDB={nome:"Projeto padrão",campos:[]};}
 }
+async function dbFetchEtiquetas(){
+  var r=await fetch(SB+"/rest/v1/estrutura_config?id=eq.etiquetas&select=data",{headers:H});
+  if(!r.ok)throw new Error();
+  var rows=await r.json();
+  return rows&&rows[0]&&rows[0].data&&rows[0].data.tc?rows[0].data.tc:null;
+}
+async function dbSaveEtiquetas(tc){
+  var r=await fetch(SB+"/rest/v1/estrutura_config",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id:"etiquetas",data:{tc:tc},atualizado_em:new Date().toISOString()})});
+  if(!r.ok)throw new Error();
+}
 async function dbFetchDemandaModelo(){
   var r=await fetch(SB+"/rest/v1/estrutura_config?id=eq.demanda_modelo&select=data",{headers:H});
   if(!r.ok)return {nome:"Demanda padrão",campos:[]};

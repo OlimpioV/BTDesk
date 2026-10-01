@@ -72,8 +72,15 @@ function escQ(s){return (s||"").replace(/'/g,"\\'");}
 function escHTML(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 function numFromStr(s){var m=(s||"").match(/^(\d+)/);return m?parseInt(m[1]):null;}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function loadEtq(){try{var s=localStorage.getItem(EK);if(s){Object.assign(TC,JSON.parse(s));TIPOS=Object.keys(TC);}}catch(e){}}
-function saveEtq(){var ex={};Object.keys(TC).forEach(function(k){if(!TC_DEF[k])ex[k]=TC[k];});localStorage.setItem(EK,JSON.stringify(ex));}
+// Etiquetas vivem no Supabase (estrutura_config id="etiquetas"); na primeira carga migra padrões + extras do localStorage antigo
+async function loadEtq(){
+  var tc=null;try{tc=await dbFetchEtiquetas();}catch(e){return;}
+  if(tc){TC=tc;TIPOS=Object.keys(TC);return;}
+  try{var s=localStorage.getItem(EK);if(s)Object.assign(TC,JSON.parse(s));}catch(e){}
+  TIPOS=Object.keys(TC);
+  if(perfil==="mestre"){try{await dbSaveEtiquetas(TC);localStorage.removeItem(EK);}catch(e){}}
+}
+async function saveEtq(){try{await dbSaveEtiquetas(TC);}catch(e){toast("Erro ao salvar etiquetas",true);}}
 function toast(msg,err){var el=document.getElementById("toast");el.textContent=msg;el.style.background=err?"#dc2626":"#253f4f";el.style.color="#fff";el.classList.add("show");setTimeout(function(){el.classList.remove("show");},3000);}
 function _mcClose(){document.getElementById("modal-container").innerHTML="";}
 function modalConfirm(msg,onOk){var mc=document.getElementById("modal-container");mc.innerHTML="";var ov=document.createElement("div");ov.className="modal-overlay";ov.style.alignItems="center";ov.onclick=function(e){if(e.target===ov)_mcClose();};var box=document.createElement("div");box.className="modal-box";box.style.cssText="width:min(95vw,400px);padding:24px 28px;";box.onclick=function(e){e.stopPropagation();};var txt=document.createElement("div");txt.style.cssText="font-size:15px;font-weight:600;color:var(--bt-navy);margin-bottom:18px;";txt.textContent=msg;var row=document.createElement("div");row.style.cssText="display:flex;gap:8px;justify-content:flex-end;";var btnCancel=document.createElement("button");btnCancel.className="btn";btnCancel.textContent="Cancelar";btnCancel.onclick=_mcClose;var btnOk=document.createElement("button");btnOk.className="btn btn-danger";btnOk.textContent="Excluir";btnOk.onclick=function(){_mcClose();onOk();};row.appendChild(btnCancel);row.appendChild(btnOk);box.appendChild(txt);box.appendChild(row);ov.appendChild(box);mc.appendChild(ov);}
