@@ -170,13 +170,14 @@ function _renderProjetosEquipePage(cats){
   var todasTarefas=_tarefasPautaCache[_tarefaCacheKey()]||[];
   var tarefas=_filtrarProjetosTarefas(todasTarefas);
   var abertas=todasTarefas.filter(function(t){return !statusTarefaFinalizador(t.status);}).length;
-  var concluidas=todasTarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
+  var concluidas=todasTarefas.filter(function(t){return statusTarefaFeita(t.status);}).length;
   var atrasadas=todasTarefas.filter(function(t){return _isAtrasado(t.data_fim,t.status);}).length;
   var subtTotal=0,subConcl=0;
   todasTarefas.forEach(function(t){
     var subs=_subtarefasCache[t.id]||[];
-    subtTotal+=subs.length;
-    subConcl+=subs.filter(function(s){return statusTarefaFinalizador(s.status);}).length;
+    var _pg=statusTarefaProgresso(subs);
+    subtTotal+=_pg.total;
+    subConcl+=_pg.feitas;
   });
   var stOpts='<option value="">Todos os status</option>'+statusTarefaList(false).map(function(s){return '<option value="'+s.id+'"'+(_projetosPageStatus===s.id?' selected':'')+'>'+s.nome+'</option>';}).join("");
   var respOpts='<option value="">Todos os responsaveis</option>'+(responsaveis||[]).map(function(r){return '<option value="'+r+'"'+(_projetosPageResp===r?' selected':'')+'>'+r+'</option>';}).join("");
@@ -405,7 +406,7 @@ async function openProjetoHistorico(tarefaId){
               +'<span>Status: <b>'+_inlineHtml(statusTarefaLabel(item.status))+'</b></span>'
               +'<span>Resp.: <b>'+_inlineHtml(item.responsavel||"Sem respons\u00e1vel")+'</b></span>'
               +'<span>Prazo: <b>'+(item.data_fim?_fmtDateBrShort(item.data_fim):"Sem prazo")+'</b></span>'
-              +'<span>Subtarefas: <b>'+subs.filter(function(s){return statusTarefaFinalizador(s.status);}).length+'/'+subs.length+'</b></span>'
+              +'<span>Subtarefas: <b>'+statusTarefaProgresso(subs).feitas+'/'+statusTarefaProgresso(subs).total+'</b></span>'
               +(cmts.length?'<span>Coment\u00e1rios: <b>'+cmts.length+'</b></span>':'')
               +'</div>';
           } else {
@@ -946,8 +947,8 @@ function _buildProjetoCardHTML(p,expanded,checklist,comments,ce,ehPassado){
   html+=_buildProjetoCamposGrid(p,ce&&!ehP);
   if(isPontual&&checklist&&checklist.length){
     html+=_buildChecklistBar(checklist);
-    var done=checklist.filter(function(i){return statusTarefaFinalizador(i.status);}).length;
-    html+='<div class="prog-info">'+done+' de '+checklist.length+' subtarefas concluídas</div>';
+    var _pgc=statusTarefaProgresso(checklist),done=_pgc.feitas;
+    html+='<div class="prog-info">'+done+' de '+_pgc.total+' subtarefas concluídas</div>';
   }
   if(expanded){
     if(checklist!==null)html+=_buildChecklistUI(p.id,checklist||[],ce,ehP);
@@ -2786,7 +2787,7 @@ async function gerarAta(reuniaoId){
     tarefas.forEach(function(t,i){
       var catId=t.pauta_categoria_id||"sem_cat";
       var subs=t.subtarefas||[];
-      var concluidas=subs.filter(function(s){return statusTarefaFinalizador(s.status);}).length;
+      var _pga=statusTarefaProgresso(subs),concluidas=_pga.feitas;
       linhas.push((i+1)+". "+(t.texto||"Tarefa sem titulo"));
       var pautaTitulo=t.campos_valores&&t.campos_valores.pauta_titulo;
       linhas.push("   Categoria/pauta: "+(pautaTitulo||catMap[catId]||"Geral"));
@@ -2794,7 +2795,7 @@ async function gerarAta(reuniaoId){
       linhas.push("   Status: "+statusTarefaLabel(t.status));
       linhas.push("   Prazo: "+(t.data_fim?_fmtDateBr(t.data_fim):"Sem prazo"));
       if(t.data_inicio)linhas.push("   Inicio: "+_fmtDateBr(t.data_inicio));
-      if(subs.length)linhas.push("   Progresso: "+concluidas+"/"+subs.length+" subtarefas concluidas");
+      if(subs.length)linhas.push("   Progresso: "+concluidas+"/"+_pga.total+" subtarefas concluidas");
       if(t.descricao){
         linhas.push("   Descri\u00e7\u00e3o:");
         String(t.descricao).split("\n").forEach(function(l){linhas.push("      "+l);});
@@ -3191,11 +3192,11 @@ function _buildTarefaCard(t,ce,ehPassado){
   // coluna 6: progresso + menu de acoes
   html+='<div class="bc bc-prog">';
   if(subtarefas&&subtarefas.length>0){
-    var _conc=subtarefas.filter(function(s){return statusTarefaFinalizador(s.status);}).length;
+    var _pgs=statusTarefaProgresso(subtarefas),_conc=_pgs.feitas;
     html+='<div class="bprogwrap" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Ver subtarefas">';
     html+='<div class="btrack">';
     subtarefas.forEach(function(s){html+='<div class="bseg" style="background:'+statusTarefaCor(s.status,'#e8edf2')+';"></div>';});
-    html+='</div><span class="bpct">'+_conc+'/'+subtarefas.length+'</span></div>';
+    html+='</div><span class="bpct">'+_conc+'/'+_pgs.total+'</span></div>';
   } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   if(ce&&!ehPassado){
     html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>';

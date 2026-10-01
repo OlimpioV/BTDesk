@@ -295,4 +295,13 @@ async function dbUpsertTarefaStatus(st){
 async function loadTarefaStatus(){
   try{tarefaStatusDB=await dbFetchTarefaStatus();}
   catch(e){tarefaStatusDB=[];}
+  await _migrarStatusCancelada();
+}
+// 01/10/2026: status "Bloqueada" virou "Cancelada" (encerra sem contar como feita). Roda uma vez, no login de um mestre.
+async function _migrarStatusCancelada(){
+  if(perfil!=="mestre")return;
+  var st=(tarefaStatusDB||[]).find(function(s){return /^bloquead/i.test(s.nome||"");});
+  if(!st)return;
+  var novo=Object.assign({},st,{nome:"Cancelada",cor:"#626f86",finalizador:true});
+  try{var salvo=await dbUpsertTarefaStatus({id:novo.id,nome:novo.nome,cor:novo.cor,ordem:novo.ordem,finalizador:true,ativo:novo.ativo!==false});Object.assign(st,salvo||novo);}catch(_){}
 }

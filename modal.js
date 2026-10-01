@@ -167,7 +167,7 @@ async function saveIcell(cardId,field){
   if(field==="clienteNum"){var inp=document.getElementById("ic-cli-txt");var num=numFromStr((inp?inp.value:"").trim());card.clienteNum=num||null;card.casoNum=null;var cn=num?cliNome(num):"";displayVal=num?(num+(cn?" - "+cn:"")):"-";var vCaso=document.getElementById("icv-casoNum");if(vCaso)vCaso.textContent="-";}
   else if(field==="casoNum"){var sel=document.getElementById("ic-casoNum");var nv=sel&&sel.value?parseInt(sel.value):null;card.casoNum=nv;var cd=nv?casoDesc(nv,card.clienteNum):"";displayVal=nv?(nv+(cd?" - "+trunc(cd,40):"")):"-";}
   else if(field==="horas"){var inp=document.getElementById("ic-"+field);card.horas=inp&&inp.value?inp.value:null;displayVal=card.horas?(card.horas+"h"):"-";}
-  else if(field==="responsavel"){var sel=document.getElementById("ic-"+field);card.responsavel=sel?sel.value||null:null;displayVal=card.responsavel||"-";}
+  else if(field==="responsavel"){var sel=document.getElementById("ic-"+field);setResps(card,sel&&sel.value?[sel.value]:[]);displayVal=card.responsavel||"-";}
   else{var inp=document.getElementById("ic-"+field);card[field]=inp&&inp.value?inp.value:null;displayVal=card[field]||"-";}
   var valEl=document.getElementById("icv-"+field);if(valEl)valEl.textContent=displayVal;
   closeIcell(field,false);
@@ -183,7 +183,7 @@ async function saveObsModal(cardId){var ta=document.getElementById("obs-inp-"+ca
 function stopEditObs(cardId,val){var block=document.getElementById("obs-block-"+cardId);var textEl=document.getElementById("obs-txt-"+cardId);var inpEl=document.getElementById("obs-inp-"+cardId);if(block)block.classList.remove("open");if(inpEl)inpEl.style.display="none";if(textEl){textEl.style.display="";if(val!==null){if(val){textEl.className="obs-text";textEl.textContent=val;}else{textEl.className="obs-ph";textEl.textContent="Clique para adicionar observações...";}}}if(_ef==="obs"){_ef=null;_ecid=null;}}
 function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;var mc=document.getElementById("modal-container");var ov=mc.querySelector(".modal-overlay");_ef=null;_ecid=null;
   // Animacao de saida: so limpa se o mesmo modal ainda estiver na tela (outro pode ter sido aberto nesse meio tempo)
-  _mtPopAberto=null;
+  _mtPopAberto=null;_stNovaCard=null;
   if(document.querySelector("#app.kanban-mode"))renderKanban();
   if(ov&&ov.querySelector(".modal-trello")&&!ov.classList.contains("mt-saindo")){ov.classList.remove("mt-entrando");ov.classList.add("mt-saindo");setTimeout(function(){if(ov.parentNode===mc)mc.innerHTML="";},170);}else mc.innerHTML="";}
 async function submitCmt(cardId){var el=document.getElementById("new-cmt");var txt=(el?el.value:"").trim();if(!txt){toast("Escreva um comentário",true);return;}try{await addCmt(cardId,txt);toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
@@ -253,20 +253,21 @@ function renderModal(){
 
   // Popovers (etiquetas, responsavel, datas)
   var popEtq=TIPOS.length?TIPOS.map(function(t){var sel=(card.tipos||[]).includes(t);return '<label class="mt-pop-op"><input type="checkbox" '+(sel?'checked':'')+' onchange="toggleModalTipo(\''+id+'\',\''+escQ(t)+'\')"/>'+etqChip(t)+'</label>';}).join(''):'<div class="mt-pop-vazio">Nenhuma etiqueta cadastrada</div>';
-  var popResp='<div class="mt-pop-m'+(card.responsavel?'':' sel')+'" onclick="setModalResp(\''+id+'\',\'\')"><span class="mt-av mt-av-vazio">'+ic("user")+'</span>Sem responsável</div>'+responsaveis.map(function(r){return '<div class="mt-pop-m'+(card.responsavel===r?' sel':'')+'" onclick="setModalResp(\''+id+'\',\''+escQ(r)+'\')"><span class="mt-av" style="background:'+avCor(r)+';">'+escHTML(r)+'</span>'+escHTML(r)+'</div>';}).join('');
+  var resps=respsDe(card);
+  var popResp=responsaveis.map(function(r){var on=resps.indexOf(r)>=0;return '<label class="mt-pop-m'+(on?' sel':'')+'"><input type="checkbox"'+(on?' checked':'')+' onchange="toggleModalResp(\''+id+'\',\''+escQ(r)+'\')"/><span class="mt-av" style="background:'+avCor(r)+';">'+escHTML(r)+'</span>'+escHTML(r)+'</label>';}).join('')||'<div class="mt-pop-vazio">Nenhum responsável cadastrado</div>';
   var popDatas='<div class="mt-fl">Início</div><input type="date" class="mt-in" id="mtd-ini" value="'+(card.dataInicio||'')+'"/><div class="mt-fl" style="margin-top:8px;">Encerramento</div><input type="date" class="mt-in" id="mtd-fim" value="'+(card.dataFim||'')+'"/><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="setModalDatas(\''+id+'\')">Salvar</button><button class="mt-btn-txt" onclick="setModalDatas(\''+id+'\',true)">Remover</button></div>';
   var pops='<div class="mt-pop" id="mtp-etq" onclick="event.stopPropagation()"><div class="mt-pop-h">Etiquetas</div>'+popEtq+'</div>'
-    +'<div class="mt-pop" id="mtp-resp" onclick="event.stopPropagation()"><div class="mt-pop-h">Responsável</div>'+popResp+'</div>'
+    +'<div class="mt-pop" id="mtp-resp" onclick="event.stopPropagation()"><div class="mt-pop-h">Responsáveis</div>'+popResp+'</div>'
     +'<div class="mt-pop" id="mtp-datas" onclick="event.stopPropagation()"><div class="mt-pop-h">Datas</div>'+popDatas+'</div>';
 
-  var acoes=ce?'<div class="mt-acoes"><button class="mt-ab" onclick="mtPop(event,\'etq\')">'+ic("tag")+'Etiquetas</button><button class="mt-ab" onclick="openAddTarefa(\''+id+'\')">'+ic("check")+'Subtarefa</button><button class="mt-ab" onclick="mtPop(event,\'resp\')">'+ic("user")+'Responsável</button><button class="mt-ab" onclick="mtPop(event,\'datas\')">'+ic("clock")+'Datas</button></div>':'';
+  var acoes=ce?'<div class="mt-acoes"><button class="mt-ab" onclick="mtPop(event,\'etq\')">'+ic("tag")+'Etiquetas</button><button class="mt-ab" onclick="openAddTarefa(\''+id+'\')">'+ic("check")+'Subtarefa</button><button class="mt-ab" onclick="mtPop(event,\'resp\')">'+ic("user")+'Responsáveis</button><button class="mt-ab" onclick="mtPop(event,\'datas\')">'+ic("clock")+'Datas</button></div>':'';
 
   // Responsavel / etiquetas / datas
   var selo=ok?'<span class="mt-selo ok">Concluído</span>':(_cardVencido(card)?'<span class="mt-selo atraso">Em atraso</span>':(card.dataFim&&card.dataFim===_hojeStr()?'<span class="mt-selo hoje">Vence hoje</span>':''));
   var dtTxt=card.dataInicio&&card.dataFim?_fmtDataCurta(card.dataInicio)+" - "+_fmtDataCurta(card.dataFim):(card.dataFim?_fmtDataCurta(card.dataFim):(card.dataInicio?"Começou: "+_fmtDataCurta(card.dataInicio):"Sem datas"));
   var mais=function(p){return ce?'<button class="mt-mais" onclick="mtPop(event,\''+p+'\')">'+ic("plus")+'</button>':'';};
   var meta='<div class="mt-meta">'
-    +'<div><div class="mt-meta-l">Responsável</div><div class="mt-meta-v">'+(card.responsavel?'<span class="mt-av" title="'+escHTML(card.responsavel)+'" style="background:'+avCor(card.responsavel)+';">'+escHTML(card.responsavel)+'</span>':'')+mais("resp")+'</div></div>'
+    +'<div><div class="mt-meta-l">Responsáveis</div><div class="mt-meta-v">'+resps.map(function(r){return '<span class="mt-av" title="'+escHTML(r)+'" style="background:'+avCor(r)+';">'+escHTML(r)+'</span>';}).join('')+mais("resp")+(resps.length||ce?'':'<span class="mt-vazio">Nenhum</span>')+'</div></div>'
     +'<div><div class="mt-meta-l">Etiquetas</div><div class="mt-meta-v">'+(card.tipos||[]).map(etqChip).join('')+mais("etq")+((card.tipos||[]).length||ce?'':'<span class="mt-vazio">Nenhuma</span>')+'</div></div>'
     +'<div><div class="mt-meta-l">Datas</div><button class="mt-datas"'+(ce?' onclick="mtPop(event,\'datas\')"':' disabled')+'>'+escHTML(dtTxt)+selo+(ce?ic("chevdown"):'')+'</button></div>'
     +'</div>';
@@ -331,10 +332,11 @@ async function toggleConcluidoModal(cardId){
   renderModal();
   try{await dbUpsert(card);toast(_cardConcluido(card)?"Demanda concluída!":"Demanda reaberta");}catch(e){toast("Erro",true);}
 }
-async function setModalResp(cardId,sigla){
+async function toggleModalResp(cardId,sigla){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  card.responsavel=sigla||null;mtPopFechar();renderModal();
-  try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}
+  var lista=respsDe(card),i=lista.indexOf(sigla);if(i>=0)lista.splice(i,1);else lista.push(sigla);
+  setResps(card,lista);renderModal();
+  try{await dbUpsert(card);}catch(e){toast("Erro",true);}
 }
 async function setModalDatas(cardId,remover){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;

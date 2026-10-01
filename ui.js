@@ -22,7 +22,7 @@ function statusTarefaDefaults(){
     {id:"pendente",nome:"Pendente",cor:"#e2445c",ordem:1,finalizador:false,ativo:true},
     {id:"em_andamento",nome:"Em andamento",cor:"#2b76e5",ordem:2,finalizador:false,ativo:true},
     {id:"pausado",nome:"Pausado",cor:"#fdab3d",ordem:3,finalizador:false,ativo:true},
-    {id:"bloqueada",nome:"Bloqueada",cor:"#ef4444",ordem:4,finalizador:false,ativo:true},
+    {id:"bloqueada",nome:"Cancelada",cor:"#626f86",ordem:4,finalizador:true,ativo:true},
     {id:"concluido",nome:"Conclu\u00edda",cor:"#00c875",ordem:5,finalizador:true,ativo:true},
     {id:"concluida",nome:"Conclu\u00edda",cor:"#16a34a",ordem:6,finalizador:true,ativo:false}
   ];
@@ -49,12 +49,34 @@ function statusTarefaFinalizador(id){
   var st=statusTarefaById(id,true);
   return !!(st&&st.finalizador)||id==="concluido"||id==="concluida";
 }
+// Cancelada: encerra a subtarefa (sai de alertas e pendencias), mas nao conta como feita no progresso
+function statusTarefaCancelado(id){
+  if(id==="cancelada")return true;
+  var st=statusTarefaById(id,true);
+  return !!(st&&/^cancel/i.test(st.nome||""));
+}
+function statusTarefaFeita(id){return statusTarefaFinalizador(id)&&!statusTarefaCancelado(id);}
+function statusTarefaProgresso(lista){
+  var validas=(lista||[]).filter(function(t){return !statusTarefaCancelado(t.status);});
+  return {feitas:validas.filter(function(t){return statusTarefaFinalizador(t.status);}).length,total:validas.length};
+}
+// Responsaveis: lista em "responsaveis"; "responsavel" guarda o primeiro (compatibilidade e RLS)
+function respsDe(o){
+  if(!o)return [];
+  if(Array.isArray(o.responsaveis)&&o.responsaveis.length)return o.responsaveis.filter(Boolean);
+  return o.responsavel?[o.responsavel]:[];
+}
+function setResps(o,lista){
+  var u=[];(lista||[]).forEach(function(r){if(r&&u.indexOf(r)<0)u.push(r);});
+  o.responsaveis=u;o.responsavel=u[0]||"";
+  return o;
+}
 function statusTarefaDataHoje(){
   return new Date().toISOString().slice(0,10);
 }
 function statusTarefaCamposConclusao(item,status){
   var campos=Object.assign({},item&&item.campos_valores?item.campos_valores:{});
-  if(statusTarefaFinalizador(status)){
+  if(statusTarefaFeita(status)){
     if(!campos.concluida_em)campos.concluida_em=statusTarefaDataHoje();
   } else {
     delete campos.concluida_em;
@@ -102,7 +124,7 @@ function snapshotModeloConfig(modelo,nomePadrao,extras){
 function cliNome(num){var c=clientesDB.find(function(c){return c.numero===num;});return c?c.nome:"";}
 function casoDesc(num,cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return "";var ca=casosDB.find(function(c){return c.numero===num&&c.cliente_id===cl.id;});return ca?ca.descricao:"";}
 function casosDoCliente(cliNum){var cl=clientesDB.find(function(c){return c.numero===cliNum;});if(!cl)return [];return casosDB.filter(function(c){return c.cliente_id===cl.id;});}
-function getFiltered(){return cards.filter(function(c){if(c.arquivado)return false;var equipeOk=!equipeAtiva||(demandaEquipesDB[c.id]||[]).includes(equipeAtiva.id);return equipeOk&&(!filterResp||c.responsavel===filterResp)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus)&&(!filterCliente||String(c.clienteNum)===String(filterCliente))&&(!filterCaso||String(c.casoNum)===String(filterCaso));}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});}
+function getFiltered(){return cards.filter(function(c){if(c.arquivado)return false;var equipeOk=!equipeAtiva||(demandaEquipesDB[c.id]||[]).includes(equipeAtiva.id);return equipeOk&&(!filterResp||respsDe(c).indexOf(filterResp)>=0)&&(!filterTipo||(c.tipos&&c.tipos.includes(filterTipo)))&&(!filterStatus||c.status===filterStatus)&&(!filterCliente||String(c.clienteNum)===String(filterCliente))&&(!filterCaso||String(c.casoNum)===String(filterCaso));}).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);});}
 // Capas antigas eram pastel; exibidas na versao solida equivalente (sem regravar o banco)
 var COVER_SOLIDO={"#bfdbfe":"#0c66e4","#fde68a":"#946f00","#bbf7d0":"#1f845a","#e9d5ff":"#8f4fbb","#fbcfe8":"#ae4787","#fecaca":"#c9372c","#99f6e4":"#227d9b","#fed7aa":"#a54800","#c7d2fe":"#5e4db2","#d9f99d":"#5b7f24","#e2e8f0":"#626f86"};
 function coverSolida(hex){var h=String(hex||"#e2e8f0").toLowerCase();return COVER_SOLIDO[h]||hex;}

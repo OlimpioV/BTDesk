@@ -85,11 +85,15 @@ function _subtarefaCamposColetar(tarefaId,campos,atual){
 }
 
 // ── TAREFAS ──
+// So envia a coluna "responsaveis" depois que ela existir no banco (detectada nas linhas lidas)
+var _tarefasTemResps=false;
 function _taskDbToCard(t){
+  if(t&&Object.prototype.hasOwnProperty.call(t,"responsaveis"))_tarefasTemResps=true;
   return {
     id:t.id,
     texto:t.texto||"",
     responsavel:t.responsavel||"",
+    responsaveis:Array.isArray(t.responsaveis)?t.responsaveis:[],
     dataInicio:t.data_inicio||"",
     dataFim:t.data_fim||"",
     status:t.status||"",
@@ -104,12 +108,13 @@ function _taskCardToDb(cardId,t,base){
     id:norm.id||uid(),
     card_id:cardId,
     texto:norm.texto||"",
-    responsavel:norm.responsavel||null,
+    responsavel:respsDe(norm)[0]||null,
     data_inicio:norm.dataInicio||null,
     data_fim:norm.dataFim||null,
     status:norm.status,
     campos_valores:norm.campos_valores||{}
   };
+  if(_tarefasTemResps)out.responsaveis=respsDe(norm);
   if(base&&base.equipe_id)out.equipe_id=base.equipe_id;
   else if(equipeAtiva&&equipeAtiva.id)out.equipe_id=equipeAtiva.id;
   else if(demandaEquipesDB&&demandaEquipesDB[cardId]&&demandaEquipesDB[cardId][0])out.equipe_id=demandaEquipesDB[cardId][0];
@@ -130,10 +135,10 @@ function refreshTarefasPanel(cardId){
   var panel=document.getElementById("tarefas-panel-"+cardId);
   if(panel)panel.innerHTML=buildTarefasHTML(card,ce);
 }
-async function addTarefa(cardId,texto,resp,di,df,st){
+async function addTarefa(cardId,f){
   var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
   var stList=statusTarefaList(false);
-  var t={id:uid(),texto:texto,responsavel:resp||"",dataInicio:di||"",dataFim:df||"",status:st||(stList[0]?stList[0].id:"pendente"),criado:new Date().toISOString(),modelo_snapshot:_snapshotSubtarefaModelo(),campos_valores:{}};
+  var t=setResps({id:uid(),texto:f.texto,dataInicio:f.dataInicio||"",dataFim:f.dataFim||"",status:f.status||(stList[0]?stList[0].id:"pendente"),criado:new Date().toISOString(),modelo_snapshot:_snapshotSubtarefaModelo(),campos_valores:{}},f.responsaveis||[]);
   await dbUpsertTarefa(_taskCardToDb(cardId,t,null));
   await loadTarefasDoCard(cardId);
   toast("Subtarefa adicionada!");refreshTarefasPanel(cardId);
@@ -156,57 +161,45 @@ async function delTarefa(cardId,tarefaId){
 }
 function _mc2(){var el=document.getElementById("modal-container2");if(!el){el=document.createElement("div");el.id="modal-container2";document.body.appendChild(el);}return el;}
 function _mc2Close(){var el=document.getElementById("modal-container2");if(el)el.innerHTML="";}
-function _buildTarefaForm(cardId,t){
-  var mc=_mc2();mc.innerHTML="";
-  var isEdit=!!t;
-  var ov=document.createElement("div");ov.className="modal-overlay";ov.style.zIndex="300";
-  ov.onclick=function(e){if(e.target===ov)_mc2Close();};
-  var box=document.createElement("div");box.className="modal-box";box.style.cssText="width:min(95vw,460px);";
-  box.onclick=function(e){e.stopPropagation();};
-  var hdr=document.createElement("div");hdr.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;";
-  var htitle=document.createElement("div");htitle.style.cssText="font-size:15px;font-weight:700;color:var(--bt-navy);font-family:var(--font-titulo);";htitle.textContent=isEdit?"Editar subtarefa":"Nova subtarefa";
-  var hclose=document.createElement("button");hclose.style.cssText="background:none;border:none;cursor:pointer;color:var(--text3);";hclose.innerHTML=ic("close");hclose.onclick=_mc2Close;
-  hdr.appendChild(htitle);hdr.appendChild(hclose);box.appendChild(hdr);
-  function mkField(lbl,inp){var f=document.createElement("div");f.className="field";var l=document.createElement("label");l.textContent=lbl;f.appendChild(l);f.appendChild(inp);return f;}
-  var inpTexto=document.createElement("input");inpTexto.id="nt-texto";inpTexto.placeholder="Descreva a subtarefa...";if(t)inpTexto.value=t.texto||"";
-  box.appendChild(mkField("Descrição *",inpTexto));
-  var selResp=document.createElement("select");selResp.id="nt-resp";
-  var o0=document.createElement("option");o0.value="";o0.textContent="Selecione...";selResp.appendChild(o0);
-  responsaveis.forEach(function(r){var o=document.createElement("option");o.value=r;o.textContent=r;if(t&&t.responsavel===r)o.selected=true;selResp.appendChild(o);});
-  box.appendChild(mkField("Responsável",selResp));
-  var grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:12px;";grid.className="field";
-  var inpDi=document.createElement("input");inpDi.type="date";inpDi.id="nt-di";if(t)inpDi.value=t.dataInicio||"";
-  var inpDf=document.createElement("input");inpDf.type="date";inpDf.id="nt-df";if(t)inpDf.value=t.dataFim||"";
-  var wdi=document.createElement("div");var ldi=document.createElement("label");ldi.textContent="Data início";wdi.appendChild(ldi);wdi.appendChild(inpDi);
-  var wdf=document.createElement("div");var ldf=document.createElement("label");ldf.textContent="Data vencimento";wdf.appendChild(ldf);wdf.appendChild(inpDf);
-  grid.appendChild(wdi);grid.appendChild(wdf);box.appendChild(grid);
-  var selSt=document.createElement("select");selSt.id="nt-status";
-  var sts=statusTarefaList(false);if(!sts.length)sts=COLS.map(function(c){return {id:c.id,nome:c.label};});
-  sts.forEach(function(col){var o=document.createElement("option");o.value=col.id;o.textContent=col.nome||col.label||col.id;if(t&&t.status===col.id)o.selected=true;selSt.appendChild(o);});
-  box.appendChild(mkField("Status",selSt));
-  var row=document.createElement("div");row.style.cssText="display:flex;gap:8px;justify-content:flex-end;";
-  if(isEdit){
-    var btnDel=document.createElement("button");btnDel.className="btn btn-danger";btnDel.textContent="Excluir";
-    btnDel.onclick=function(){_mc2Close();modalConfirm("Excluir esta subtarefa?",function(){delTarefa(cardId,t.id);});};
-    row.appendChild(btnDel);
-  }
-  var btnCancel=document.createElement("button");btnCancel.className="btn";btnCancel.textContent="Cancelar";btnCancel.onclick=_mc2Close;row.appendChild(btnCancel);
-  var btnSave=document.createElement("button");btnSave.className="btn btn-primary";btnSave.textContent="Salvar";
-  btnSave.onclick=async function(){
-    var texto=(document.getElementById("nt-texto").value||"").trim();if(!texto){toast("Informe a descrição",true);return;}
-    var fields={texto:texto,responsavel:document.getElementById("nt-resp").value,dataInicio:document.getElementById("nt-di").value,dataFim:document.getElementById("nt-df").value,status:document.getElementById("nt-status").value};
-    _mc2Close();
-    if(isEdit)await updateTarefa(cardId,t.id,fields);
-    else await addTarefa(cardId,fields.texto,fields.responsavel,fields.dataInicio,fields.dataFim,fields.status);
-  };
-  row.appendChild(btnSave);box.appendChild(row);ov.appendChild(box);mc.appendChild(ov);
-  setTimeout(function(){inpTexto.focus();},50);
+// Nova subtarefa: formulario aberto logo abaixo da lista de subtarefas do modal
+var _stNovaCard=null;
+function openAddTarefa(cardId){
+  _stNovaCard=cardId;refreshTarefasPanel(cardId);
+  var ta=document.getElementById("nt-texto");if(ta){ta.focus();ta.scrollIntoView({block:"nearest",behavior:"smooth"});}
 }
-function openAddTarefa(cardId){_buildTarefaForm(cardId,null);}
-function openEditTarefa(cardId,tarefaId){
-  var card=cards.find(function(c){return c.id===cardId;});if(!card)return;
-  var t=getTarefas(card).find(function(x){return x.id===tarefaId;});if(!t)return;
-  _buildTarefaForm(cardId,t);
+function fecharNovaTarefa(cardId){_stNovaCard=null;refreshTarefasPanel(cardId);}
+function _stNovaKd(e,cardId){
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();salvarNovaTarefa(cardId);}
+  else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();fecharNovaTarefa(cardId);}
+}
+async function salvarNovaTarefa(cardId){
+  var ta=document.getElementById("nt-texto");var texto=(ta?ta.value:"").trim();
+  if(!texto){toast("Informe a descrição",true);if(ta)ta.focus();return;}
+  var f={texto:texto,responsaveis:_stRespsLidos("nt-resps"),dataInicio:(document.getElementById("nt-di")||{}).value,dataFim:(document.getElementById("nt-df")||{}).value,status:(document.getElementById("nt-status")||{}).value};
+  var btn=document.getElementById("nt-salvar");if(btn)btn.disabled=true;
+  try{await addTarefa(cardId,f);}catch(e){toast("Erro ao adicionar",true);if(btn)btn.disabled=false;return;}
+  var ta2=document.getElementById("nt-texto");if(ta2)ta2.focus();
+}
+function _stRespChips(id,sel){
+  sel=sel||[];
+  if(!responsaveis.length)return '<div class="mt-vazio">Nenhum responsável cadastrado</div>';
+  return '<div class="mst-rchips" id="'+id+'">'+responsaveis.map(function(r){
+    return '<button type="button" class="mst-rchip'+(sel.indexOf(r)>=0?' on':'')+'" data-r="'+escHTML(r)+'" onclick="this.classList.toggle(\'on\')"><span class="mst-rav" style="background:'+(typeof _avCor==="function"?_avCor(r):"#2b76e5")+';">'+escHTML(r)+'</span>'+escHTML(r)+'</button>';
+  }).join("")+'</div>';
+}
+function _stRespsLidos(id){
+  var box=document.getElementById(id);if(!box)return [];
+  return Array.prototype.map.call(box.querySelectorAll(".mst-rchip.on"),function(b){return b.getAttribute("data-r");});
+}
+function _stNovaHTML(cid){
+  var ini=(statusTarefaList(false).find(function(s){return !s.finalizador;})||{}).id;
+  return '<div class="mst-nova" onclick="event.stopPropagation()">'
+    +'<textarea class="mt-in mt-in-ta" id="nt-texto" rows="2" placeholder="Descreva a subtarefa... (Enter adiciona, Esc fecha)" onkeydown="_stNovaKd(event,\''+cid+'\')"></textarea>'
+    +'<div class="mt-fl">Responsáveis</div>'+_stRespChips("nt-resps",[])
+    +'<div class="mst-g2"><div><div class="mt-fl">Início</div><input type="date" class="mt-in" id="nt-di"/></div><div><div class="mt-fl">Vencimento</div><input type="date" class="mt-in" id="nt-df"/></div></div>'
+    +'<div><div class="mt-fl">Status</div><select class="mt-in" id="nt-status">'+statusTarefaOptions(ini,false)+'</select></div>'
+    +'<div class="mst-ed-f"><button class="mt-btn-azul" id="nt-salvar" onclick="salvarNovaTarefa(\''+cid+'\')">Adicionar</button><button class="mt-btn-txt" onclick="fecharNovaTarefa(\''+cid+'\')">Cancelar</button></div>'
+    +'</div>';
 }
 function toggleTarefaEdit(tid){
   var ep=document.getElementById("tep-"+tid);var cv=document.getElementById("tcv-"+tid);
@@ -225,7 +218,7 @@ async function saveTarefaInline(cardId,tarefaId){
   var camposModelo=_subtarefaCampos(atual);
   var fields={
     texto:texto,
-    responsavel:document.getElementById("ti-resp-"+tarefaId).value,
+    responsaveis:_stRespsLidos("ti-resps-"+tarefaId),
     status:document.getElementById("ti-st-"+tarefaId).value,
     dataInicio:document.getElementById("ti-di-"+tarefaId).value,
     dataFim:document.getElementById("ti-df-"+tarefaId).value,
@@ -243,26 +236,29 @@ function buildTarefasHTML(card,ce){
   var tarefas=getTarefas(card);
   var today=new Date().toISOString().split("T")[0];
   var cid=card.id;
-  var feitas=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
-  var pct=tarefas.length?Math.round(feitas/tarefas.length*100):0;
-  var html='<div class="mst-h">'+ic("check")+'<h3>Subtarefas'+(tarefas.length?' <span class="mt-cont">'+feitas+'/'+tarefas.length+'</span>':'')+'</h3>'
-    +(ce?'<button class="mt-btn-sec" onclick="openAddTarefa(\''+cid+'\')">'+ic("plus")+' Adicionar</button>':'')+'</div>';
-  if(!tarefas.length)return html+'<div class="mt-vazio">Nenhuma subtarefa</div>';
-  html+='<div class="mst-prog"><span>'+pct+'%</span><div class="mst-barra"><i class="'+(pct===100?'cheia':'')+'" style="width:'+pct+'%;"></i></div></div>';
+  var pg=statusTarefaProgresso(tarefas);
+  var pct=pg.total?Math.round(pg.feitas/pg.total*100):0;
+  var compondo=ce&&_stNovaCard===cid;
+  var html='<div class="mst-h">'+ic("check")+'<h3>Subtarefas'+(pg.total?' <span class="mt-cont">'+pg.feitas+'/'+pg.total+'</span>':'')+'</h3>'
+    +(ce&&!compondo?'<button class="mt-btn-sec" onclick="openAddTarefa(\''+cid+'\')">'+ic("plus")+' Adicionar</button>':'')+'</div>';
+  if(!tarefas.length&&!compondo)return html+'<div class="mt-vazio">Nenhuma subtarefa</div>';
+  if(pg.total)html+='<div class="mst-prog"><span>'+pct+'%</span><div class="mst-barra"><i class="'+(pct===100?'cheia':'')+'" style="width:'+pct+'%;"></i></div></div>';
   tarefas.forEach(function(t){
-    var concluida=statusTarefaFinalizador(t.status);
-    var atrasada=!concluida&&t.dataFim&&t.dataFim<today;
+    var cancelada=statusTarefaCancelado(t.status);
+    var concluida=statusTarefaFeita(t.status);
+    var atrasada=!statusTarefaFinalizador(t.status)&&t.dataFim&&t.dataFim<today;
     var dateStr="";
     if(t.dataInicio||t.dataFim){
       dateStr='<span class="mst-data'+(atrasada?' atraso':'')+'">'+(t.dataInicio?statusTarefaFmtData(t.dataInicio):"")+(t.dataInicio&&t.dataFim?" → ":"")+(t.dataFim?statusTarefaFmtData(t.dataFim):"")+'</span>';
     }
-    var concEm=statusTarefaConclusaoEm(t);
-    html+='<div class="mst'+(concluida?' feita':'')+'">';
+    var concEm=concluida?statusTarefaConclusaoEm(t):"";
+    var resps=respsDe(t);
+    html+='<div class="mst'+(concluida?' feita':'')+(cancelada?' cancelada':'')+'">';
     html+='<div class="mst-row" id="tcv-'+t.id+'"'+(ce?' onclick="toggleTarefaEdit(\''+t.id+'\')"':' style="cursor:default;"')+'>';
     html+=(ce?'<input type="checkbox" class="mst-chk" title="'+(concluida?'Reabrir':'Concluir')+'"'+(concluida?' checked':'')+' onclick="event.stopPropagation()" onchange="toggleTarefaConcluida(\''+cid+'\',\''+t.id+'\',this.checked)"/>':'<span class="mst-chk-ro'+(concluida?' ok':'')+'">'+(concluida?ic("check"):'')+'</span>');
     html+='<div class="mst-c"><div class="mst-t">'+escHTML(t.texto)+'</div><div class="mst-m">';
     html+='<span class="mst-pill"><i style="background:'+statusTarefaCor(t.status,"#94a3b8")+';"></i>'+escHTML(statusTarefaLabel(t.status))+'</span>';
-    if(t.responsavel)html+='<span class="mst-resp">'+escHTML(t.responsavel)+'</span>';
+    resps.forEach(function(r){html+='<span class="mst-resp">'+escHTML(r)+'</span>';});
     html+=dateStr;
     if(concEm)html+='<span class="mst-data ok">Concluída em '+statusTarefaFmtData(concEm)+'</span>';
     html+='</div>'+_buildSubtarefaCamposPreview(t)+'</div>';
@@ -270,10 +266,10 @@ function buildTarefasHTML(card,ce){
     html+='</div>';
     if(ce){
       var sOpts=statusTarefaOptions(t.status,false);
-      var rOpts='<option value="">Sem responsável</option>'+responsaveis.map(function(r){return '<option value="'+r+'"'+(t.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
       html+='<div class="mst-ed" id="tep-'+t.id+'" style="display:none;">';
       html+='<div><div class="mt-fl">Descrição</div><input class="mt-in" id="ti-txt-'+t.id+'" value="'+escHTML(t.texto)+'"/></div>';
-      html+='<div class="mst-g2"><div><div class="mt-fl">Responsável</div><select class="mt-in" id="ti-resp-'+t.id+'">'+rOpts+'</select></div><div><div class="mt-fl">Status</div><select class="mt-in" id="ti-st-'+t.id+'">'+sOpts+'</select></div></div>';
+      html+='<div><div class="mt-fl">Responsáveis</div>'+_stRespChips("ti-resps-"+t.id,resps)+'</div>';
+      html+='<div class="mst-g2"><div><div class="mt-fl">Status</div><select class="mt-in" id="ti-st-'+t.id+'">'+sOpts+'</select></div><div></div></div>';
       html+='<div class="mst-g2"><div><div class="mt-fl">Início</div><input type="date" class="mt-in" id="ti-di-'+t.id+'" value="'+(t.dataInicio||"")+'"/></div><div><div class="mt-fl">Vencimento</div><input type="date" class="mt-in" id="ti-df-'+t.id+'" value="'+(t.dataFim||"")+'"/></div></div>';
       html+=_buildSubtarefaCamposEdit(t);
       html+='<div class="mst-ed-f"><button class="mt-btn-del" onclick="modalConfirm(\'Excluir esta subtarefa?\',function(){delTarefa(\''+cid+'\',\''+t.id+'\');})">Excluir</button><button class="mt-btn-azul" onclick="saveTarefaInline(\''+cid+'\',\''+t.id+'\')">Salvar</button></div>';
@@ -281,12 +277,13 @@ function buildTarefasHTML(card,ce){
     }
     html+='</div>';
   });
+  if(compondo)html+=_stNovaHTML(cid);
   return html;
 }
-// Caixa de selecao da subtarefa: marca com o primeiro status finalizador; desmarca para "em andamento" (ou o primeiro nao finalizador)
+// Caixa de selecao da subtarefa: marca com o status de conclusao (nunca o de cancelada); desmarca para "em andamento"
 async function toggleTarefaConcluida(cardId,tarefaId,marcar){
   var sts=statusTarefaList(false);
-  var alvo=marcar?sts.find(function(s){return s.finalizador;}):(sts.find(function(s){return !s.finalizador&&/andamento/i.test(s.nome||s.id);})||sts.find(function(s){return !s.finalizador;}));
+  var alvo=marcar?sts.find(function(s){return s.finalizador&&!statusTarefaCancelado(s.id);}):(sts.find(function(s){return !s.finalizador&&/andamento/i.test(s.nome||s.id);})||sts.find(function(s){return !s.finalizador;}));
   if(!alvo){toast("Nenhum status disponível",true);refreshTarefasPanel(cardId);return;}
   try{await updateTarefa(cardId,tarefaId,{status:alvo.id});}catch(e){toast("Erro",true);refreshTarefasPanel(cardId);}
 }
@@ -329,7 +326,7 @@ async function verificarAlertasPrazos(){
   }
   getFiltered().forEach(function(card){
     getTarefas(card).forEach(function(t){
-      if(t.responsavel!==sigla||_mtIsDone(t)||!t.dataFim)return;
+      if(respsDe(t).indexOf(sigla)<0||_mtIsDone(t)||!t.dataFim)return;
       if(t.dataFim<hoje)addAviso("atrasada",t.texto,card.titulo||"Demanda",t.dataFim);
       else if(t.dataFim===hoje||t.dataFim===amanha)addAviso("vencendo",t.texto,card.titulo||"Demanda",t.dataFim);
     });
@@ -340,7 +337,7 @@ async function verificarAlertasPrazos(){
     var rMap={};reunioes.forEach(function(r){rMap[r.id]=r;});
     var tarefas=await dbFetchTodasTarefas();
     tarefas.forEach(function(t){
-      if(t.parent_id||!t.reuniao_id||t.responsavel!==sigla||_mtIsDone(t)||!t.data_fim)return;
+      if(t.parent_id||!t.reuniao_id||respsDe(t).indexOf(sigla)<0||_mtIsDone(t)||!t.data_fim)return;
       if(eqId&&t.equipe_id&&t.equipe_id!==eqId)return;
       var r=rMap[t.reuniao_id]||null;
       if(!r)return;
@@ -435,7 +432,7 @@ async function renderMinhasTarefas(){
   var itens=[];
   getFiltered().forEach(function(card){
     getTarefas(card).forEach(function(t){
-      if(sigla&&t.responsavel!==sigla)return;
+      if(sigla&&respsDe(t).indexOf(sigla)<0)return;
       itens.push({origem:"Demanda",texto:t.texto||"Subtarefa sem descricao",contexto:card.titulo||"Demanda",status:t.status,prazo:t.dataFim,acao:'<button onclick="openCardModal(\''+card.id+'\')" class="rbtn rbtn-sm">Abrir</button>'});
     });
   });
@@ -443,7 +440,7 @@ async function renderMinhasTarefas(){
     var reunioes=await dbFetchReunioes(eqId);
     var rMap={};reunioes.forEach(function(r){rMap[r.id]=r;});
     var tarefas=await dbFetchTodasTarefas();
-    tarefas.filter(function(t){return !t.parent_id&&t.reuniao_id&&(!sigla||t.responsavel===sigla)&&(!eqId||t.equipe_id===eqId);}).forEach(function(t){
+    tarefas.filter(function(t){return !t.parent_id&&t.reuniao_id&&(!sigla||respsDe(t).indexOf(sigla)>=0)&&(!eqId||t.equipe_id===eqId);}).forEach(function(t){
       var r=rMap[t.reuniao_id]||null;
       if(!r&&t.reuniao_id)return;
       itens.push({origem:"Reuniao",texto:t.texto||"Tarefa sem titulo",contexto:r?(r.titulo||("Reuniao de "+_mtFmtDate(r.data))):"Sem reuniao",status:t.status,prazo:t.data_fim,acao:r?'<button onclick="_mtAbrirReuniao(\''+r.id+'\')" class="rbtn rbtn-sm">Abrir</button>':""});

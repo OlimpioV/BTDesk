@@ -68,8 +68,8 @@ function buildLabels(card){if(!card.tipos||!card.tipos.length)return "";var exp=
 function renderView(){if(viewMode==="lista")renderLista();else renderKanban();}
 function taskChipHTML(card){
   var tarefas=getTarefas(card);if(!tarefas.length)return "";
-  var total=tarefas.length;
-  var done=tarefas.filter(function(t){return statusTarefaFinalizador(t.status);}).length;
+  var pg=statusTarefaProgresso(tarefas),total=pg.total,done=pg.feitas;
+  if(!total)return "";
   return '<span class="bdg'+(done===total?' bdg-ok':'')+'" title="Subtarefas concluídas">'+ic("check")+done+"/"+total+"</span>";
 }
 var _MESES_CURTOS=["jan.","fev.","mar.","abr.","mai.","jun.","jul.","ago.","set.","out.","nov.","dez."];
@@ -87,7 +87,8 @@ function buildCardHTML(card,ce){
   var sub=num||cn?'<div class="card-sub">'+escHTML(num+(num&&cn?" · ":"")+cn)+'</div>':"";
   var tit='<div class="card-title'+(ok?' card-title-ok':'')+'" id="ct-'+card.id+'">'+escHTML(card.titulo)+'</div>';
   if(ok)tit='<div class="card-title-wrap">'+ic("check")+tit+'</div>';
-  var resp=card.responsavel?'<span class="card-membro" title="'+escHTML(card.responsavel)+'" style="background:'+(typeof _avCor==="function"?_avCor(card.responsavel):"#2b76e5")+';">'+escHTML(card.responsavel)+'</span>':"";
+  var rs=respsDe(card);
+  var resp=rs.length?'<span class="card-membros" title="'+escHTML(rs.join(", "))+'">'+rs.slice(0,3).map(function(r){return '<span class="card-membro" style="background:'+(typeof _avCor==="function"?_avCor(r):"#2b76e5")+';">'+escHTML(r)+'</span>';}).join("")+(rs.length>3?'<span class="card-membro card-membro-mais">+'+(rs.length-3)+'</span>':'')+'</span>':"";
   var badges=_prazoBadgeHTML(card)
     +(card.obs?'<span class="bdg" title="Tem observações">'+ic("desc")+'</span>':"")
     +taskChipHTML(card)
@@ -217,7 +218,7 @@ function renderLista(){
       +'<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--bt-navy);">'+escHTML(card.titulo)+_demandaListaResumo(card)+'</td>'
       +'<td style="padding:11px 14px;">'+sp+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+ccTd+'</td>'
-      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(card.responsavel||"-")+'</td>'
+      +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);">'+(respsDe(card).join(", ")||"-")+'</td>'
       +'<td style="padding:11px 14px;">'+(card.tipos&&card.tipos.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;">'+tipoTagsHTML(card.tipos)+'</div>':"-")+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataInicio||"-")+'</td>'
       +'<td style="padding:11px 14px;font-size:12px;color:var(--text2);white-space:nowrap;">'+(card.dataFim||"-")+'</td>'
@@ -271,7 +272,7 @@ async function _qaAddSalvar(colId){
   var col=COLS.find(function(c){return c.id===colId;});
   // advogado so enxerga demandas em que e o responsavel (RLS), entao o cartao ja nasce com a sigla dele
   var resp=perfil==="advogado"?_mtUserSigla():"";
-  var card={id:Date.now().toString(),titulo:titulo,clienteNum:null,casoNum:null,responsavel:resp,status:colId,email:"",dataInicio:"",dataFim:"",horas:"",obs:"",tipos:[],comentarios:[],
+  var card={id:Date.now().toString(),titulo:titulo,clienteNum:null,casoNum:null,responsavel:resp,responsaveis:resp?[resp]:[],status:colId,email:"",dataInicio:"",dataFim:"",horas:"",obs:"",tipos:[],comentarios:[],
     modelo_snapshot:_snapshotDemandaModelo(),campos_valores:{},ordem:_qaFimDaColuna(colId),coverColor:(col&&col.cover)||"#e2e8f0"};
   cards.push(card);
   if(equipeAtiva){if(!demandaEquipesDB[card.id])demandaEquipesDB[card.id]=[];demandaEquipesDB[card.id].push(equipeAtiva.id);}
@@ -285,7 +286,7 @@ async function _qaAddSalvar(colId){
 
 // Menu de acoes
 var _QA_ITENS=[
-  ["open","Abrir cartão","_qaAbrir()"],["tag","Editar etiquetas","_qaSub(event,'etq')"],["user","Alterar responsável","_qaSub(event,'resp')"],
+  ["open","Abrir cartão","_qaAbrir()"],["tag","Editar etiquetas","_qaSub(event,'etq')"],["user","Alterar responsáveis","_qaSub(event,'resp')"],
   ["palette","Alterar capa","_qaSub(event,'capa')"],["clock","Editar datas","_qaSub(event,'datas')"],["move","Mover","_qaSub(event,'mover')"],
   ["copy","Copiar cartão","_qaSub(event,'copiar')"],["link","Copiar link","_qaLink()"],["archive","Arquivar","_qaArquivar()"]
 ];
@@ -318,7 +319,8 @@ function _qaSub(e,tipo){
   if(tipo==="etq"){
     h='<div class="qa-sub-h">Etiquetas</div>'+(TIPOS.length?TIPOS.map(function(t){var c=TC[t]||PALETA[0];return '<label class="qa-op"><input type="checkbox"'+((card.tipos||[]).includes(t)?' checked':'')+' onchange="_qaToggleEtq(\''+escQ(t)+'\')"/><span class="qa-chip" style="background:'+c.border+';">'+escHTML(t)+'</span></label>';}).join(""):'<div class="qa-vazio">Nenhuma etiqueta cadastrada</div>');
   }else if(tipo==="resp"){
-    h='<div class="qa-sub-h">Responsável</div><div class="qa-li'+(card.responsavel?'':' sel')+'" onclick="_qaSetResp(\'\')">Sem responsável</div>'+responsaveis.map(function(r){return '<div class="qa-li'+(card.responsavel===r?' sel':'')+'" onclick="_qaSetResp(\''+escQ(r)+'\')"><span class="qa-av" style="background:'+(typeof _avCor==="function"?_avCor(r):"#2b76e5")+';">'+escHTML(r)+'</span>'+escHTML(r)+'</div>';}).join("");
+    var rs=respsDe(card);
+    h='<div class="qa-sub-h">Responsáveis</div>'+(responsaveis.map(function(r){var on=rs.indexOf(r)>=0;return '<label class="qa-li'+(on?' sel':'')+'"><input type="checkbox"'+(on?' checked':'')+' onchange="_qaToggleResp(\''+escQ(r)+'\',this)"/><span class="qa-av" style="background:'+(typeof _avCor==="function"?_avCor(r):"#2b76e5")+';">'+escHTML(r)+'</span>'+escHTML(r)+'</label>';}).join("")||'<div class="qa-vazio">Nenhum responsável cadastrado</div>');
   }else if(tipo==="capa"){
     h='<div class="qa-sub-h">Capa</div><div class="qa-cores">'+COL_COLORS.map(function(cc){return '<button class="qa-cor'+(card.coverColor===cc.cover?' sel':'')+'" style="background:'+coverSolida(cc.cover)+';" onclick="_qaSetCapa(\''+cc.cover+'\')"></button>';}).join("")+'</div><button class="qa-btn-sec" onclick="_qaSetCapa(null)">Remover cor</button>';
   }else if(tipo==="datas"){
@@ -346,7 +348,7 @@ async function _qaSalvar(card,fechar,msg){
   try{await dbUpsert(card);if(msg)toast(msg);}catch(e){toast("Erro ao salvar",true);}
 }
 function _qaToggleEtq(t){var card=_qaGet();if(!card)return;card.tipos=card.tipos||[];var i=card.tipos.indexOf(t);if(i>=0)card.tipos.splice(i,1);else card.tipos.push(t);_qaSalvar(card,false);}
-function _qaSetResp(r){var card=_qaGet();if(!card)return;card.responsavel=r||null;_qaSalvar(card,true,"Responsável alterado");}
+function _qaToggleResp(r,el){var card=_qaGet();if(!card)return;var l=respsDe(card),i=l.indexOf(r);if(i>=0)l.splice(i,1);else l.push(r);setResps(card,l);var li=el&&el.closest(".qa-li");if(li)li.classList.toggle("sel",l.indexOf(r)>=0);_qaSalvar(card,false);}
 function _qaSetCapa(cor){var card=_qaGet();if(!card)return;card.coverColor=cor||null;_qaSalvar(card,true);}
 function _qaSetDatas(remover){var card=_qaGet();if(!card)return;var i=document.getElementById("qa-ini"),f=document.getElementById("qa-fim");card.dataInicio=remover?null:((i&&i.value)||null);card.dataFim=remover?null:((f&&f.value)||null);_qaSalvar(card,true,"Datas salvas");}
 function _qaMover(colId){var card=_qaGet();if(!card)return;if(card.status===colId){fecharMenuCard();return;}card.ordem=_qaFimDaColuna(colId,card.id);card.status=colId;var col=COLS.find(function(c){return c.id===colId;});_qaSalvar(card,true,"Movido para "+(col?col.label:"outra coluna"));}
@@ -370,7 +372,7 @@ async function _qaCopiar(){
       var subs=getTarefas(orig);
       for(var i=0;i<subs.length;i++){
         var t=subs[i];var cv=Object.assign({},t.campos_valores||{});delete cv.concluida_em;
-        await dbUpsertTarefa(_taskCardToDb(novo.id,{id:uid(),texto:t.texto,responsavel:t.responsavel,dataInicio:t.dataInicio,dataFim:t.dataFim,status:inicial||t.status,criado:new Date().toISOString(),modelo_snapshot:t.modelo_snapshot,campos_valores:cv},null));
+        await dbUpsertTarefa(_taskCardToDb(novo.id,{id:uid(),texto:t.texto,responsavel:t.responsavel,responsaveis:respsDe(t),dataInicio:t.dataInicio,dataFim:t.dataFim,status:inicial||t.status,criado:new Date().toISOString(),modelo_snapshot:t.modelo_snapshot,campos_valores:cv},null));
       }
       await loadTarefasDoCard(novo.id);
     }

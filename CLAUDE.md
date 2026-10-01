@@ -64,7 +64,9 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 ## Tabelas Supabase (estado atual)
 
 - `demandas(id, data jsonb)` — cards como JSON blob; row especial `id="__cols__"` guarda config das colunas. Card arquivado tem `data.arquivado=true` e `data.arquivadoEm` (ISO); `getFiltered()` (ui.js) e o pool de pendências de reuniões ignoram arquivados, e eles só aparecem na tela "Arquivados" do kanban (restaurar/excluir)
-- `tarefas(id, card_id, texto, responsavel, data_inicio, data_fim, status, criado_em)`
+- `tarefas(id, card_id, texto, responsavel, responsaveis text[], data_inicio, data_fim, status, criado_em)` — `responsaveis` (01/10/2026) guarda a lista; `responsavel` continua com o primeiro (reuniões ainda leem só ele). Use `respsDe()`/`setResps()` (ui.js) para ler/gravar
+- Demandas também têm `data.responsaveis` (array) com `data.responsavel` = primeiro, pelo mesmo motivo
+- Status de subtarefa "Cancelada" (antigo "Bloqueada", id `bloqueada`): é finalizador, mas não conta como feita. Progresso via `statusTarefaProgresso()`; checagens de "feita" via `statusTarefaFeita()`
 - `usuarios(id, nome, email, senha, perfil, sigla, ativo, auth_id)` — `senha` está sempre nula desde a migração para Supabase Auth (28/08/2026); autenticação real é via `auth.users`, ligada por `auth_id`. Nunca reintroduzir comparação de senha em texto plano nesta tabela
 - `clientes(id, numero, nome)`
 - `casos(id, numero, cliente_id, descricao, nome_consulta, objeto, situacao)`
@@ -110,7 +112,7 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 - Autenticação via Supabase Auth real (`/auth/v1/token`), não mais senha em texto plano. `H` (config.js) é mutado em memória após login/refresh (`H.Authorization = "Bearer "+access_token`); nenhuma das funções de `db.js` precisa saber disso, todas reusam `H` por referência
 - `checkAuth()` (app.js) é assíncrona, restaura sessão de `sessionStorage` e dispara refresh se expirada; `refreshSession()`/`setSession()`/`clearSession()` centralizam o ciclo de vida do token; há wrapper em `window.fetch` para retry automático em 401
 - RLS real habilitado em todas as tabelas (28/08/2026): `mestre` acesso total, `advogado` escopado por equipe (via `equipe_membros`/`demanda_equipes`/`equipe_id`, com `equipe_id IS NULL` = visível a todas as equipes), `cliente` leitura sem recorte por cliente específico. Helpers SQL `is_mestre()`, `minhas_equipes()`, `usuario_ativo()`, `pode_editar()` no schema `public`
-- Exceção (31/08/2026): a tabela `demandas` NÃO segue mais o escopo por equipe. `advogado` só vê demandas onde `data->>'responsavel'` bate com a própria sigla (`minha_sigla()`); `cliente` continua sem recorte; `mestre` continua vendo tudo. `demanda_equipes` deixou de ser o critério de visibilidade de `demandas`, mas a tabela e seu vínculo continuam sendo gravados normalmente pelo `saveCard()`. Helpers `meu_perfil()`, `minha_sigla()` no schema `public`
+- Exceção (31/08/2026): a tabela `demandas` NÃO segue mais o escopo por equipe. `advogado` só vê demandas onde `data->>'responsavel'` bate com a própria sigla (`minha_sigla()`) ou onde a sigla está em `data->'responsaveis'` (01/10/2026, políticas `demandas_select` e `demandas_write`); `cliente` continua sem recorte; `mestre` continua vendo tudo. `demanda_equipes` deixou de ser o critério de visibilidade de `demandas`, mas a tabela e seu vínculo continuam sendo gravados normalmente pelo `saveCard()`. Helpers `meu_perfil()`, `minha_sigla()` no schema `public`
 - Gestão de usuários (`pages.js`: `saveUser`/`delUser`) cria/atualiza/remove a conta correspondente no Supabase Auth via a Edge Function `admin-usuarios` (só aceita chamadas de um `mestre` autenticado)
 
 ## Funcionalidades já implementadas
