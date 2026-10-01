@@ -244,7 +244,7 @@ function renderModal(){
   // Capa: status a esquerda, cor/excluir/fechar a direita
   var statusEl='<label class="mt-status" id="mstatus"'+(ce?'':' style="cursor:default;"')+'><span class="mt-status-dot" style="background:'+col.dot+';"></span>'+col.label+(ce?ic("chevdown")+'<select aria-label="Status" onchange="updateStatus(\''+id+'\',this.value)">'+sO+'</select>':'')+'</label>';
   var capa='<div class="mt-capa" id="mcover" style="background:'+cv+';">'+statusEl+'<div class="mt-capa-acoes">'
-    +(ce?'<button class="mt-ib" title="Cor da capa" onclick="openCoverPicker(\''+id+'\')">'+ic("palette")+'</button><button class="mt-ib mt-ib-del" title="Excluir demanda" onclick="confirmDelCard(\''+id+'\')">'+ic("trash")+'</button>':'')
+    +(ce?'<button class="mt-ib" title="Cor da capa" onclick="openCoverPicker(\''+id+'\')">'+ic("palette")+'</button><button class="mt-ib" title="Arquivar" onclick="var c=modalCardId;closeModal();arquivarCard(c);">'+ic("archive")+'</button><button class="mt-ib mt-ib-del" title="Excluir demanda" onclick="confirmDelCard(\''+id+'\')">'+ic("trash")+'</button>':'')
     +'<button class="mt-ib" title="Fechar" onclick="closeModal()">'+ic("close")+'</button></div></div>';
 
   // Titulo com circulo de concluir

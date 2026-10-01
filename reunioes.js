@@ -2479,7 +2479,7 @@ async function _coletarPendenciasPool(reuniaoId,anterior,tarefasAnterior){
     if(!tarefasDB||!Object.keys(tarefasDB).length)await loadTodasTarefas();
   }catch(_){}
   (cards||[]).filter(function(card){
-    if(!card||card.id==="__cols__")return false;
+    if(!card||card.id==="__cols__"||card.arquivado)return false;
     if(equipeAtiva&&!(demandaEquipesDB[card.id]||[]).includes(equipeAtiva.id))return false;
     return true;
   }).forEach(function(card){

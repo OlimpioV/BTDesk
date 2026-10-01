@@ -93,7 +93,7 @@ function buildCardHTML(card,ce){
     +taskChipHTML(card)
     +(card.horas?'<span class="bdg" title="Horas">'+ic("hourglass")+card.horas+'h</span>':"")
     +resp;
-  return '<div class="card-item'+(ok?' card-ok':'')+'" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')">'+'<div class="card-cover" style="background:'+cv+';"></div>'+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+tit+sub+'<div class="card-badges">'+badges+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
+  return '<div class="card-item'+(ok?' card-ok':'')+'" id="card-'+card.id+'" draggable="'+(ce?"true":"false")+'"'+(ce?' ondragstart="onDragStart(event,\''+card.id+'\')" ondragend="onDragEnd(event,\''+card.id+'\')"':"")+' onclick="openCardModal(\''+card.id+'\')"'+(ce?' oncontextmenu="abrirMenuCard(event,\''+card.id+'\')"':'')+'>'+'<div class="card-cover" style="background:'+cv+';"></div>'+(ce?'<button class="card-lapis" title="Ações do cartão" draggable="false" onclick="abrirMenuCard(event,\''+card.id+'\')">'+ic("edit")+'</button>':'')+'<div class="card-body">'+(labels?'<div class="card-labels" id="clb-'+card.id+'">'+labels+'</div>':"")+tit+sub+'<div class="card-badges">'+badges+'</div><div class="card-cmts" id="cc-'+card.id+'" draggable="false" onclick="event.stopPropagation()">'+buildCardComments(card)+'</div></div></div>';
 }
 
 // ── COMENTARIOS INLINE NO CARD ──
@@ -190,12 +190,17 @@ function renderKanban(){
     return '<div class="col-wrap">'+header
       +'<div class="col-cards drop-zone" id="col-cards-'+col.id+'"'
       +' ondragover="onColDragOver(event,\''+col.id+'\')" ondrop="onColDrop(event,\''+col.id+'\')" ondragleave="onColDragLeave(event,\''+col.id+'\')">'
-      +inner+'</div></div>';
+      +inner+'</div>'
+      +(!porPrazo&&ce?'<div class="col-foot" id="col-foot-'+col.id+'">'+_qaAddFootHTML(col.id)+'</div>':'')
+      +'</div>';
   }).join("");
   var addBtn=(!porPrazo&&isMestre)?'<button class="add-col-btn" onclick="addColuna()">'+ic('plus')+' Adicionar coluna</button>':"";
+  var nArq=ce?cards.filter(function(c){return c.arquivado&&(!equipeAtiva||(demandaEquipesDB[c.id]||[]).includes(equipeAtiva.id));}).length:0;
+  var arqBtn=nArq?'<button class="arq-btn" onclick="abrirArquivados()">'+ic('archive')+' Arquivados ('+nArq+')</button>':"";
   var app=document.getElementById("app");app.className="kanban-mode";
-  app.innerHTML=headerHTML("kanban")+toolbarHTML(ce)+'<div class="board-outer"><div class="board-inner">'+colsHtml+addBtn+'</div></div>';
+  app.innerHTML=headerHTML("kanban")+toolbarHTML(ce)+'<div class="board-outer"><div class="board-inner">'+colsHtml+(addBtn||arqBtn?'<div class="board-extra">'+addBtn+arqBtn+'</div>':'')+'</div></div>';
   bindFCI();
+  if(_qaAddCol){var ta=document.getElementById("qa-add-ta");if(ta)ta.focus();}
 }
 
 // LISTA
@@ -229,6 +234,206 @@ function toggleListaRow(cardId){
   if(!row)return;
   var isOpen=row.style.display!=="none";
   row.style.display=isOpen?"none":"table-row";
+}
+
+// ── ACOES DO CARD (menu do lapis / clique direito, adicionar cartao, arquivar, copiar) ──
+var _qaAddCol=null,_qaCard=null;
+function _qaGet(){return cards.find(function(c){return c.id===_qaCard;});}
+function _qaRefreshKanban(){if(document.querySelector("#app.kanban-mode"))renderKanban();}
+async function _qaVincularEquipes(cardId,equipeIds){
+  for(var i=0;i<equipeIds.length;i++){
+    try{await dbUpsertDemandaEquipe({demanda_id:cardId,equipe_id:equipeIds[i]});}catch(_){}
+    if(!demandaEquipesDB[cardId])demandaEquipesDB[cardId]=[];
+    if(!demandaEquipesDB[cardId].includes(equipeIds[i]))demandaEquipesDB[cardId].push(equipeIds[i]);
+  }
+}
+function _qaFimDaColuna(colId,excetoId){return cards.filter(function(c){return c.status===colId&&c.id!==excetoId;}).length;}
+
+// Adicionar um cartao (rodape da coluna)
+function _qaAddFootHTML(colId){
+  if(_qaAddCol===colId)return '<textarea id="qa-add-ta" class="qa-add-ta" rows="2" placeholder="Insira um título para este cartão..." onkeydown="_qaAddKd(event,\''+colId+'\')"></textarea><div class="qa-add-acts"><button class="qa-btn-azul" onclick="_qaAddSalvar(\''+colId+'\')">Adicionar cartão</button><button class="qa-x" title="Cancelar" onclick="_qaAddFechar()">'+ic("close")+'</button></div>';
+  return '<button class="qa-add-btn" onclick="_qaAddAbrir(\''+colId+'\')">'+ic("plus")+' Adicionar um cartão</button>';
+}
+function _qaRefreshFoots(){COLS.forEach(function(c){var el=document.getElementById("col-foot-"+c.id);if(el)el.innerHTML=_qaAddFootHTML(c.id);});}
+function _qaAddAbrir(colId){
+  _qaAddCol=colId;_qaRefreshFoots();
+  var ta=document.getElementById("qa-add-ta");if(ta)ta.focus();
+  var cc=document.getElementById("col-cards-"+colId);if(cc)cc.scrollTop=cc.scrollHeight;
+}
+function _qaAddFechar(){_qaAddCol=null;_qaRefreshFoots();}
+function _qaAddKd(e,colId){
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();_qaAddSalvar(colId);}
+  else if(e.key==="Escape"){e.preventDefault();_qaAddFechar();}
+}
+async function _qaAddSalvar(colId){
+  var ta=document.getElementById("qa-add-ta");var titulo=(ta?ta.value:"").trim();
+  if(!titulo){if(ta)ta.focus();return;}
+  var col=COLS.find(function(c){return c.id===colId;});
+  // advogado so enxerga demandas em que e o responsavel (RLS), entao o cartao ja nasce com a sigla dele
+  var resp=perfil==="advogado"?_mtUserSigla():"";
+  var card={id:Date.now().toString(),titulo:titulo,clienteNum:null,casoNum:null,responsavel:resp,status:colId,email:"",dataInicio:"",dataFim:"",horas:"",obs:"",tipos:[],comentarios:[],
+    modelo_snapshot:_snapshotDemandaModelo(),campos_valores:{},ordem:_qaFimDaColuna(colId),coverColor:(col&&col.cover)||"#e2e8f0"};
+  cards.push(card);
+  if(equipeAtiva){if(!demandaEquipesDB[card.id])demandaEquipesDB[card.id]=[];demandaEquipesDB[card.id].push(equipeAtiva.id);}
+  renderKanban();
+  var cc=document.getElementById("col-cards-"+colId);if(cc)cc.scrollTop=cc.scrollHeight;
+  try{
+    await dbUpsert(card);await dbLog("Criou demanda",titulo);
+    if(equipeAtiva)await _qaVincularEquipes(card.id,[equipeAtiva.id]);
+  }catch(e){toast("Erro ao salvar o cartão",true);}
+}
+
+// Menu de acoes
+var _QA_ITENS=[
+  ["open","Abrir cartão","_qaAbrir()"],["tag","Editar etiquetas","_qaSub(event,'etq')"],["user","Alterar responsável","_qaSub(event,'resp')"],
+  ["palette","Alterar capa","_qaSub(event,'capa')"],["clock","Editar datas","_qaSub(event,'datas')"],["move","Mover","_qaSub(event,'mover')"],
+  ["copy","Copiar cartão","_qaSub(event,'copiar')"],["link","Copiar link","_qaLink()"],["archive","Arquivar","_qaArquivar()"]
+];
+function abrirMenuCard(e,cid){
+  e.preventDefault();e.stopPropagation();
+  fecharMenuCard();
+  var el=document.getElementById("card-"+cid);if(!el)return;
+  _qaCard=cid;
+  var r=el.getBoundingClientRect();
+  var layer=document.createElement("div");layer.id="qa-layer";layer.className="qa-layer";
+  layer.onclick=function(ev){if(ev.target===layer)fecharMenuCard();};
+  layer.oncontextmenu=function(ev){ev.preventDefault();if(ev.target===layer)fecharMenuCard();};
+  layer.innerHTML='<div class="qa-foco" style="left:'+r.left+'px;top:'+r.top+'px;width:'+r.width+'px;height:'+r.height+'px;"></div>'
+    +'<div class="qa-menu" id="qa-menu">'+_QA_ITENS.map(function(it){return '<button class="qa-item" onclick="'+it[2]+'">'+ic(it[0])+it[1]+'</button>';}).join("")+'</div>'
+    +'<div class="qa-sub" id="qa-sub" onclick="event.stopPropagation()"></div>';
+  document.body.appendChild(layer);
+  var m=document.getElementById("qa-menu"),mw=m.offsetWidth,mh=m.offsetHeight;
+  var left=r.right+8;if(left+mw>innerWidth-8)left=Math.max(8,r.left-mw-8);
+  var top=Math.min(r.top,innerHeight-mh-8);if(top<8)top=8;
+  m.style.left=left+"px";m.style.top=top+"px";
+}
+function fecharMenuCard(){var l=document.getElementById("qa-layer");if(l)l.remove();_qaCard=null;}
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&document.getElementById("qa-layer"))fecharMenuCard();});
+function _qaAbrir(){var cid=_qaCard;fecharMenuCard();openCardModal(cid);}
+function _qaSub(e,tipo){
+  e.stopPropagation();
+  var card=_qaGet();if(!card)return;
+  var sub=document.getElementById("qa-sub"),btn=e.currentTarget;
+  var h="";
+  if(tipo==="etq"){
+    h='<div class="qa-sub-h">Etiquetas</div>'+(TIPOS.length?TIPOS.map(function(t){var c=TC[t]||PALETA[0];return '<label class="qa-op"><input type="checkbox"'+((card.tipos||[]).includes(t)?' checked':'')+' onchange="_qaToggleEtq(\''+escQ(t)+'\')"/><span class="qa-chip" style="background:'+c.border+';">'+escHTML(t)+'</span></label>';}).join(""):'<div class="qa-vazio">Nenhuma etiqueta cadastrada</div>');
+  }else if(tipo==="resp"){
+    h='<div class="qa-sub-h">Responsável</div><div class="qa-li'+(card.responsavel?'':' sel')+'" onclick="_qaSetResp(\'\')">Sem responsável</div>'+responsaveis.map(function(r){return '<div class="qa-li'+(card.responsavel===r?' sel':'')+'" onclick="_qaSetResp(\''+escQ(r)+'\')"><span class="qa-av" style="background:'+(typeof _avCor==="function"?_avCor(r):"#2b76e5")+';">'+escHTML(r)+'</span>'+escHTML(r)+'</div>';}).join("");
+  }else if(tipo==="capa"){
+    h='<div class="qa-sub-h">Capa</div><div class="qa-cores">'+COL_COLORS.map(function(cc){return '<button class="qa-cor'+(card.coverColor===cc.cover?' sel':'')+'" style="background:'+coverSolida(cc.cover)+';" onclick="_qaSetCapa(\''+cc.cover+'\')"></button>';}).join("")+'</div><button class="qa-btn-sec" onclick="_qaSetCapa(null)">Remover cor</button>';
+  }else if(tipo==="datas"){
+    h='<div class="qa-sub-h">Datas</div><div class="qa-fl">Início</div><input type="date" class="qa-in" id="qa-ini" value="'+(card.dataInicio||"")+'"/><div class="qa-fl">Encerramento</div><input type="date" class="qa-in" id="qa-fim" value="'+(card.dataFim||"")+'"/><div class="qa-acts"><button class="qa-btn-azul" onclick="_qaSetDatas(false)">Salvar</button><button class="qa-btn-sec" onclick="_qaSetDatas(true)">Remover</button></div>';
+  }else if(tipo==="mover"){
+    h='<div class="qa-sub-h">Mover para</div>'+[].concat(COLS).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);}).map(function(c){return '<div class="qa-li'+(card.status===c.id?' sel':'')+'" onclick="_qaMover(\''+c.id+'\')"><span class="qa-dot" style="background:'+c.dot+';"></span>'+escHTML(c.label)+(card.status===c.id?' <small>(atual)</small>':'')+'</div>';}).join("");
+  }else if(tipo==="copiar"){
+    var nSub=getTarefas(card).length;
+    h='<div class="qa-sub-h">Copiar cartão</div><div class="qa-fl">Título</div><textarea class="qa-in qa-ta" id="qa-cp-tit" rows="2">'+escHTML(card.titulo)+'</textarea>'
+      +'<div class="qa-fl">Manter</div><label class="qa-op"><input type="checkbox" id="qa-cp-sub"'+(nSub?'':' disabled')+'/> Subtarefas ('+nSub+')</label>'
+      +'<div class="qa-dica">Sem marcar, copia só a estrutura do cartão: título, cliente, caso, responsável, datas, horas, observações, etiquetas, capa e campos. Comentários não são copiados.</div>'
+      +'<div class="qa-fl">Coluna</div><select class="qa-in" id="qa-cp-col">'+[].concat(COLS).sort(function(a,b){return (a.ordem||0)-(b.ordem||0);}).map(function(c){return '<option value="'+c.id+'"'+(card.status===c.id?' selected':'')+'>'+escHTML(c.label)+'</option>';}).join("")+'</select>'
+      +'<div class="qa-acts"><button class="qa-btn-azul" onclick="_qaCopiar()">Criar cartão</button></div>';
+  }
+  sub.innerHTML=h;sub.classList.add("on");
+  var m=document.getElementById("qa-menu").getBoundingClientRect(),b=btn.getBoundingClientRect(),sw=sub.offsetWidth,sh=sub.offsetHeight;
+  var left=m.right+8;if(left+sw>innerWidth-8)left=Math.max(8,m.left-sw-8);
+  var top=Math.min(b.top,innerHeight-sh-8);if(top<8)top=8;
+  sub.style.left=left+"px";sub.style.top=top+"px";
+  var f=sub.querySelector("textarea,input[type=date]");if(f&&tipo==="copiar"){f.focus();f.select();}
+}
+async function _qaSalvar(card,fechar,msg){
+  if(fechar)fecharMenuCard();
+  _qaRefreshKanban();
+  try{await dbUpsert(card);if(msg)toast(msg);}catch(e){toast("Erro ao salvar",true);}
+}
+function _qaToggleEtq(t){var card=_qaGet();if(!card)return;card.tipos=card.tipos||[];var i=card.tipos.indexOf(t);if(i>=0)card.tipos.splice(i,1);else card.tipos.push(t);_qaSalvar(card,false);}
+function _qaSetResp(r){var card=_qaGet();if(!card)return;card.responsavel=r||null;_qaSalvar(card,true,"Responsável alterado");}
+function _qaSetCapa(cor){var card=_qaGet();if(!card)return;card.coverColor=cor||null;_qaSalvar(card,true);}
+function _qaSetDatas(remover){var card=_qaGet();if(!card)return;var i=document.getElementById("qa-ini"),f=document.getElementById("qa-fim");card.dataInicio=remover?null:((i&&i.value)||null);card.dataFim=remover?null:((f&&f.value)||null);_qaSalvar(card,true,"Datas salvas");}
+function _qaMover(colId){var card=_qaGet();if(!card)return;if(card.status===colId){fecharMenuCard();return;}card.ordem=_qaFimDaColuna(colId,card.id);card.status=colId;var col=COLS.find(function(c){return c.id===colId;});_qaSalvar(card,true,"Movido para "+(col?col.label:"outra coluna"));}
+async function _qaCopiar(){
+  var orig=_qaGet();if(!orig)return;
+  var titulo=((document.getElementById("qa-cp-tit")||{}).value||"").trim();if(!titulo){toast("Informe o título",true);return;}
+  var comSub=!!(document.getElementById("qa-cp-sub")||{}).checked;
+  var colId=(document.getElementById("qa-cp-col")||{}).value||orig.status;
+  fecharMenuCard();
+  var novo=JSON.parse(JSON.stringify(orig));
+  delete novo.arquivado;delete novo.arquivadoEm;delete novo.ordemPrazo;
+  novo.id=Date.now().toString();novo.titulo=titulo;novo.status=colId;novo.comentarios=[];novo.ordem=_qaFimDaColuna(colId);
+  var equipes=(demandaEquipesDB[orig.id]||[]).slice();if(!equipes.length&&equipeAtiva)equipes=[equipeAtiva.id];
+  cards.push(novo);demandaEquipesDB[novo.id]=equipes.slice();
+  try{
+    await dbUpsert(novo);await dbLog("Copiou demanda",orig.titulo+" -> "+titulo);
+    await _qaVincularEquipes(novo.id,equipes);
+    if(comSub){
+      // subtarefas copiadas voltam ao status inicial, sem data de conclusao
+      var inicial=(statusTarefaList(false).find(function(s){return !s.finalizador;})||{}).id;
+      var subs=getTarefas(orig);
+      for(var i=0;i<subs.length;i++){
+        var t=subs[i];var cv=Object.assign({},t.campos_valores||{});delete cv.concluida_em;
+        await dbUpsertTarefa(_taskCardToDb(novo.id,{id:uid(),texto:t.texto,responsavel:t.responsavel,dataInicio:t.dataInicio,dataFim:t.dataFim,status:inicial||t.status,criado:new Date().toISOString(),modelo_snapshot:t.modelo_snapshot,campos_valores:cv},null));
+      }
+      await loadTarefasDoCard(novo.id);
+    }
+    _qaRefreshKanban();toast("Cartão copiado!");
+  }catch(e){_qaRefreshKanban();toast("Erro ao copiar o cartão",true);}
+}
+function _qaLinkCard(cid){return location.origin+location.pathname+"?card="+encodeURIComponent(cid);}
+function _qaLink(){
+  var url=_qaLinkCard(_qaCard);fecharMenuCard();
+  var plano=function(){var ta=document.createElement("textarea");ta.value=url;ta.style.cssText="position:fixed;opacity:0;";document.body.appendChild(ta);ta.select();var ok=false;try{ok=document.execCommand("copy");}catch(_){}ta.remove();toast(ok?"Link copiado!":"Não foi possível copiar o link",!ok);};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(function(){toast("Link copiado!");},plano);
+  else plano();
+}
+async function arquivarCard(cid){
+  var card=cards.find(function(c){return c.id===cid;});if(!card)return;
+  card.arquivado=true;card.arquivadoEm=new Date().toISOString();
+  _qaRefreshKanban();
+  try{await dbUpsert(card);await dbLog("Arquivou demanda",card.titulo);toast("Cartão arquivado. Ele fica em \"Arquivados\", no fim do quadro.");}
+  catch(e){toast("Erro ao arquivar",true);}
+}
+function _qaArquivar(){var cid=_qaCard;fecharMenuCard();arquivarCard(cid);}
+
+// Itens arquivados
+function _arqLista(){return cards.filter(function(c){return c.arquivado&&(!equipeAtiva||(demandaEquipesDB[c.id]||[]).includes(equipeAtiva.id));}).sort(function(a,b){return (b.arquivadoEm||"").localeCompare(a.arquivadoEm||"");});}
+function abrirArquivados(){
+  var lista=_arqLista();
+  var mc=document.getElementById("modal-container");
+  if(!lista.length){mc.innerHTML="";_qaRefreshKanban();return;}
+  var rows=lista.map(function(c){
+    var cn=c.clienteNum?cliNome(c.clienteNum):"";
+    var sub=[c.clienteNum?(c.clienteNum+(cn?" · "+cn:"")):"",c.arquivadoEm?"Arquivado em "+new Date(c.arquivadoEm).toLocaleDateString("pt-BR"):""].filter(Boolean).join(" · ");
+    return '<div class="arq-row" id="arq-'+c.id+'"><span class="arq-capa" style="background:'+coverColor(c)+';"></span><div class="arq-c"><div class="arq-t">'+escHTML(c.titulo)+'</div>'+(sub?'<div class="arq-s">'+escHTML(sub)+'</div>':'')+'</div>'
+      +'<div class="arq-acts"><button class="qa-btn-sec" onclick="restaurarCard(\''+c.id+'\')">'+ic("restore")+' Restaurar</button><button class="qa-btn-del" onclick="_arqConfirmar(\''+c.id+'\')">'+ic("trash")+'</button></div></div>';
+  }).join("");
+  mc.innerHTML='<div class="modal-overlay" onclick="if(event.target===this)this.parentNode.innerHTML=\'\'"><div class="arq-box" onclick="event.stopPropagation()"><div class="arq-h"><h3>'+ic("archive")+' Itens arquivados <span>'+lista.length+'</span></h3><button class="qa-x" onclick="document.getElementById(\'modal-container\').innerHTML=\'\'">'+ic("close")+'</button></div><div class="arq-lista">'+rows+'</div></div></div>';
+}
+function _arqConfirmar(cid){
+  var acts=document.querySelector("#arq-"+cid+" .arq-acts");if(!acts)return;
+  acts.innerHTML='<span class="arq-conf">Excluir de vez?</span><button class="qa-btn-del" onclick="excluirArquivado(\''+cid+'\')">Sim</button><button class="qa-btn-sec" onclick="abrirArquivados()">Não</button>';
+}
+async function restaurarCard(cid){
+  var card=cards.find(function(c){return c.id===cid;});if(!card)return;
+  delete card.arquivado;delete card.arquivadoEm;card.ordem=_qaFimDaColuna(card.status,card.id);
+  abrirArquivados();_qaRefreshKanban();
+  try{await dbUpsert(card);await dbLog("Restaurou demanda",card.titulo);toast("Cartão restaurado!");}catch(e){toast("Erro ao restaurar",true);}
+}
+async function excluirArquivado(cid){
+  var card=cards.find(function(c){return c.id===cid;});if(!card)return;
+  try{
+    await dbDelTarefasDoCard(cid);await dbDel(cid);await dbLog("Excluiu demanda",card.titulo);
+    delete tarefasDB[cid];cards=cards.filter(function(c){return c.id!==cid;});
+    abrirArquivados();_qaRefreshKanban();toast("Excluída!");
+  }catch(e){toast("Erro ao excluir",true);}
+}
+
+// Link direto para um cartao (?card=ID), aberto depois do init
+function abrirCardDaUrl(){
+  var cid=new URLSearchParams(location.search).get("card");if(!cid)return;
+  history.replaceState(null,"",location.pathname+location.hash);
+  var card=cards.find(function(c){return c.id===cid;});
+  if(!card){toast("Demanda não encontrada ou sem acesso",true);return;}
+  if(card.arquivado)toast("Esta demanda está arquivada");
+  openCardModal(cid);
 }
 
 // ── INCLINACAO 3D DO CARD SEGUINDO O MOUSE ──

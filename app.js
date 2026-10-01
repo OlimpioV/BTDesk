@@ -119,5 +119,6 @@ async function init(){
   try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEtq(),loadEquipes(),loadTarefaStatus(),loadDemandaModelo(),loadSubtarefaModelo(),loadProjetoModelo()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await ensureDemandaSnapshots();await ensureCardColors();await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await migrarTarefasCardsParaTabela();await verificarAlertasPrazos();}catch(e){console.error("Falha ao carregar dados iniciais:",e);toast("Erro ao carregar os dados. Recarregue a pagina.",true);}
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   renderKanban();
+  abrirCardDaUrl();
 }
 (async function(){if(await checkAuth()){init();}else{renderLogin();}})();
