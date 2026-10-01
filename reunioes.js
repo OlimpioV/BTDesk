@@ -3411,8 +3411,7 @@ function _buildTarefaCard(t,ce,ehPassado){
     _atuGarantir(t,subtarefas||[],ehPassado);
     var _projAb=!!_atuProjAberto[t.id],_nTot=_atuContar(t.id,subtarefas);
     html+='<div class="atu-barra">'
-      +'<button class="atu-bbtn'+(_projAb?' on':'')+'" onclick="event.stopPropagation();_atuToggleProjeto(\''+t.id+'\','+!!ehPassado+')">'+ic("clock")+' Linha do tempo do projeto'+(_nTot?'<em>'+_nTot+'</em>':'')+'<i>'+ic("chevdown")+'</i></button>'
-      +'<button class="atu-bbtn" onclick="event.stopPropagation();openProjetoHistorico(\''+t.id+'\')" title="Como o projeto estava em cada reunião">'+ic("meeting")+' Reuniões em que foi discutido</button>'
+      +'<button class="atu-bbtn'+(_projAb?' on':'')+'" onclick="event.stopPropagation();_atuToggleProjeto(\''+t.id+'\','+!!ehPassado+')">'+ic("clock")+' Histórico'+(_nTot?'<em>'+_nTot+'</em>':'')+'<i>'+ic("chevdown")+'</i></button>'
       +'</div>';
     if(_projAb)html+=_atuProjetoHTML(t,subtarefas||[],ehPassado);
     html+='<div class="cl cl-subtasks">';
@@ -3471,7 +3470,7 @@ function _buildTarefaCard(t,ce,ehPassado){
             +(sConcEm?'<span style="color:#16a34a;font-weight:700;">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>'))+'</div>';
           var _ns=_atuLista(s.id).length,_sab=!!_atuAberta[s.id];
           html+='<div class="subcell subcell-hist">'+(canEdit
-            ?'<button class="b-hist b-hist-add'+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Registrar o que foi falado sobre esta subtarefa">'+(_sab?'Fechar':'+ Atualização')+'</button>'
+            ?'<button class="b-hist b-hist-add'+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Ver o histórico e comentar esta subtarefa">'+ic("clock")+' Histórico'+(_ns?'<span class="b-hist-n">'+_ns+'</span>':'')+'</button>'
             :(_ns?'<button class="b-hist tem'+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Ver histórico">'+ic("clock")+'<span>'+_ns+'</span></button>':''))+'</div>';
           html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>':'')+'</div>';
           html+='</div>';
@@ -4140,24 +4139,46 @@ function _atuItemHTML(c,cardId,ehPassado,rotulo){
 function _atuNovaHTML(tarefaId,cardId,ehPassado,fechar){
   if(ehPassado||!(perfil==="mestre"||perfil==="advogado"))return "";
   var rid=_tarefaPayloadReuniaoId();
-  return '<div class="atu-nova"><textarea class="atu-ta" id="atu-nova-'+tarefaId+'" rows="2" placeholder="O que foi falado sobre isto? (Ctrl+Enter registra)" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+');}"></textarea>'
+  return '<div class="atu-nova"><textarea class="atu-ta" id="atu-nova-'+tarefaId+'" rows="2" placeholder="Escreva um comentário para o histórico (Ctrl+Enter registra)" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+');}"></textarea>'
     +'<div class="atu-acts"><span class="atu-ctx">'+(rid?'Será registrada na <b>'+escHTML(_atuReuniaoNome(rid))+'</b>':'Será registrada fora de reunião')+'</span><div>'+(fechar?'<button class="rbtn rbtn-ghost rbtn-sm" onclick="'+fechar+'">Fechar</button>':'')+'<button class="rbtn rbtn-primary rbtn-sm" onclick="_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+')">Registrar</button></div></div></div>';
 }
-// Linha curta embaixo do nome da subtarefa: ultima atualizacao (ou "+ atualizacao")
+// Linha curta embaixo do nome da subtarefa: ultimo comentario do historico
 function _atuSubLinhaHTML(s,cardId,canEdit,ehPassado){
   var l=_atuLista(s.id),ab=!!_atuAberta[s.id];
   var clk=' onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+cardId+'\','+!!ehPassado+')"';
   if(!l.length)return '';
   var u=l[0];
-  return '<span class="atu-ult inline-edit-hit'+(ab?' on':'')+'"'+clk+' title="Ver atualizações desta subtarefa"><b>'+_atuDataBR(u.criado_em)+'</b><span class="atu-ult-t">'+escHTML(trunc(u.texto,110))+'</span><em>'+l.length+ic("chevdown")+'</em></span>';
+  return '<span class="atu-ult inline-edit-hit'+(ab?' on':'')+'"'+clk+' title="Ver o histórico desta subtarefa"><b>'+_atuDataBR(u.criado_em)+'</b><span class="atu-ult-t">'+escHTML(trunc(u.texto,110))+'</span><em>'+l.length+ic("chevdown")+'</em></span>';
+}
+// Eventos automaticos do historico (criacao e conclusao), montados a partir das proprias tarefas
+function _atuDataEv(v){if(!v)return "";var s=String(v);return s.length===10?s.slice(8,10)+"/"+s.slice(5,7):_atuDataBR(s);}
+function _atuEventos(item,nomeSub){
+  var ev=[],fem=!!(nomeSub||item.parent_id);
+  var rot=nomeSub?'Subtarefa <b>'+escHTML(nomeSub)+'</b>':(fem?'Subtarefa':'Projeto');
+  if(item.criado_em)ev.push({data:item.criado_em,ic:"plus",cls:"cria",txt:rot+(fem?' criada':' criado')});
+  var fim=statusTarefaConclusaoEm(item);
+  if(fim&&statusTarefaFinalizador(item.status)){
+    var canc=statusTarefaCancelado(item.status);
+    ev.push({data:fim,ic:canc?"close":"check",cls:canc?"canc":"ok",txt:rot+(canc?(fem?' cancelada':' cancelado'):(fem?' concluída':' concluído'))});
+  }
+  return ev;
+}
+function _atuSisHTML(e){
+  return '<div class="atu-ev atu-sis atu-sis-'+e.cls+'"><span class="atu-sis-ic">'+ic(e.ic)+'</span><div class="atu-c"><div class="atu-sis-t">'+e.txt+'<span>'+_atuDataEv(e.data)+'</span></div></div></div>';
+}
+// Junta comentarios e eventos em ordem decrescente de data
+function _atuMontar(cmts,eventos,cardId,ehPassado){
+  var itens=cmts.map(function(x){return {d:String(x[0].criado_em||""),h:function(){return _atuItemHTML(x[0],cardId,ehPassado,x[1]);}};})
+    .concat(eventos.map(function(e){return {d:String(e.data||""),h:function(){return _atuSisHTML(e);}};}));
+  itens.sort(function(a,b){return b.d.localeCompare(a.d);});
+  return itens.map(function(i){return i.h();}).join("");
 }
 function _atuSubTimelineHTML(s,cardId,ehPassado){
-  var l=_atuLista(s.id);
+  var corpo=_atuMontar(_atuLista(s.id).map(function(c){return [c,null];}),_atuEventos(s,null),cardId,ehPassado);
   return '<div class="atu-tl" onpointerdown="event.stopPropagation()">'+_atuNovaHTML(s.id,cardId,ehPassado,'_atuToggle(\''+s.id+'\',\''+cardId+'\','+!!ehPassado+')')
-    +(l.length?l.map(function(c){return _atuItemHTML(c,cardId,ehPassado,null);}).join(""):'<div class="atu-vazio">Nenhuma atualização ainda.</div>')+'</div>';
+    +(corpo||'<div class="atu-vazio">Nada registrado ainda.</div>')+'</div>';
 }
-// Bloco do projeto: atualizacoes do projeto + das subtarefas (com o nome da subtarefa), com filtro
-// Carrega (uma vez) as atualizacoes do projeto e das subtarefas que ainda nao estao no cache
+// Carrega (uma vez) os comentarios do projeto e das subtarefas que ainda nao estao no cache
 function _atuGarantir(t,subs,ehPassado){
   var falta=[t.id].concat((subs||[]).map(function(s){return s.id;})).filter(function(id){return !(id in _tarefaCmtsCache);});
   if(falta.length&&!_atuCarregando[t.id]){
@@ -4166,17 +4187,26 @@ function _atuGarantir(t,subs,ehPassado){
   }
   return falta;
 }
+// Historico do projeto: comentarios (do projeto e das subtarefas) + subtarefas criadas/concluidas, com filtro
 function _atuProjetoHTML(t,subs,ehPassado){
   var falta=_atuGarantir(t,subs,ehPassado);
   var f=_atuFiltro[t.id]||"tudo";
-  var itens=_atuLista(t.id).map(function(c){return [c,null];});
-  if(f==="tudo")(subs||[]).forEach(function(s){_atuLista(s.id).forEach(function(c){itens.push([c,s.texto]);});});
-  itens.sort(function(a,b){return String(b[0].criado_em||"").localeCompare(String(a[0].criado_em||""));});
-  var h='<div id="tp-cmts-'+t.id+'" class="cmts atu-proj"><div class="atu-proj-h"><div class="cl-lbl">'+ic("clock")+' Linha do tempo do projeto</div>';
-  if(subs&&subs.length)h+='<div class="atu-filtro"><button class="'+(f==="tudo"?"on":"")+'" onclick="_atuFiltro[\''+t.id+'\']=\'tudo\';_atuRerender(\''+t.id+'\','+!!ehPassado+')">Projeto e subtarefas</button><button class="'+(f==="proj"?"on":"")+'" onclick="_atuFiltro[\''+t.id+'\']=\'proj\';_atuRerender(\''+t.id+'\','+!!ehPassado+')">Só do projeto</button></div>';
-  h+='</div>'+_atuNovaHTML(t.id,t.id,ehPassado,'_atuToggleProjeto(\''+t.id+'\','+!!ehPassado+')');
-  if(falta.length&&!itens.length)h+='<div class="atu-vazio">Carregando...</div>';
-  else h+=itens.length?itens.map(function(x){return _atuItemHTML(x[0],t.id,ehPassado,x[1]);}).join(""):'<div class="atu-vazio">Nenhuma atualização ainda.</div>';
+  var cmts=[],evs=[];
+  if(f!=="andamento"){
+    _atuLista(t.id).forEach(function(c){cmts.push([c,null]);});
+    (subs||[]).forEach(function(s){_atuLista(s.id).forEach(function(c){cmts.push([c,s.texto]);});});
+  }
+  if(f!=="cmts"){
+    evs=_atuEventos(t,null);
+    (subs||[]).forEach(function(s){evs=evs.concat(_atuEventos(s,s.texto));});
+  }
+  var bt=function(id,lbl){return '<button class="'+(f===id?"on":"")+'" onclick="_atuFiltro[\''+t.id+'\']=\''+id+'\';_atuRerender(\''+t.id+'\','+!!ehPassado+')">'+lbl+'</button>';};
+  var h='<div id="tp-cmts-'+t.id+'" class="cmts atu-proj"><div class="atu-proj-h"><div class="cl-lbl">'+ic("clock")+' Histórico do projeto</div>'
+    +'<div class="atu-filtro">'+bt("tudo","Tudo")+bt("cmts","Comentários")+bt("andamento","Subtarefas")+'</div></div>'
+    +_atuNovaHTML(t.id,t.id,ehPassado,'_atuToggleProjeto(\''+t.id+'\','+!!ehPassado+')');
+  var corpo=_atuMontar(cmts,evs,t.id,ehPassado);
+  if(falta.length&&!corpo)h+='<div class="atu-vazio">Carregando...</div>';
+  else h+=corpo||'<div class="atu-vazio">Nada registrado ainda.</div>';
   return h+'</div>';
 }
 // Total de atualizacoes do projeto + subtarefas ja carregadas (0 se ainda nao carregou)

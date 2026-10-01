@@ -245,14 +245,14 @@ async function dbUpsertReuniaoComentario(c){var r=await fetch(SB+"/rest/v1/reuni
 async function dbDelReuniaoComentario(id){await fetch(SB+"/rest/v1/reuniao_comentarios?id=eq."+id,{method:"DELETE",headers:H});}
 
 // ── TAREFA COMENTARIOS DB ──
-async function dbFetchTarefaComentarios(tarefaId){var r=await fetch(SB+"/rest/v1/tarefa_comentarios?tarefa_id=eq."+tarefaId+"&excluido_em=is.null&select=*,usuarios(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
+async function dbFetchTarefaComentarios(tarefaId){var r=await fetch(SB+"/rest/v1/tarefa_comentarios?tarefa_id=eq."+tarefaId+"&excluido_em=is.null&select=*,usuarios!tarefa_comentarios_usuario_id_fkey(id,nome,sigla)&order=criado_em",{headers:H});if(!r.ok)return [];return r.json();}
 async function dbUpsertTarefaComentario(c){var r=await fetch(SB+"/rest/v1/tarefa_comentarios",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates,return=representation"},H),body:JSON.stringify(c)});if(!r.ok)throw new Error();var rows=await r.json();return rows[0]||null;}
 // Atualizacoes (tarefa_comentarios): busca em lote, sem as excluidas; edicao e exclusao sao PATCH (exclusao e logica)
 async function dbFetchAtualizacoes(tarefaIds){
   var ids=(tarefaIds||[]).filter(Boolean),out=[];
   for(var i=0;i<ids.length;i+=60){
     var lote=ids.slice(i,i+60).join(",");
-    var r=await fetch(SB+"/rest/v1/tarefa_comentarios?tarefa_id=in.("+lote+")&excluido_em=is.null&select=*,usuarios(id,nome,sigla)&order=criado_em.desc",{headers:H});
+    var r=await fetch(SB+"/rest/v1/tarefa_comentarios?tarefa_id=in.("+lote+")&excluido_em=is.null&select=*,usuarios!tarefa_comentarios_usuario_id_fkey(id,nome,sigla)&order=criado_em.desc",{headers:H});
     if(!r.ok)throw new Error();
     out=out.concat(await r.json());
   }
