@@ -625,6 +625,7 @@ function _buildReuniaoDetalhe(r){
       +'<div id="reun-campos-area">'+_buildCamposGrid(r,ce,ehPassado)+'</div>'
       +'</div>';
   }
+  html+=_mudSecaoHTML(r);
   // Participantes agora ficam no rodape do hero (cabecalho da reuniao).
   if(FEATURE_PENDENCIAS_ANTERIORES){
     html+='<div class="reun-section">'
@@ -646,7 +647,7 @@ function _buildReuniaoDetalhe(r){
     +'<div id="reun-cmts-area">Carregando...</div>'
     +'</div>';
   html+='</div>';
-  setTimeout(function(){_loadParticipantesArea(r.id);if(FEATURE_PENDENCIAS_ANTERIORES)_loadPendenciasAnteriores(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
+  setTimeout(function(){_loadMudancasArea(r);_loadParticipantesArea(r.id);if(FEATURE_PENDENCIAS_ANTERIORES)_loadPendenciasAnteriores(r.id);_loadPautasSection(r.id);_loadReuniaoComentários(r.id);},0);
   return html;
 }
 
@@ -3918,6 +3919,64 @@ function _abrirMenuTarefa(evt,tarefaId,isSub,parentId,ehPassado){
   }
   html+='</div></div>';
   var d=document.createElement("div");d.innerHTML=html;document.body.appendChild(d.firstChild);
+}
+
+// ── DESDE A ULTIMA REUNIAO ──
+// Compara os projetos da pauta desta reuniao (e as subtarefas deles) com a reuniao anterior da equipe:
+// concluidos, que entraram em atraso, atualizacoes registradas e itens novos no intervalo.
+var _mudAberta=null,_mudDados=null;
+function _reuniaoAnterior(r){
+  if(!r||!r.data)return null;
+  var cand=(reunioesDB||[]).filter(function(x){return x.id!==r.id&&x.status!=="cancelada"&&x.data&&(x.data<r.data||(x.data===r.data&&(x.hora||"")<(r.hora||"")));});
+  cand.sort(function(a,b){return (b.data+(b.hora||"")).localeCompare(a.data+(a.hora||""));});
+  return cand[0]||null;
+}
+function _mudSecaoHTML(r){
+  var ant=_reuniaoAnterior(r);_mudAberta=null;_mudDados=null;if(!ant)return "";
+  return '<div class="reun-section"><div class="reun-sechdr"><div class="reun-sectitles"><span class="reun-sec-eye">Acompanhamento</span><span class="reun-sec-ttl">Desde a última reunião <small class="mud-desde">'+escHTML((ant.titulo||"Reunião")+" · "+_fmtDateBrShort(ant.data))+'</small></span></div></div><div id="reun-mudancas-area"><div class="mud-load">Carregando...</div></div></div>';
+}
+async function _loadMudancasArea(r){
+  var el=document.getElementById("reun-mudancas-area");if(!el)return;
+  var ant=_reuniaoAnterior(r);if(!ant)return;
+  var hoje=new Date().toISOString().slice(0,10);
+  var ini=ant.data,fim=(r.data&&r.data<hoje)?r.data:hoje;
+  try{
+    var projs=await dbFetchTarefasReuniao(r.id);
+    var ids=projs.map(function(t){return t.id;}),subs=[];
+    if(ids.length){var rs=await fetch(SB+"/rest/v1/tarefas?parent_id=in.("+ids.join(",")+")&select=*",{headers:H});subs=rs.ok?await rs.json():[];}
+    var nomeProj={};projs.forEach(function(p){nomeProj[p.id]=p.texto;});
+    var todos=projs.map(function(p){return {t:p,ctx:null};}).concat(subs.map(function(s){return {t:s,ctx:nomeProj[s.parent_id]||null};}));
+    var porId={};todos.forEach(function(x){porId[x.t.id]=x;});
+    var dentro=function(d){d=String(d||"").slice(0,10);return d&&d>ini&&d<=fim;};
+    var concl=todos.filter(function(x){var c=statusTarefaConclusaoEm(x.t);return statusTarefaFeita(x.t.status)&&dentro(c);});
+    var atraso=todos.filter(function(x){return !statusTarefaFinalizador(x.t.status)&&x.t.data_fim&&x.t.data_fim>ini&&x.t.data_fim<fim;});
+    var novos=todos.filter(function(x){return dentro(x.t.criado_em);});
+    var ups=[];
+    if(todos.length){
+      var rows=await dbFetchAtualizacoes(todos.map(function(x){return x.t.id;}));
+      ups=rows.filter(function(c){return c.reuniao_id!==r.id&&dentro(c.criado_em);});
+    }
+    _mudDados={concl:concl,atraso:atraso,novos:novos,ups:ups,porId:porId};
+    _mudRender();
+  }catch(_){el.innerHTML='<div class="mud-load">Não foi possível carregar o resumo.</div>';}
+}
+function _mudRender(){
+  var el=document.getElementById("reun-mudancas-area");if(!el||!_mudDados)return;
+  var d=_mudDados;
+  var tiles=[["concl","Concluídas",d.concl.length,"ok"],["atraso","Entraram em atraso",d.atraso.length,"atr"],["ups","Atualizações",d.ups.length,"up"],["novos","Novas",d.novos.length,"novo"]];
+  var total=d.concl.length+d.atraso.length+d.ups.length+d.novos.length;
+  var h='<div class="mud-tiles">'+tiles.map(function(t){return '<button class="mud-tile mud-t-'+t[3]+(_mudAberta===t[0]?' on':'')+(t[2]?'':' zero')+'"'+(t[2]?' onclick="_mudAberta=_mudAberta===\''+t[0]+'\'?null:\''+t[0]+'\';_mudRender()"':' disabled')+'><b>'+t[2]+'</b><span>'+t[1]+'</span></button>';}).join("")+'</div>';
+  if(!total)h+='<div class="mud-vazio">Nada mudou nos itens desta pauta desde a última reunião.</div>';
+  if(_mudAberta){
+    var linha=function(x,extra){return '<div class="mud-it"><div class="mud-it-t">'+_inlineHtml(x.t.texto)+(x.ctx?'<span class="mud-ctx">'+escHTML(x.ctx)+'</span>':'<span class="mud-ctx proj">projeto</span>')+'</div><div class="mud-it-m">'+extra+'</div></div>';};
+    var lista="";
+    if(_mudAberta==="concl")lista=d.concl.map(function(x){return linha(x,'Concluída em '+statusTarefaFmtData(statusTarefaConclusaoEm(x.t))+(respsDe(x.t).length?' · '+escHTML(respsDe(x.t).join(", ")):''));}).join("");
+    if(_mudAberta==="atraso")lista=d.atraso.map(function(x){return linha(x,'<span class="mud-atr">Venceu em '+_fmtDateBrShort(x.t.data_fim)+'</span> · '+escHTML(statusTarefaLabel(x.t.status))+(respsDe(x.t).length?' · '+escHTML(respsDe(x.t).join(", ")):''));}).join("");
+    if(_mudAberta==="novos")lista=d.novos.map(function(x){return linha(x,'Criada em '+_atuDataBR(x.t.criado_em)+(respsDe(x.t).length?' · '+escHTML(respsDe(x.t).join(", ")):''));}).join("");
+    if(_mudAberta==="ups")lista=d.ups.map(function(c){var x=d.porId[c.tarefa_id]||{t:{texto:"?"}};var u=c.usuarios||{};return linha(x,'<b>'+escHTML(u.sigla||u.nome||"?")+'</b> · '+_atuDataBR(c.criado_em)+' · '+(c.reuniao_id?escHTML(_atuReuniaoNome(c.reuniao_id)):'fora de reunião')+'<div class="mud-up">'+_inlineHtml(c.texto)+'</div>');}).join("");
+    h+='<div class="mud-lista">'+lista+'</div>';
+  }
+  el.innerHTML=h;
 }
 
 // ── ATUALIZACOES (historico por projeto e subtarefa) ──

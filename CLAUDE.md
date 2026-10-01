@@ -131,6 +131,8 @@ Ao chamar a Management API via `urllib`/Python (não via `curl`), definir um hea
 - Menu de ações do card (lápis ou clique direito, bloco "ACOES DO CARD" em kanban.js): abrir, etiquetas, responsável, capa, datas, mover, copiar (só estrutura ou com subtarefas; comentários não são copiados), copiar link e arquivar
 - "+ Adicionar um cartão" no rodapé das colunas (modo Status); quando quem cria é `advogado`, o cartão nasce com a sigla dele como responsável, senão o RLS de `demandas` o esconderia
 - Link direto `?card=ID`: `abrirCardDaUrl()` (kanban.js) é chamado no fim do `init()` e abre o modal do cartão
+- Reuniões e Projetos em tema escuro: bloco "TEMA ESCURO — REUNIOES E PROJETOS" no fim de `styles.css`, com prefixo `#app .reun-wrap` (redefine as variáveis de cor do módulo; `--bt-navy` vira tom claro lá dentro). Modais continuam claros
+- "Desde a última reunião" (reunioes.js, `_mudSecaoHTML`/`_loadMudancasArea`): compara os projetos da pauta e suas subtarefas com a reunião anterior da equipe (concluídas, que entraram em atraso, atualizações e novas)
 
 ## Pendências conhecidas
 
