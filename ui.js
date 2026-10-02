@@ -242,13 +242,26 @@ function headerHTML(aba){
   }
   var nNaoLidas=(notificacoesDB||[]).filter(function(n){return !n.lida;}).length;
   var sino='<button class="bt-sino" id="bt-sino" onclick="toggleNotifDropdown()" title="Notificações">'+ic("bell")+(nNaoLidas?'<span class="bt-badge">'+(nNaoLidas>9?'9+':nNaoLidas)+'</span>':'')+'</button>';
+  var tema='<button class="bt-sino bt-tema" onclick="alternarTema()" title="'+(_temaAtual()==="claro"?"Mudar para tema escuro":"Mudar para tema claro")+'">'
+    +'<svg class="bt-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>'
+    +'<svg class="bt-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg></button>';
   var av='<div class="bt-rel" id="bt-user-wrap"><button class="bt-av" id="bt-av" onclick="toggleUserMenu()" title="Conta">'+escHTML(_btIniciais())+'</button></div>';
   var html='<header class="bt-top"><button class="bt-marca" onclick="renderView()" title="Início">'+_btLogoSVG()+'<b>BTDesk</b></button><span class="bt-sep"></span>'
     +'<nav class="bt-abas"><span class="bt-pilula" id="bt-pilula"'+pil+'></span>'+abas+'</nav>'
-    +'<div class="bt-dir">'+eq+sino+av+'</div></header>';
+    +'<div class="bt-dir">'+eq+tema+sino+av+'</div></header>';
   setTimeout(function(){_btPilulaAjustar(!!_btPilulaPos);},0);
   if(perfil==="mestre"&&_isAdminAba(aba))html+=_adminShellOpen(aba);
   return html;
+}
+// Tema claro/escuro: atributo data-tema no <html> (aplicado cedo no index.html), escolha guardada por navegador
+function _temaAtual(){return document.documentElement.getAttribute("data-tema")==="claro"?"claro":"escuro";}
+function alternarTema(){
+  var novo=_temaAtual()==="claro"?"escuro":"claro";
+  document.documentElement.classList.add("tema-trocando");
+  if(novo==="claro")document.documentElement.setAttribute("data-tema","claro");else document.documentElement.removeAttribute("data-tema");
+  try{localStorage.setItem("bt_tema",novo);}catch(_){}
+  var b=document.querySelector(".bt-tema");if(b)b.title=novo==="claro"?"Mudar para tema escuro":"Mudar para tema claro";
+  setTimeout(function(){document.documentElement.classList.remove("tema-trocando");},450);
 }
 function _btFecharMenus(){["eq-dropdown","bt-user-menu"].forEach(function(id){var e=document.getElementById(id);if(e)e.remove();});document.querySelectorAll(".bt-eq.on,.bt-av.on").forEach(function(b){b.classList.remove("on");});}
 function _btFecharAoClicarFora(wrap,menu){
