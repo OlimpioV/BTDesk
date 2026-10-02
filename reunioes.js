@@ -2846,15 +2846,22 @@ async function gerarAta(reuniaoId){
   if(!w){toast("Permita pop-ups deste site para abrir a ata",true);return;}
   w.document.write('<!doctype html><meta charset="utf-8"><title>Gerando ata...</title><body style="font-family:Segoe UI,Arial;padding:40px;color:#475569">Gerando a ata...</body>');
   try{
-    await salvarSnapshotReuniao(reuniaoId);
-    var rps=await dbFetchReuniaoPautas(reuniaoId);
-    var snap=_getSnapshotTarefas(rps);
-    var tarefas=snap?snap.tarefas:[];
-    var catMap=(snap&&snap.categorias)||{"sem_cat":"Geral"};
+    // Mesma fonte da tela da reuniao: reuniao passada com foto guardada usa a foto; senao, os projetos
+    // vinculados (reuniao_tarefas). A foto so existe quando a reuniao tem linhas em reuniao_pautas,
+    // o que nao acontece nas reunioes montadas so com projetos; por isso a ata nao pode depender dela.
+    var hoje=new Date().toISOString().slice(0,10),ehPassado=!!(r.data&&r.data<hoje);
+    var rps=[];try{rps=await dbFetchReuniaoPautas(reuniaoId);}catch(_){}
+    var snap=ehPassado?_getSnapshotTarefas(rps):null;
+    if(!snap){
+      snap=await _coletarSnapshotTarefasReuniao(reuniaoId);
+      // reuniao de hoje ou futura: atualiza a foto (passadas nao sao reescritas)
+      if(!ehPassado)for(var ri=0;ri<rps.length;ri++){try{await dbUpsertReuniaoPauta(Object.assign({},rps[ri],{snapshot_json:Object.assign({},rps[ri].snapshot_json||{},{tarefas_snapshot:snap})}));}catch(_){}}
+    }
+    var tarefas=snap.tarefas||[];
+    var catMap=snap.categorias||{"sem_cat":"Geral"};
     var parts=[],cmtsR=[];
     try{parts=await dbFetchReuniaoParticipantes(reuniaoId);}catch(_){}
     try{cmtsR=await dbFetchReuniaoComentarios(reuniaoId);}catch(_){}
-    var hoje=new Date().toISOString().slice(0,10);
     var tp=_reunTipo(r);
     var stCor={agendada:"#2b76e5",realizada:"#16a34a",cancelada:"#e2445c"}[r.status]||"#64748b";
     var stLbl={agendada:"Agendada",realizada:"Realizada",cancelada:"Cancelada"}[r.status]||r.status;
