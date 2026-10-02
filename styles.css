@@ -1499,3 +1499,64 @@ html[data-tema="claro"] .qa-item:hover{background:#f1f2f4;}
 #app.ab-entrando{animation:abQuadro .55s cubic-bezier(.2,.9,.25,1);}
 @keyframes abQuadro{from{opacity:0;transform:scale(.985);}}
 @media (prefers-reduced-motion:reduce){.ab *,.ab::before,#app.ab-entrando{animation:none !important;opacity:1 !important;transition:none !important;}}
+
+/* ════════════════════════════════════════════════════════════════
+   LOGIN (app.js renderLogin/renderEsqueciSenha/renderNovaSenha)
+   Cartao de vidro sobre o degrade do sistema; a logo da abertura
+   voa ate .lg-alvo (_aberturaParaLogin) e volta ao centro ao entrar.
+   ════════════════════════════════════════════════════════════════ */
+.lg-cena{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--tk-fundo);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",Ubuntu,"Helvetica Neue",sans-serif;
+  --lg-vidro:rgba(34,39,43,.62);--lg-vidro-borda:rgba(255,255,255,.09);--lg-campo:rgba(29,33,37,.75);--lg-anel:#ff8a3d;--lg-ok-bg:rgba(75,206,151,.12);}
+html[data-tema="claro"] .lg-cena{--lg-vidro:rgba(255,255,255,.72);--lg-vidro-borda:rgba(9,30,66,.08);--lg-campo:#fff;--lg-anel:#fa510e;--lg-ok-bg:#dcfff1;}
+.lg-cena::before{content:"";position:fixed;left:50%;top:50%;width:620px;height:620px;margin:-310px 0 0 -310px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,106,26,.15) 0%,transparent 62%);animation:abHalo 3.4s ease-in-out infinite;}
+.lg-cartao{position:relative;width:min(400px,100%);padding:98px 36px 26px;border-radius:20px;background:var(--lg-vidro);border:1px solid var(--lg-vidro-borda);
+  backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 24px 60px rgba(0,0,0,.35);opacity:0;transition:opacity .5s ease,transform .4s ease;}
+.lg-cartao.on{opacity:1;}
+.lg-cartao.recolhe{opacity:0;transform:scale(.94);transition:opacity .3s ease,transform .35s ease;}
+.lg-cartao.sacode{animation:lgSacode .42s cubic-bezier(.36,.07,.19,.97);}
+@keyframes lgSacode{20%,60%{transform:translateX(-8px);}40%,80%{transform:translateX(8px);}}
+.lg-alvo{position:absolute;left:50%;top:26px;width:54px;height:54px;margin-left:-27px;}
+.lg-alvo svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 4px 14px rgba(226,5,0,.4));}
+.lg-marca{text-align:center;margin-bottom:24px;}
+.lg-marca b{display:block;font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--tk-forte);}
+.lg-marca small{display:block;margin-top:3px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tk-sub);}
+.lg-vista-in{animation:lgVista .35s ease;}
+@keyframes lgVista{from{opacity:0;transform:translateX(10px);}}
+.lg-vista-in h2{font-size:16px;font-weight:700;color:var(--tk-forte);margin-bottom:6px;}
+.lg-vista-in p.lg-exp{font-size:13px;color:var(--tk-sub);line-height:1.5;margin-bottom:16px;}
+.lg-campo{margin-bottom:14px;}
+.lg-campo label{display:block;font-size:12px;font-weight:600;color:var(--tk-txt);margin-bottom:6px;letter-spacing:normal;text-transform:none;}
+.lg-cx{position:relative;}
+.lg-campo input{width:100%;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid var(--tk-borda);background:var(--lg-campo);color:var(--tk-forte);font-size:15px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;}
+.lg-campo input::placeholder{color:var(--tk-fraco);}
+.lg-campo input:focus{border-color:var(--lg-anel);box-shadow:0 0 0 3px rgba(250,81,14,.18);}
+.lg-campo input.lg-com-olho{padding-right:44px;}
+.lg-olho{position:absolute;right:6px;top:6px;width:32px;height:32px;min-height:0;padding:0;border:none;border-radius:8px;background:none;color:var(--tk-sub);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.lg-olho:hover{color:var(--tk-forte);background:rgba(128,140,160,.14);}
+.lg-olho svg{width:18px;height:18px;}
+.lg-caps{display:none;align-items:center;gap:6px;margin-top:6px;font-size:12px;font-weight:600;color:var(--tk-aviso);}
+.lg-caps.on{display:flex;}
+.lg-linha{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 18px;}
+.lg-lembrar{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:400;letter-spacing:normal;text-transform:none;color:var(--tk-txt);cursor:pointer;user-select:none;}
+.lg-lembrar input{width:16px;height:16px;accent-color:#fa510e;}
+.lg-link{min-height:0;padding:0;border:none;background:none;font-size:13px;font-family:inherit;color:var(--tk-sub);cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+.lg-link:hover{color:var(--tk-forte);}
+.lg-voltar{display:flex;margin:16px auto 0;}
+.lg-msg{margin:-4px 0 14px;padding:10px 12px;border-radius:9px;font-size:13px;line-height:1.4;animation:lgVista .25s ease;}
+.lg-msg.erro{background:var(--tk-perigo-bg);color:var(--tk-perigo);}
+.lg-msg.ok{background:var(--lg-ok-bg);color:var(--tk-ok);}
+.lg-entrar{position:relative;width:100%;height:46px;border:none;border-radius:11px;background:linear-gradient(135deg,#ff8204,#fa510e,#e20500);color:#fff;
+  font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 6px 18px rgba(250,81,14,.35);transition:filter .15s,box-shadow .15s,transform .1s;}
+.lg-entrar:hover{filter:brightness(1.07);box-shadow:0 8px 22px rgba(250,81,14,.45);}
+.lg-entrar:active{transform:scale(.99);}
+.lg-entrar.carregando{color:transparent;pointer-events:none;}
+.lg-entrar.carregando::after{content:"";position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:lgGira .7s linear infinite;}
+@keyframes lgGira{to{transform:rotate(360deg);}}
+.lg-rodape{margin-top:22px;text-align:center;font-size:11px;color:var(--tk-sub);opacity:.75;}
+/* abertura indo para o login (fundo some, a logo voa) e voltando do login (logo ja montada) */
+.ab.ab-para-login{background:transparent;pointer-events:none;}
+.ab.ab-para-login::before{opacity:0;transition:opacity .4s;}
+.ab.ab-vindo .ab-logo:not(.sai) .p{animation:none;opacity:1;}
+@media (prefers-reduced-motion:reduce){.lg-cena::before,.lg-cartao,.lg-vista-in,.lg-msg{animation:none !important;transition:none !important;}}
