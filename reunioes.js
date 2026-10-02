@@ -140,7 +140,7 @@ async function _prepararProjetosTarefas(tarefas,carregarComentarios){
     if(!(t.id in _subtarefasCache)){
       try{_subtarefasCache[t.id]=await dbFetchSubtarefas(t.id);}catch(_){_subtarefasCache[t.id]=[];}
     }
-    _subCollapsed[t.id]=false;
+    if(!(t.id in _subCollapsed))_subCollapsed[t.id]=true;// projetos comecam fechados
   }
   if(carregarComentarios){
     var _ids=[];
@@ -377,52 +377,6 @@ async function salvarProjetoReunioes(tarefaId){
     toast("V\u00ednculos salvos");
     renderProjetosEquipe();
   }catch(_){toast("Erro ao salvar v\u00ednculos",true);}
-}
-
-async function openProjetoHistorico(tarefaId){
-  var tarefa=_getTarefaBoardCache(tarefaId,false,null)||{};
-  var mc=document.getElementById("modal-container");
-  mc.innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" onclick="event.stopPropagation()" style="width:min(95vw,760px);max-height:88vh;overflow:auto;">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div><div style="font-size:16px;font-weight:800;color:var(--bt-navy);font-family:var(--font-titulo);">Hist\u00f3rico do projeto</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">'+_inlineHtml(tarefa.texto||"Projeto")+'</div></div><button onclick="closeModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text3);padding:5px;border-radius:7px;cursor:pointer;">'+ic("close")+'</button></div>'
-    +'<div id="prj-hist-list" style="text-align:center;color:var(--text3);padding:28px;">Carregando...</div>'
-    +'</div></div>';
-  try{
-    var links=await dbFetchReunioesPorTarefas([tarefaId]);
-    var reunioes=links.map(function(l){return l.reunioes;}).filter(Boolean).sort(function(a,b){return (b.data||"").localeCompare(a.data||"");});
-    var html='';
-    if(!reunioes.length){
-      html='<div style="padding:26px;text-align:center;color:var(--text3);font-size:13px;">Este projeto ainda n\u00e3o est\u00e1 vinculado a reuni\u00f5es.</div>';
-    } else {
-      html+='<div class="projeto-historico-list">';
-      for(var i=0;i<reunioes.length;i++){
-        var r=reunioes[i];
-        var snap=null;
-        try{snap=_getSnapshotTarefas(await dbFetchReuniaoPautas(r.id));}catch(_){snap=null;}
-        var stHtml='<div class="projeto-hist-empty">Sem snapshot salvo nesta reuni\u00e3o.</div>';
-        if(snap&&snap.tarefas){
-          var item=(snap.tarefas||[]).find(function(t){return t.id===tarefaId;});
-          if(item){
-            var subs=item.subtarefas||[];
-            var cmts=item.comentarios||[];
-            stHtml='<div class="projeto-hist-snap">'
-              +'<span>Status: <b>'+_inlineHtml(statusTarefaLabel(item.status))+'</b></span>'
-              +'<span>Resp.: <b>'+_inlineHtml(item.responsavel||"Sem respons\u00e1vel")+'</b></span>'
-              +'<span>Prazo: <b>'+(item.data_fim?_fmtDateBrShort(item.data_fim):"Sem prazo")+'</b></span>'
-              +'<span>Subtarefas: <b>'+statusTarefaProgresso(subs).feitas+'/'+statusTarefaProgresso(subs).total+'</b></span>'
-              +(cmts.length?'<span>Coment\u00e1rios: <b>'+cmts.length+'</b></span>':'')
-              +'</div>';
-          } else {
-            stHtml='<div class="projeto-hist-empty">Snapshot salvo, mas este projeto n\u00e3o fazia parte dele.</div>';
-          }
-        }
-        html+='<div class="projeto-hist-row"><div class="projeto-hist-head"><b>'+_inlineHtml(r.titulo||"Reuni\u00e3o")+'</b><span>'+_fmtDateBrShort(r.data||"")+' '+String(r.hora||"").slice(0,5)+' \u00b7 '+(r.status||"")+'</span></div>'+stHtml+'</div>';
-      }
-      html+='</div>';
-    }
-    var el=document.getElementById("prj-hist-list");if(el){el.style.padding="0";el.style.textAlign="left";el.innerHTML=html;}
-  }catch(_){
-    var err=document.getElementById("prj-hist-list");if(err)err.innerHTML='<div style="color:#dc2626;">Erro ao carregar hist\u00f3rico.</div>';
-  }
 }
 
 async function ensureProjetoSnapshots(){
@@ -4022,7 +3976,6 @@ function _abrirMenuTarefa(evt,tarefaId,isSub,parentId,ehPassado){
     if(_isProjetosPage()){
       var tarefaMenu=_getTarefaBoardCache(tarefaId,false,null)||{};
       html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();openProjetoReunioes(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Reuni\u00f5es vinculadas</div>';
-      html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();openProjetoHistorico(\''+tarefaId+'\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">Hist\u00f3rico</div>';
       if(ce&&!ehPassado){
         html+='<div onclick="document.getElementById(\'rt-menu-dd\').remove();_toggleProjetoArquivado(\''+tarefaId+'\','+(!tarefaMenu.arquivado)+')" style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;color:var(--text2);" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">'+(tarefaMenu.arquivado?'Restaurar':'Arquivar')+'</div>';
       }

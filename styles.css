@@ -1367,7 +1367,7 @@ button{font-family:inherit;cursor:pointer;}
 #app .reun-wrap .brow{min-height:52px;padding-top:8px;padding-bottom:8px;}
 #app .reun-wrap .statcell,#app .reun-wrap .substat{width:var(--stat-w);max-width:100%;height:var(--stat-h);padding:0 10px;border-radius:12px;font-size:11px;font-weight:600;gap:5px;justify-content:center;}
 #app .reun-wrap .bc-status,#app .reun-wrap .subcell-status{justify-content:flex-start;}
-#app .reun-wrap .subcols,#app .reun-wrap .subrow{grid-template-columns:minmax(240px,1fr) var(--col-resp) var(--col-status) var(--col-prazo) 112px 28px;gap:10px;align-items:center;min-width:700px;}
+#app .reun-wrap .subcols,#app .reun-wrap .subrow{grid-template-columns:minmax(240px,1fr) var(--col-resp) var(--col-status) var(--col-prazo) 132px 28px;gap:10px;align-items:center;min-width:720px;}
 #app .reun-wrap .subcols{font-size:10px;padding:8px 12px;}
 #app .reun-wrap .subrow{min-height:48px;padding:8px 12px;}
 #app .reun-wrap .subcell{align-items:center;}
@@ -1400,7 +1400,8 @@ button{font-family:inherit;cursor:pointer;}
 #app .reun-wrap .atu-proj{padding:12px 14px;border-radius:8px;background:#1d2125;border:1px solid #333b43;animation:atuAbre .18s ease-out;}
 @keyframes atuAbre{from{opacity:0;transform:translateY(-4px);}}
 #app .reun-wrap .atu-acts>div{display:flex;gap:6px;}
-#app .reun-wrap .b-hist-add{gap:6px;}
+#app .reun-wrap .b-hist-add{gap:5px;max-width:100%;padding:0 9px;}
+#app .reun-wrap .subcell-hist{overflow:visible;}
 #app .reun-wrap .b-hist-add svg{width:13px;height:13px;color:#85b8ff;}
 #app .reun-wrap .b-hist-n{min-width:18px;height:17px;padding:0 5px;border-radius:9px;background:rgba(87,157,255,.22);color:#cfe1ff;font-size:10.5px;display:inline-flex;align-items:center;justify-content:center;}
 #app .reun-wrap .atu-sis{align-items:center;}
@@ -1414,5 +1415,5 @@ button{font-family:inherit;cursor:pointer;}
 #app .reun-wrap .atu-sis-t span{margin-left:8px;font-size:12px;color:var(--text3);}
 @media(max-width:1024px){
   #app .reun-wrap{--col-resp:96px;--col-status:116px;--col-prazo:66px;--col-prog:132px;--stat-w:110px;}
-  #app .reun-wrap .subcols,#app .reun-wrap .subrow{grid-template-columns:minmax(200px,1fr) 92px 116px 64px 104px 28px;}
+  #app .reun-wrap .subcols,#app .reun-wrap .subrow{grid-template-columns:minmax(200px,1fr) 92px 116px 64px 124px 28px;}
 }
