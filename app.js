@@ -198,12 +198,57 @@ async function ensureCardColors(){
     try{await dbUpsert(alterados[i]);}catch(_){}
   }
 }
+// ── TELA DE ABERTURA (#bt-abertura no index.html; estilos no fim de styles.css) ──
+// A barra avanca pelas etapas reais do init(); a saida espera as barras da logo terminarem de entrar (~1,3s).
+var _abHTML=(document.getElementById("bt-abertura")||{}).outerHTML||"",_abInicio=performance.now(),_abTimers=[];
+function _abReduzido(){return window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;}
+function _aberturaRespirar(){_abTimers.push(setTimeout(function(){var l=document.getElementById("ab-logo");if(l&&!l.classList.contains("sai"))l.classList.add("respira");},1350));}
+function _aberturaGarantir(){
+  if(document.getElementById("bt-abertura")||!_abHTML)return;
+  document.body.insertAdjacentHTML("beforeend",_abHTML);_abInicio=performance.now();_aberturaRespirar();
+}
+function _aberturaEtapa(txt,pct){
+  var i=document.getElementById("ab-i");if(i)i.style.width=pct+"%";
+  var e=document.getElementById("ab-et");if(e&&txt)e.innerHTML="<span>"+txt+"</span>";
+}
+function _aberturaOi(){
+  var el=document.getElementById("ab-oi");if(!el)return;
+  var h=new Date().getHours(),n=String(nomeUser||"").trim().split(/\s+/)[0]||"";
+  el.textContent=(h<12?"Bom dia":h<18?"Boa tarde":"Boa noite")+(n?", "+n:"");
+}
+function _aberturaFechar(entrarQuadro){
+  var ab=document.getElementById("bt-abertura");if(!ab||ab.dataset.fechando)return;
+  ab.dataset.fechando="1";
+  var red=_abReduzido(),espera=red?0:Math.max(0,1300-(performance.now()-_abInicio));
+  _abTimers.push(setTimeout(function(){
+    ab.classList.add("saindo-logo");
+    var l=document.getElementById("ab-logo");if(l){l.classList.remove("respira");l.classList.add("sai");}
+    _abTimers.push(setTimeout(function(){
+      ab.classList.add("saindo");
+      var app=document.getElementById("app");
+      if(entrarQuadro&&app&&!red){app.classList.add("ab-entrando");setTimeout(function(){app.classList.remove("ab-entrando");},650);}
+      _abTimers.push(setTimeout(function(){_abTimers.forEach(clearTimeout);_abTimers=[];ab.remove();},520));
+    },red?0:650));
+  },espera));
+}
+_aberturaRespirar();
+
 async function init(){
-  var app=document.getElementById("app");app.className="kanban-mode";
-  app.innerHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;"><div style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#fff;">BT</span></div><div style="width:28px;height:3px;background:linear-gradient(90deg,#ff8204,#e20500);border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div><style>@keyframes pulse{0%,100%{opacity:.4;transform:scaleX(.8)}50%{opacity:1;transform:scaleX(1)}}</style><div style="font-size:13px;color:rgba(255,255,255,.35);">Carregando BTDesk...</div></div>';
-  try{await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEtq(),loadEquipes(),loadTarefaStatus(),loadDemandaModelo(),loadSubtarefaModelo(),loadProjetoModelo()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});await ensureDemandaSnapshots();await ensureCardColors();await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);await migrarTarefasCardsParaTabela();await verificarAlertasPrazos();}catch(e){console.error("Falha ao carregar dados iniciais:",e);toast("Erro ao carregar os dados. Recarregue a pagina.",true);}
+  var app=document.getElementById("app");app.className="kanban-mode";app.innerHTML="";
+  _aberturaGarantir();_aberturaOi();_aberturaEtapa("Carregando demandas…",28);
+  try{
+    await Promise.all([loadResp(),loadClientes(),loadCasos(),dbLoadCols(),loadEtq(),loadEquipes(),loadTarefaStatus(),loadDemandaModelo(),loadSubtarefaModelo(),loadProjetoModelo()]);cards=await dbFetch();cards=cards.filter(function(c){return c.id!=="__cols__";});
+    _aberturaEtapa("Carregando equipes e tarefas…",58);
+    await ensureDemandaSnapshots();await ensureCardColors();await Promise.all([loadTodasTarefas(),loadDemandaEquipes(),loadNotificacoes()]);
+    _aberturaEtapa("Organizando o quadro…",86);
+    await migrarTarefasCardsParaTabela();await verificarAlertasPrazos();
+  }catch(e){console.error("Falha ao carregar dados iniciais:",e);toast("Erro ao carregar os dados. Recarregue a pagina.",true);}
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   renderKanban();
+  _aberturaEtapa(null,100);_aberturaFechar(true);
   abrirCardDaUrl();
 }
-(async function(){if(_tratarRetornoRecuperacao())return;if(await checkAuth()){init();}else{renderLogin();}})();
+(async function(){
+  if(_tratarRetornoRecuperacao()){_aberturaFechar(false);return;}
+  if(await checkAuth()){init();}else{renderLogin();_aberturaFechar(false);}
+})();
