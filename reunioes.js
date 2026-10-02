@@ -1634,7 +1634,7 @@ function _apRenderDoisPaineis(reuniaoId,cats,catSelId){
     +'<div class="gp-ferr"><input class="gp-busca" id="gp-busca" placeholder="Buscar nesta categoria..." oninput="_gpBusca=this.value;_gpRenderLista()"/>'
     +'<select class="gp-sel" title="Ordenar" onchange="_gpOrdem=this.value;_gpRenderLista()"><option value="parado"'+(_gpOrdem==="parado"?' selected':'')+'>Mais tempo sem discutir</option><option value="prazo"'+(_gpOrdem==="prazo"?' selected':'')+'>Prazo mais próximo</option><option value="nome"'+(_gpOrdem==="nome"?' selected':'')+'>Nome</option></select>'
     +'<button class="gp-tog'+(_gpMeus?' on':'')+'" onclick="_gpMeus=!_gpMeus;this.classList.toggle(\'on\',_gpMeus);_gpRenderLista()">Só os meus</button>'
-    +'<button class="gp-tog" title="Marca itens atrasados, com prazo nos próximos 7 dias ou sem discussão há '+(_GP_PARADO_DIAS/7)+' semanas ou mais (todas as categorias)" onclick="_gpSugerir()">'+ic("spark")+' Sugerir pauta</button></div>'
+    +'<button class="gp-tog" title="Marca itens atrasados, com prazo nos próximos 7 dias ou sem discussão há '+(_GP_PARADO_DIAS/7)+' semanas ou mais (só nesta categoria)" onclick="_gpSugerir()">'+ic("spark")+' Sugerir pauta</button></div>'
     +'<div id="ap-items" class="gp-lista"></div></div>';
   _apRenderCatList(cats,catSelId);
   _gpCarregarTotais();
@@ -1742,7 +1742,7 @@ async function _gpEnriquecer(itens){
   var info={},ids=itens.map(function(t){return t.id;});
   ids.forEach(function(id){info[id]={feitas:0,total:0,ult:null,up:null};});
   if(!ids.length)return info;
-  var atual=_gpReuniaoAtual(),subIds=[],paiDe={};
+  var hojeStr=new Date().toISOString().slice(0,10),subIds=[],paiDe={};
   try{
     var rs=await fetch(SB+"/rest/v1/tarefas?parent_id=in.("+ids.join(",")+")&select=id,parent_id,status",{headers:H});
     var subs=rs.ok?await rs.json():[];
@@ -1752,8 +1752,8 @@ async function _gpEnriquecer(itens){
   try{
     var links=await dbFetchReunioesPorTarefas(ids);
     links.forEach(function(l){
-      var r=l.reunioes;if(!r||r.id===_apReuniao||!r.data)return;
-      if(atual.data&&r.data>atual.data)return;
+      // ultima reuniao ja ocorrida (ate hoje), mesmo que seja depois da reuniao aberta
+      var r=l.reunioes;if(!r||r.id===_apReuniao||!r.data||r.data>hojeStr)return;
       var i=info[l.tarefa_id];if(i&&(!i.ult||r.data>i.ult))i.ult=r.data;
     });
   }catch(_){}
@@ -1825,7 +1825,8 @@ function _gpRenderLista(){
 }
 // Sugere pauta em todas as categorias: atrasados, prazo em ate 7 dias ou parados ha 4+ semanas (ignora concluidos)
 async function _gpSugerir(){
-  var ids=_apCats.map(function(c){return c.id;});if(!ids.length)return;
+  // so a categoria aberta (ex.: Projetos de equipe)
+  var ids=_apCatSel?[_apCatSel]:[];if(!ids.length)return;
   toast("Analisando itens...");
   try{
     var r=await fetch(SB+"/rest/v1/tarefas?pauta_categoria_id=in.("+ids.join(",")+")&parent_id=is.null&select=id,status,data_fim,pauta_categoria_id",{headers:H});
