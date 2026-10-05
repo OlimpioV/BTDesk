@@ -1356,6 +1356,7 @@ function _loadProjetosArea(reuniaoId){
 async function selecionarReuniao(id){
   reuniaoAtiva=reunioesDB.find(function(r){return r.id===id;})||null;
   if(reuniaoAtiva){var _p=reuniaoAtiva.data.split('-');_calMes=parseInt(_p[1])-1;_calAno=parseInt(_p[0]);}
+  if(reuniaoAtiva&&typeof _rotaReuniao==="function")_rotaReuniao(reuniaoAtiva.id);
   _renderReunioesPagina();
 }
 

@@ -184,6 +184,7 @@ function stopEditObs(cardId,val){var block=document.getElementById("obs-block-"+
 function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay"))return;var mc=document.getElementById("modal-container");var ov=mc.querySelector(".modal-overlay");_ef=null;_ecid=null;
   // Animacao de saida: so limpa se o mesmo modal ainda estiver na tela (outro pode ter sido aberto nesse meio tempo)
   _mtPopAberto=null;_stNovaCard=null;
+  if(typeof _rotaFecharCard==="function")_rotaFecharCard();
   if(document.querySelector("#app.kanban-mode"))renderKanban();
   if(ov&&ov.querySelector(".modal-trello")&&!ov.classList.contains("mt-saindo")){ov.classList.remove("mt-entrando");ov.classList.add("mt-saindo");setTimeout(function(){if(ov.parentNode===mc)mc.innerHTML="";},170);}else mc.innerHTML="";}
 async function submitCmt(cardId){var el=document.getElementById("new-cmt");var txt=(el?el.value:"").trim();if(!txt){toast("Escreva um comentário",true);return;}try{var ok=await addCmt(cardId,txt);if(ok===false)toast("Comentário salvo, mas a marcação não pôde ser enviada",true);else toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
@@ -229,7 +230,7 @@ async function applyCoverColor(cardId,color){
   try{await dbUpsert(card);}catch(e){toast("Erro",true);}
 }
 
-function openCardModal(id){modalCardId=id;editingCmtId=null;_ef=null;_ecid=null;renderModal();var ov=document.querySelector("#modal-container .modal-overlay");if(ov)ov.classList.add("mt-entrando");}
+function openCardModal(id){if(typeof _rotaCard==="function")_rotaCard(id);modalCardId=id;editingCmtId=null;_ef=null;_ecid=null;renderModal();var ov=document.querySelector("#modal-container .modal-overlay");if(ov)ov.classList.add("mt-entrando");}
 function renderModal(){
   var id=modalCardId;
   var card=cards.find(function(c){return c.id===id;});if(!card)return;

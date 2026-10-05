@@ -225,6 +225,7 @@ function _btPilulaAjustar(animar){
 }
 window.addEventListener("resize",function(){_btPilulaAjustar(false);});
 function headerHTML(aba){
+  if(typeof _rotaMarcar==="function")_rotaMarcar(aba);
   var ce=perfil==="mestre"||perfil==="advogado";
   var aba_=function(on,fn,icone,txt){return '<button class="bt-aba'+(on?' on':'')+'" onclick="'+fn+'">'+ic(icone)+'<span>'+txt+'</span></button>';};
   var abas=aba_(aba==="kanban"||aba==="lista","renderView()","kanban","Demandas");

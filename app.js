@@ -309,6 +309,56 @@ function _aberturaFechar(entrarQuadro){
 }
 _aberturaRespirar();
 
+// ── ROTAS (hash na URL: #/demandas, #/lista, #/minhas-tarefas, #/projetos, #/reunioes[/ID], #/admin/SECAO, #/card/ID) ──
+// headerHTML() avisa a tela atual via _rotaMarcar; Voltar/Avancar do navegador chamam _rotaIr. Cartao abre/fecha com replaceState (nao suja o historico)
+var _rotaInicialHash=location.hash,_rotaPronta=false,_rotaTela="#/demandas";
+var _ROTAS_ABA={kanban:"demandas",lista:"lista","minhas-tarefas":"minhas-tarefas",projetos:"projetos",reunioes:"reunioes"};
+function _rotaHash(aba){
+  if(_ROTAS_ABA[aba])return "#/"+_ROTAS_ABA[aba];
+  if(typeof _isAdminAba==="function"&&_isAdminAba(aba))return "#/admin/"+aba;
+  return "";
+}
+function _rotaUrl(h){return location.pathname+location.search+h;}
+function _rotaMarcar(aba){
+  if(!_rotaPronta)return;
+  var h=_rotaHash(aba);if(!h)return;
+  if(document.querySelector("#modal-container .modal-trello"))return;
+  if(aba==="reunioes"&&/^#\/reunioes(\/|$)/.test(location.hash)){_rotaTela=location.hash;return;}
+  _rotaTela=h;
+  if(location.hash!==h)history.pushState(null,"",_rotaUrl(h));
+}
+function _rotaCard(id){if(_rotaPronta)history.replaceState(null,"",_rotaUrl("#/card/"+id));}
+function _rotaReuniao(id){if(_rotaPronta&&id){_rotaTela="#/reunioes/"+id;history.replaceState(null,"",_rotaUrl(_rotaTela));}}
+function _rotaFecharCard(){if(/^#\/card\//.test(location.hash))history.replaceState(null,"",_rotaUrl(_rotaTela||"#/demandas"));}
+function _rotaIr(h){
+  if(!perfil||!/^#\//.test(h||""))return;
+  var ce=perfil==="mestre"||perfil==="advogado";
+  var mc=document.getElementById("modal-container");if(mc)mc.innerHTML="";
+  var partes=h.slice(2).split("/");
+  var dest=partes[0],arg=decodeURIComponent(partes.slice(1).join("/"));
+  if(dest==="card"){
+    var card=cards.find(function(c){return c.id===arg;});
+    if(!card){toast("Demanda não encontrada ou sem acesso",true);history.replaceState(null,"",_rotaUrl(_rotaTela));return;}
+    if(card.arquivado)toast("Esta demanda está arquivada");
+    if(!document.querySelector("#app.kanban-mode")){viewMode="kanban";renderKanban();}
+    openCardModal(arg);return;
+  }
+  if(dest==="lista"){viewMode="lista";renderLista();}
+  else if(dest==="minhas-tarefas"&&ce)renderMinhasTarefas();
+  else if(dest==="projetos")renderProjetosEquipe();
+  else if(dest==="reunioes"&&ce){if(arg)_mtAbrirReuniao(arg);else renderReunioes();}
+  else if(dest==="admin"&&perfil==="mestre")renderAdministracao(arg||"usr");
+  else{viewMode="kanban";renderKanban();}
+}
+function _rotaInicial(){
+  var h=_rotaInicialHash;_rotaInicialHash="";
+  var q=new URLSearchParams(location.search).get("card");
+  if(q){h="#/card/"+q;history.replaceState(null,"",location.pathname+h);}
+  _rotaPronta=true;_rotaTela="#/demandas";
+  if(!/^#\//.test(h||"")){history.replaceState(null,"",_rotaUrl("#/demandas"));return;}
+  _rotaIr(h);
+}
+window.addEventListener("popstate",function(){_rotaIr(location.hash);});
 async function init(origem){
   var app=document.getElementById("app");app.className="kanban-mode";app.innerHTML="";
   _aberturaGarantir(origem);_aberturaOi();_aberturaEtapa("Carregando demandas…",28);
@@ -322,7 +372,7 @@ async function init(origem){
   if(!equipeAtiva&&perfil==="advogado"&&equipesDB.length){equipeAtiva=equipesDB[0];sessionStorage.setItem("bari_equipe",JSON.stringify(equipeAtiva));}
   renderKanban();
   _aberturaEtapa(null,100);_aberturaFechar(true);
-  abrirCardDaUrl();
+  _rotaInicial();
 }
 (async function(){
   if(_tratarRetornoRecuperacao()){_aberturaParaLogin();return;}
