@@ -269,19 +269,29 @@ function _qaAddKd(e,colId){
 async function _qaAddSalvar(colId){
   var ta=document.getElementById("qa-add-ta");var titulo=(ta?ta.value:"").trim();
   if(!titulo){toast("Digite um título para o cartão",true);if(ta)ta.focus();return;}
-  var col=COLS.find(function(c){return c.id===colId;});
-  // advogado so enxerga demandas em que e o responsavel (RLS), entao o cartao ja nasce com a sigla dele
-  var resp=perfil==="advogado"?_mtUserSigla():"";
-  var card={id:Date.now().toString(),titulo:titulo,clienteNum:null,casoNum:null,responsavel:resp,responsaveis:resp?[resp]:[],status:colId,email:"",dataInicio:"",dataFim:"",horas:"",obs:"",tipos:[],comentarios:[],
-    modelo_snapshot:_snapshotDemandaModelo(),campos_valores:{},ordem:_qaFimDaColuna(colId),coverColor:(col&&col.cover)||"#e2e8f0"};
-  cards.push(card);
-  if(equipeAtiva){if(!demandaEquipesDB[card.id])demandaEquipesDB[card.id]=[];demandaEquipesDB[card.id].push(equipeAtiva.id);}
-  renderKanban();
-  var cc=document.getElementById("col-cards-"+colId);if(cc)cc.scrollTop=cc.scrollHeight;
+  var card=null;
+  try{
+    var col=COLS.find(function(c){return c.id===colId;});
+    // advogado so enxerga demandas em que e o responsavel (RLS), entao o cartao ja nasce com a sigla dele
+    var resp=perfil==="advogado"?_mtUserSigla():"";
+    card={id:Date.now().toString(),titulo:titulo,clienteNum:null,casoNum:null,responsavel:resp,responsaveis:resp?[resp]:[],status:colId,email:"",dataInicio:"",dataFim:"",horas:"",obs:"",tipos:[],comentarios:[],
+      modelo_snapshot:_snapshotDemandaModelo(),campos_valores:{},ordem:_qaFimDaColuna(colId),coverColor:(col&&col.cover)||"#e2e8f0"};
+    cards.push(card);
+    if(equipeAtiva){if(!demandaEquipesDB[card.id])demandaEquipesDB[card.id]=[];demandaEquipesDB[card.id].push(equipeAtiva.id);}
+    renderKanban();
+    var cc=document.getElementById("col-cards-"+colId);if(cc)cc.scrollTop=cc.scrollHeight;
+  }catch(e){
+    console.error("Falha ao montar o cartão",e);
+    if(card)cards=cards.filter(function(c){return c!==card;});
+    toast("Erro ao criar o cartão: "+(e&&e.message?e.message:e),true);return;
+  }
   try{
     await dbUpsert(card);await dbLog("Criou demanda",titulo);
     if(equipeAtiva)await _qaVincularEquipes(card.id,[equipeAtiva.id]);
-  }catch(e){toast("Erro ao salvar o cartão",true);}
+  }catch(e){
+    console.error("Falha ao salvar o cartão",e);
+    toast("Erro ao salvar o cartão no servidor. Ele não foi gravado.",true);
+  }
 }
 
 // Menu de acoes
