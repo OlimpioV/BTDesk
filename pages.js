@@ -20,17 +20,105 @@ async function saveMyProfile(){
 
 
 // ── FORM MODAL (nova demanda inline) ──
+// Rascunho (fechar sem salvar mantem o que foi digitado) e cartoes modelo (estrutura_config id="cartoes_modelo")
+var _formRascunho=null,_cartoesModelo=null,_formModeloNomeAberto=false;
+function _formLerRascunho(){
+  if(!document.getElementById("f-titulo"))return null;
+  var g=function(id){var el=document.getElementById(id);return el?el.value:"";};
+  var cli=g("f-cli"),caso=g("f-caso");
+  return {v:{titulo:g("f-titulo"),clienteNum:cli?parseInt(cli):null,casoNum:caso?parseInt(caso):null,status:g("f-status"),email:g("f-email"),dataInicio:g("f-di"),dataFim:g("f-df"),horas:g("f-horas"),obs:g("f-obs")},tipos:formTipos.slice(),resps:_stRespsLidos("f-resps"),modeloId:g("f-modelo")};
+}
+function _formGuardarRascunho(){
+  var r=_formLerRascunho();if(!r)return;
+  var v=r.v;
+  _formRascunho=(v.titulo.trim()||v.clienteNum||v.casoNum||v.email.trim()||v.horas||v.obs.trim()||v.dataFim||r.tipos.length)?r:null;
+}
+function _formFechar(e){
+  if(e&&e.target!==e.currentTarget)return;
+  if(!editingId)_formGuardarRascunho();
+  closeModal();
+}
+function _formCancelar(){_formRascunho=null;_formModeloNomeAberto=false;closeModal();}
+function _formLimpar(){_formRascunho=null;_formModeloNomeAberto=false;formTipos=[];openCardFormModal();}
+function _formModeloHTML(rasc){
+  if(editingId)return "";
+  var lista=_cartoesModelo||[];
+  var sel=rasc&&rasc.modeloId?rasc.modeloId:"";
+  var opts='<option value="">Sem modelo</option>'+lista.map(function(m){return '<option value="'+escHTML(m.id)+'"'+(m.id===sel?' selected':'')+'>'+escHTML(m.nome)+'</option>';}).join("");
+  var h='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><select id="f-modelo" onchange="_formAplicarModelo(this.value)" style="flex:1;min-width:180px;">'+opts+'</select>'
+    +'<button type="button" class="btn" onclick="_formModeloNomeToggle()">Salvar como modelo</button>'
+    +(sel?'<button type="button" class="btn" onclick="_formExcluirModelo()">Excluir modelo</button>':'')
+    +(_formRascunho?'<button type="button" class="btn" onclick="_formLimpar()">Limpar</button>':'')+'</div>';
+  if(_formModeloNomeAberto)h+='<div style="display:flex;gap:8px;margin-top:8px;"><input id="f-modelo-nome" placeholder="Nome do modelo" style="flex:1;" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_formSalvarModelo();}"/><button type="button" class="btn btn-primary" onclick="_formSalvarModelo()">Salvar</button></div>';
+  return h;
+}
+function _formRefreshModelo(){var el=document.getElementById("f-modelo-wrap");if(el)el.innerHTML=_formModeloHTML(_formLerRascunho());}
+async function _formCarregarModelos(){
+  try{
+    var r=await fetch(SB+"/rest/v1/estrutura_config?id=eq.cartoes_modelo&select=data",{headers:H});
+    if(!r.ok)throw new Error();
+    var rows=await r.json();
+    _cartoesModelo=rows&&rows[0]&&rows[0].data&&Array.isArray(rows[0].data.lista)?rows[0].data.lista:[];
+  }catch(e){_cartoesModelo=_cartoesModelo||[];}
+  _formRefreshModelo();
+}
+async function _formGravarModelos(){
+  var r=await fetch(SB+"/rest/v1/estrutura_config",{method:"POST",headers:Object.assign({"Prefer":"resolution=merge-duplicates"},H),body:JSON.stringify({id:"cartoes_modelo",data:{lista:_cartoesModelo},atualizado_em:new Date().toISOString()})});
+  if(!r.ok)throw new Error();
+}
+function _formModeloNomeToggle(){
+  _formModeloNomeAberto=!_formModeloNomeAberto;_formRefreshModelo();
+  setTimeout(function(){var el=document.getElementById("f-modelo-nome");if(el)el.focus();},30);
+}
+async function _formSalvarModelo(){
+  var nome=((document.getElementById("f-modelo-nome")||{}).value||"").trim();
+  if(!nome){toast("Informe o nome do modelo",true);return;}
+  var r=_formLerRascunho();if(!r)return;
+  if(!_cartoesModelo)_cartoesModelo=[];
+  var v=r.v,m={id:uid(),nome:nome,v:{titulo:v.titulo,clienteNum:v.clienteNum,casoNum:v.casoNum,status:v.status,email:v.email,horas:v.horas,obs:v.obs},tipos:r.tipos,resps:r.resps};
+  _cartoesModelo.push(m);
+  try{await _formGravarModelos();}catch(e){_cartoesModelo.pop();toast("Erro ao salvar o modelo",true);return;}
+  _formModeloNomeAberto=false;r.modeloId=m.id;_formRascunho=r;
+  toast("Modelo salvo!");openCardFormModal();
+}
+function _formAplicarModelo(id){
+  var atual=_formLerRascunho();
+  if(!id){if(atual){atual.modeloId="";_formRascunho=atual;}openCardFormModal();return;}
+  var m=(_cartoesModelo||[]).find(function(x){return x.id===id;});if(!m)return;
+  var resps=(m.resps||[]).slice();
+  if(perfil==="advogado"){var sg=_mtUserSigla();if(sg&&resps.indexOf(sg)<0)resps.push(sg);}
+  var v=Object.assign({},m.v);
+  v.dataInicio=atual&&atual.v.dataInicio?atual.v.dataInicio:new Date().toISOString().split("T")[0];
+  v.dataFim=atual?atual.v.dataFim:"";
+  if(!v.status||!COLS.some(function(c){return c.id===v.status;}))v.status=atual?atual.v.status:(COLS[0]?COLS[0].id:"aberto");
+  formTipos=(m.tipos||[]).filter(function(t){return TC[t];});
+  _formRascunho={v:v,tipos:formTipos.slice(),resps:resps,modeloId:id};
+  openCardFormModal();
+}
+function _formExcluirModelo(){
+  var id=((document.getElementById("f-modelo")||{}).value||"");var m=(_cartoesModelo||[]).find(function(x){return x.id===id;});if(!m)return;
+  _formGuardarRascunho();
+  modalConfirm('Excluir o modelo "'+m.nome+'"?',async function(){
+    var antes=_cartoesModelo.slice();_cartoesModelo=_cartoesModelo.filter(function(x){return x.id!==id;});
+    try{await _formGravarModelos();toast("Modelo excluído!");}catch(e){_cartoesModelo=antes;toast("Erro ao excluir o modelo",true);}
+    if(_formRascunho&&_formRascunho.modeloId===id)_formRascunho.modeloId="";
+    openCardFormModal();
+  });
+}
 function openCardFormModal(){
   var card=editingId?cards.find(function(c){return c.id===editingId;}):null;
   var v=card||{titulo:"",responsavel:"",email:"",dataInicio:new Date().toISOString().split("T")[0],dataFim:"",horas:"",obs:"",tipos:[],status:COLS[0]?COLS[0].id:"aberto",clienteNum:null,casoNum:null};
+  var rasc=(!card&&_formRascunho)?_formRascunho:null;
+  if(rasc){v=Object.assign({},v,rasc.v,{titulo:escHTML(rasc.v.titulo),email:escHTML(rasc.v.email),obs:escHTML(rasc.v.obs)});formTipos=rasc.tipos.slice();}
   var tBtns=TIPOS.map(function(t){var sel=formTipos.includes(t),c=TC[t];return '<button type="button" onclick="toggleTipo(\''+t+'\')" id="tipo-'+t+'" style="font-size:12px;font-weight:600;padding:4px 12px;border-radius:4px;cursor:pointer;background:'+(sel?c.bg:'var(--surface)')+';border:'+(sel?'1.5px solid '+c.border:'1.5px solid var(--border)')+';color:'+(sel?c.text:'var(--text2)')+';transition:all .15s;">'+t+'</button>';}).join("");
   var rO=responsaveis.map(function(r){return '<option value="'+r+'"'+(v.responsavel===r?' selected':'')+'>'+r+'</option>';}).join("");
   var sO=COLS.map(function(c){return '<option value="'+c.id+'"'+(v.status===c.id?' selected':'')+'>'+c.label+'</option>';}).join("");
   var cliTextVal="";if(v.clienteNum){var cliObj=clientesDB.find(function(c){return c.numero===v.clienteNum;});cliTextVal=v.clienteNum+(cliObj&&cliObj.nome?" — "+cliObj.nome:"");}
   var casos=v.clienteNum?casosDoCliente(parseInt(v.clienteNum)):[];
   var casoFI=casos.length>0?'<select id="f-caso" style="width:100%;"><option value="">Selecione o caso...</option>'+casos.map(function(c){return '<option value="'+c.numero+'"'+(String(v.casoNum)===String(c.numero)?' selected':'')+'>'+c.numero+(c.descricao?' — '+trunc(c.descricao,40):'')+'</option>';}).join("")+'</select>':'<input id="f-caso" type="number" min="1" max="9999" value="'+(v.casoNum||"")+'" placeholder="Ex: 745"/>';
-  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="closeModal(event)"><div class="modal-box" style="width:min(96vw,580px);padding:0;overflow:hidden;" onclick="event.stopPropagation()"><div style="background:linear-gradient(135deg,#1a2e3a,#253f4f);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;"><span style="color:#fff;font-weight:700;font-size:14px;">'+(editingId?"Editar demanda":"Nova demanda")+'</span><button onclick="closeModal()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.75);border-radius:7px;padding:4px 8px;cursor:pointer;">'+ic('close')+'</button></div><div style="padding:22px 26px;max-height:80vh;overflow-y:auto;"><div class="field"><label>Título *</label><input id="f-titulo" value="'+v.titulo+'" placeholder="Ex: Análise de contrato CRI"/></div><div class="field"><label>Cliente</label><div class="ac-wrap"><input id="f-cli-txt" autocomplete="off" value="'+cliTextVal+'" placeholder="Digite nome ou número..." oninput="fAcInput(this.value)" onkeydown="fAcKd(event)" onblur="setTimeout(fHideAc,220)"/><input type="hidden" id="f-cli" value="'+(v.clienteNum||"")+'"/><div id="f-ac-list" class="ac-list" style="display:none;"></div></div></div><div class="field"><label>Caso</label><div id="caso-wrap">'+casoFI+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field"><div><label>Responsáveis</label>'+_stRespChips("f-resps",_formRespsIni(v,card))+'</div><div><label>Status</label><select id="f-status" style="width:100%;">'+sO+'</select></div></div><div class="field"><label>E-mail da solicitação</label><input id="f-email" value="'+(v.email||"")+'" placeholder="Ex: Fwd: Assembleia Geral"/></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" class="field"><div><label>Início</label><input type="date" id="f-di" value="'+(v.dataInicio||"")+'"/></div><div><label>Encerramento</label><input type="date" id="f-df" value="'+(v.dataFim||"")+'"/></div><div><label>Horas</label><input type="number" id="f-horas" value="'+(v.horas||"")+'" placeholder="Ex: 2.5" step="0.5"/></div></div><div class="field"><label>Tipo(s)</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;">'+tBtns+'</div></div><div class="field"><label>Observações</label><textarea id="f-obs" rows="3" style="resize:vertical;line-height:1.6;">'+(v.obs||"")+'</textarea></div><div style="height:1px;background:var(--border);margin:16px 0;"></div><div style="display:flex;gap:9px;justify-content:flex-end;"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveCard()" style="display:flex;align-items:center;gap:5px;">'+ic('spark')+' Salvar demanda</button></div></div></div></div>';
+  document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="_formFechar(event)"><div class="modal-box" style="width:min(96vw,580px);padding:0;overflow:hidden;" onclick="event.stopPropagation()"><div style="background:linear-gradient(135deg,#1a2e3a,#253f4f);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;"><span style="color:#fff;font-weight:700;font-size:14px;">'+(editingId?"Editar demanda":"Nova demanda")+'</span><button onclick="_formFechar()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.75);border-radius:7px;padding:4px 8px;cursor:pointer;">'+ic('close')+'</button></div><div style="padding:22px 26px;max-height:80vh;overflow-y:auto;"><div class="field" id="f-modelo-wrap">'+_formModeloHTML(rasc)+'</div><div class="field"><label>Título *</label><input id="f-titulo" value="'+v.titulo+'" placeholder="Ex: Análise de contrato CRI"/></div><div class="field"><label>Cliente</label><div class="ac-wrap"><input id="f-cli-txt" autocomplete="off" value="'+cliTextVal+'" placeholder="Digite nome ou número..." oninput="fAcInput(this.value)" onkeydown="fAcKd(event)" onblur="setTimeout(fHideAc,220)"/><input type="hidden" id="f-cli" value="'+(v.clienteNum||"")+'"/><div id="f-ac-list" class="ac-list" style="display:none;"></div></div></div><div class="field"><label>Caso</label><div id="caso-wrap">'+casoFI+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field"><div><label>Responsáveis</label>'+_stRespChips("f-resps",_formRespsIni(v,card))+'</div><div><label>Status</label><select id="f-status" style="width:100%;">'+sO+'</select></div></div><div class="field"><label>E-mail da solicitação</label><input id="f-email" value="'+(v.email||"")+'" placeholder="Ex: Fwd: Assembleia Geral"/></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" class="field"><div><label>Início</label><input type="date" id="f-di" value="'+(v.dataInicio||"")+'"/></div><div><label>Encerramento</label><input type="date" id="f-df" value="'+(v.dataFim||"")+'"/></div><div><label>Horas</label><input type="number" id="f-horas" value="'+(v.horas||"")+'" placeholder="Ex: 2.5" step="0.5"/></div></div><div class="field"><label>Tipo(s)</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;">'+tBtns+'</div></div><div class="field"><label>Observações</label><textarea id="f-obs" rows="3" style="resize:vertical;line-height:1.6;">'+(v.obs||"")+'</textarea></div><div style="height:1px;background:var(--border);margin:16px 0;"></div><div style="display:flex;gap:9px;justify-content:flex-end;"><button class="btn" onclick="_formCancelar()">Cancelar</button><button class="btn btn-primary" onclick="saveCard()" style="display:flex;align-items:center;gap:5px;">'+ic('spark')+' Salvar demanda</button></div></div></div></div>';
   setTimeout(function(){var el=document.getElementById("f-titulo");if(el)el.focus();},50);
+  if(!editingId){if(_cartoesModelo)_formRefreshModelo();else _formCarregarModelos();}
 }
 
 // ── FORM (nova/editar demanda) ──
@@ -56,7 +144,7 @@ function updateFormCaso(cliNum){var wrap=document.getElementById("caso-wrap");if
 function toggleTipo(t){var idx=formTipos.indexOf(t);if(idx>=0)formTipos.splice(idx,1);else formTipos.push(t);var c=TC[t],sel=formTipos.includes(t),btn=document.getElementById("tipo-"+t);if(!btn)return;btn.style.background=sel?c.bg:"var(--surface)";btn.style.border=sel?"1.5px solid "+c.border:"1.5px solid var(--border)";btn.style.color=sel?c.text:"var(--text2)";}
 function openNew(){editingId=null;formTipos=[];openCardFormModal();}
 // advogado so ve demandas em que e responsavel (RLS): a sigla dele ja vem marcada na criacao
-function _formRespsIni(v,card){if(card)return respsDe(v);var s=perfil==="advogado"?_mtUserSigla():"";return s?[s]:[];}
+function _formRespsIni(v,card){if(card)return respsDe(v);if(_formRascunho)return _formRascunho.resps;var s=perfil==="advogado"?_mtUserSigla():"";return s?[s]:[];}
 async function saveCard(){
   var titulo=(document.getElementById("f-titulo").value||"").trim();if(!titulo){toast("Informe o título",true);return;}
   var id=editingId||Date.now().toString();var existing=editingId?cards.find(function(c){return c.id===editingId;}):null;
@@ -67,7 +155,7 @@ async function saveCard(){
   else{card.modelo_snapshot=_snapshotDemandaModelo();card.campos_valores={};}
   if(existing)card.ordem=existing.ordem||0;else{var cc=cards.filter(function(c){return c.status===card.status;});card.ordem=cc.length;}
   var _colC=COLS.find(function(c){return c.id===card.status;});card.coverColor=existing?(existing.coverColor||(_colC&&_colC.cover)||"#e2e8f0"):((_colC&&_colC.cover)||"#e2e8f0");
-  try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(!editingId&&equipeAtiva){await dbUpsertDemandaEquipe({demanda_id:id,equipe_id:equipeAtiva.id});if(!demandaEquipesDB[id])demandaEquipesDB[id]=[];if(!demandaEquipesDB[id].includes(equipeAtiva.id))demandaEquipesDB[id].push(equipeAtiva.id);}if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");editingId=null;document.getElementById("modal-container").innerHTML="";renderView();}catch(e){toast("Erro",true);}
+  try{await dbUpsert(card);await dbLog(editingId?"Editou demanda":"Criou demanda",titulo);if(!editingId&&equipeAtiva){await dbUpsertDemandaEquipe({demanda_id:id,equipe_id:equipeAtiva.id});if(!demandaEquipesDB[id])demandaEquipesDB[id]=[];if(!demandaEquipesDB[id].includes(equipeAtiva.id))demandaEquipesDB[id].push(equipeAtiva.id);}if(editingId){cards=cards.map(function(c){return c.id===editingId?card:c;});}else cards.push(card);toast("Salvo!");_formRascunho=null;editingId=null;document.getElementById("modal-container").innerHTML="";renderView();}catch(e){toast("Erro",true);}
 }
 
 

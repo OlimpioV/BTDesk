@@ -268,7 +268,7 @@ function _qaAddKd(e,colId){
 }
 async function _qaAddSalvar(colId){
   var ta=document.getElementById("qa-add-ta");var titulo=(ta?ta.value:"").trim();
-  if(!titulo){if(ta)ta.focus();return;}
+  if(!titulo){toast("Digite um título para o cartão",true);if(ta)ta.focus();return;}
   var col=COLS.find(function(c){return c.id===colId;});
   // advogado so enxerga demandas em que e o responsavel (RLS), entao o cartao ja nasce com a sigla dele
   var resp=perfil==="advogado"?_mtUserSigla():"";
