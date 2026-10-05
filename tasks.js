@@ -403,6 +403,12 @@ async function abrirNotificacao(id){
   try{await dbMarcarNotificacaoLida(id);}catch(_){}
   notificacoesDB=(notificacoesDB||[]).map(function(x){return x.id===id?Object.assign({},x,{lida:true}):x;});
   var drop=document.getElementById("notif-dropdown");if(drop)drop.remove();
+  if(n.tipo==="mencao"){
+    var cid=_notifCardId(n.mensagem);
+    if(cid&&cards.some(function(c){return c.id===cid;})){if(!document.querySelector("#app.kanban-mode"))renderKanban();openCardModal(cid);}
+    else toast("Demanda não encontrada ou sem acesso",true);
+    return;
+  }
   var txt=_notifTextoBase(n.mensagem);
   if(txt){
     var cardMatch=null;

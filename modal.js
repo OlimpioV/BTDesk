@@ -87,8 +87,8 @@ async function _demCampoPersistir(cardId,campoId,valor){
 
 
 function getCmts(card){return card.comentarios||[];}
-async function addCmt(cardId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;var cmts=getCmts(card);cmts.push({id:Date.now().toString(),texto,autor:emailUser,data:new Date().toISOString()});card.comentarios=cmts;await dbUpsert(card);await dbLog("Comentou",card.titulo);}
-async function editCmt(cardId,cmtId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getCmts(card).map(function(c){return c.id===cmtId?Object.assign({},c,{texto,editado:true}):c;});await dbUpsert(card);}
+async function addCmt(cardId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return true;var cmts=getCmts(card);var men=_mcExtrair(texto);cmts.push({id:Date.now().toString(),texto,autor:emailUser,data:new Date().toISOString(),mencoes:men});card.comentarios=cmts;await dbUpsert(card);await dbLog("Comentou",card.titulo);return await _mcNotificar(card,men,[]);}
+async function editCmt(cardId,cmtId,texto){var card=cards.find(function(c){return c.id===cardId;});if(!card)return true;var ja=[],men=_mcExtrair(texto);card.comentarios=getCmts(card).map(function(c){if(c.id!==cmtId)return c;ja=c.mencoes||[];return Object.assign({},c,{texto,editado:true,mencoes:ja.concat(men.filter(function(i){return ja.indexOf(i)<0;}))});});await dbUpsert(card);return await _mcNotificar(card,men,ja);}
 async function delCmt(cardId,cmtId){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.comentarios=getCmts(card).filter(function(c){return c.id!==cmtId;});await dbUpsert(card);}
 function canEditCmt(autor){return perfil==="mestre"||(emailUser===autor&&perfil==="advogado");}
 function canComment(){return perfil==="mestre"||perfil==="advogado";}
@@ -186,10 +186,10 @@ function closeModal(e){if(e&&e.target!==document.querySelector(".modal-overlay")
   _mtPopAberto=null;_stNovaCard=null;
   if(document.querySelector("#app.kanban-mode"))renderKanban();
   if(ov&&ov.querySelector(".modal-trello")&&!ov.classList.contains("mt-saindo")){ov.classList.remove("mt-entrando");ov.classList.add("mt-saindo");setTimeout(function(){if(ov.parentNode===mc)mc.innerHTML="";},170);}else mc.innerHTML="";}
-async function submitCmt(cardId){var el=document.getElementById("new-cmt");var txt=(el?el.value:"").trim();if(!txt){toast("Escreva um comentário",true);return;}try{await addCmt(cardId,txt);toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
+async function submitCmt(cardId){var el=document.getElementById("new-cmt");var txt=(el?el.value:"").trim();if(!txt){toast("Escreva um comentário",true);return;}try{var ok=await addCmt(cardId,txt);if(ok===false)toast("Comentário salvo, mas a marcação não pôde ser enviada",true);else toast("Adicionado!");renderModal();}catch(e){toast("Erro",true);}}
 function startEditCmt(cid){editingCmtId=cid;renderModal();}
 function cancelEditCmt(){editingCmtId=null;renderModal();}
-async function saveEditCmt(cardId,cmtId){var el=document.getElementById("edit-cmt-txt");var txt=(el?el.value:"").trim();if(!txt){toast("Não pode ser vazio",true);return;}try{await editCmt(cardId,cmtId,txt);toast("Atualizado!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}}
+async function saveEditCmt(cardId,cmtId){var el=document.getElementById("edit-cmt-txt");var txt=(el?el.value:"").trim();if(!txt){toast("Não pode ser vazio",true);return;}try{var ok=await editCmt(cardId,cmtId,txt);if(ok===false)toast("Comentário atualizado, mas a marcação não pôde ser enviada",true);else toast("Atualizado!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}}
 function confirmDelCmt(cmtId){modalConfirm("Excluir este comentário?",async function(){try{await delCmt(modalCardId,cmtId);toast("Excluído!");editingCmtId=null;renderModal();}catch(e){toast("Erro",true);}});}
 async function toggleModalTipo(cardId,tipo){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.tipos=card.tipos||[];var idx=card.tipos.indexOf(tipo);if(idx>=0)card.tipos.splice(idx,1);else card.tipos.push(tipo);renderModal();try{await dbUpsert(card);}catch(e){toast("Erro",true);}}
 async function updateStatus(cardId,val){var card=cards.find(function(c){return c.id===cardId;});if(!card)return;card.status=val;if(modalCardId===cardId&&document.getElementById("mstatus"))renderModal();try{await dbUpsert(card);toast("Status atualizado!");}catch(e){toast("Erro",true);}}
@@ -290,11 +290,11 @@ function renderModal(){
     var nome=(c.autor||"?").split("@")[0];var dt=new Date(c.data).toLocaleString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
     var ited=editingCmtId===c.id;var pode=canEditCmt(c.autor);
     return '<div class="mt-cm"><span class="mt-av" style="background:'+avCor(c.autor||nome)+';">'+escHTML(nome.slice(0,2).toUpperCase())+'</span><div class="mt-cm-c"><div class="mt-cm-h"><b>'+escHTML(nome)+'</b><small>'+dt+(c.editado?' (editado)':'')+'</small></div>'
-      +(ited?'<textarea id="edit-cmt-txt" class="mt-ta" rows="2">'+escHTML(c.texto)+'</textarea><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="saveEditCmt(\''+id+'\',\''+c.id+'\')">Salvar</button><button class="mt-btn-txt" onclick="cancelEditCmt()">Cancelar</button></div>'
-        :'<div class="mt-cm-t">'+escHTML(c.texto)+'</div>'+(pode?'<div class="mt-cm-a"><a onclick="startEditCmt(\''+c.id+'\')">Editar</a> · <a onclick="confirmDelCmt(\''+c.id+'\')">Excluir</a></div>':''))
+      +(ited?'<textarea id="edit-cmt-txt" class="mt-ta" rows="2" oninput="mcInput(this)" onkeydown="mcKd(event)" onblur="setTimeout(mcFechar,150)">'+escHTML(c.texto)+'</textarea><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="saveEditCmt(\''+id+'\',\''+c.id+'\')">Salvar</button><button class="mt-btn-txt" onclick="cancelEditCmt()">Cancelar</button></div>'
+        :'<div class="mt-cm-t">'+_mcTextoHTML(c.texto)+'</div>'+(pode?'<div class="mt-cm-a"><a onclick="startEditCmt(\''+c.id+'\')">Editar</a> · <a onclick="confirmDelCmt(\''+c.id+'\')">Excluir</a></div>':''))
       +'</div></div>';
   }).join("");
-  var newCmt=canComment()?'<div class="mt-cm-novo"><span class="mt-av" style="background:var(--bt-navy);">'+escHTML(emailUser.charAt(0).toUpperCase())+'</span><div style="flex:1;min-width:0;"><textarea id="new-cmt" class="mt-ta" rows="2" placeholder="Escrever um comentário... (Ctrl+Enter envia)" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();submitCmt(\''+id+'\');}"></textarea><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="submitCmt(\''+id+'\')">Salvar</button></div></div></div>':"";
+  var newCmt=canComment()?'<div class="mt-cm-novo"><span class="mt-av" style="background:var(--bt-navy);">'+escHTML(emailUser.charAt(0).toUpperCase())+'</span><div style="flex:1;min-width:0;"><textarea id="new-cmt" class="mt-ta" rows="2" placeholder="Escrever um comentário... Use @ para marcar alguém (Ctrl+Enter envia)" oninput="mcInput(this)" onblur="setTimeout(mcFechar,150)" onkeydown="if(mcKd(event))return;if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();submitCmt(\''+id+'\');}"></textarea><div class="mt-linha-btn"><button class="mt-btn-azul" onclick="submitCmt(\''+id+'\')">Salvar</button></div></div></div>':"";
   var comentarios='<div class="mt-sec"><div class="mt-sec-h">'+ic("comment")+'<h3>Comentários <span class="mt-cont">'+cmts.length+'</span></h3></div>'+newCmt+'<div class="mt-cm-lista">'+cmtHTML+'</div></div>';
 
   document.getElementById("modal-container").innerHTML=
@@ -344,4 +344,67 @@ async function setModalDatas(cardId,remover){
   card.dataInicio=remover?null:((ini&&ini.value)||null);card.dataFim=remover?null:((fim&&fim.value)||null);
   mtPopFechar();renderModal();
   try{await dbUpsert(card);toast("Salvo!");}catch(e){toast("Erro",true);}
+}
+
+
+// ── MENCOES (@) EM COMENTARIOS ──
+// Digitar @ abre a lista de usuarios; as marcacoes sao lidas do texto ("@Nome") e viram notificacao no sino (tipo "mencao")
+var _mcLista=[],_mcIdx=0,_mcTa=null;
+function _mcNorm(x){return String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();}
+function _mcRegex(x){return String(x).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}
+function _mcUsuarios(){return (usuariosFullDB||[]).filter(function(u){return u.id&&u.nome;});}
+function _mcExtrair(texto){
+  var t=String(texto||"");
+  return _mcUsuarios().filter(function(u){return new RegExp("(^|\\s)@"+_mcRegex(u.nome)+"(?![\\wÀ-ÿ])","i").test(t);}).map(function(u){return u.id;});
+}
+function _mcTextoHTML(texto){
+  var h=escHTML(texto);
+  _mcUsuarios().sort(function(a,b){return b.nome.length-a.nome.length;}).forEach(function(u){
+    h=h.replace(new RegExp("(^|\\s)(@"+_mcRegex(escHTML(u.nome))+")(?![\\wÀ-ÿ])","gi"),'$1<span class="mc-tag">$2</span>');
+  });
+  return h;
+}
+async function _mcNotificar(card,ids,ja){
+  var novos=ids.filter(function(id){return id!==userDbId&&(ja||[]).indexOf(id)<0;});
+  if(!novos.length)return true;
+  var quem=_mtUserSigla()||nomeUser||"Alguém";
+  var msg=quem+" marcou você em um comentário: "+trunc(card.titulo||"",70)+" [[card:"+card.id+"]]";
+  var falhas=0;
+  for(var i=0;i<novos.length;i++){try{await dbUpsertNotificacao({usuario_id:novos[i],tipo:"mencao",mensagem:msg});}catch(e){falhas++;console.error("Falha ao notificar marcação",e);}}
+  return falhas===0;
+}
+function _notifMsgVisivel(msg){return String(msg||"").replace(/\s*\[\[card:[^\]]+\]\]/,"");}
+function _notifCardId(msg){var m=String(msg||"").match(/\[\[card:([^\]]+)\]\]/);return m?m[1]:"";}
+function mcFechar(){var el=document.getElementById("mc-pop");if(el)el.remove();_mcLista=[];}
+function mcInput(ta){
+  _mcTa=ta;
+  var antes=ta.value.slice(0,ta.selectionStart);
+  var m=antes.match(/(^|\s)@([^@\n]{0,30})$/);
+  if(!m){mcFechar();return;}
+  var q=_mcNorm(m[2]);
+  _mcLista=_mcUsuarios().filter(function(u){return u.id!==userDbId&&(_mcNorm(u.nome).indexOf(q)>=0||_mcNorm(u.sigla).indexOf(q)>=0);}).slice(0,6);
+  if(!_mcLista.length){mcFechar();return;}
+  _mcIdx=0;_mcDesenhar();
+}
+function _mcDesenhar(){
+  var pop=document.getElementById("mc-pop");
+  if(!pop){pop=document.createElement("div");pop.id="mc-pop";pop.className="mc-pop";document.body.appendChild(pop);}
+  var r=_mcTa.getBoundingClientRect();
+  pop.style.left=r.left+"px";pop.style.top=(r.bottom+4)+"px";pop.style.minWidth=Math.min(r.width,320)+"px";
+  pop.innerHTML=_mcLista.map(function(u,i){return '<div class="mc-item'+(i===_mcIdx?' on':'')+'" onmousedown="event.preventDefault();mcEscolher('+i+')"><b>'+escHTML(u.nome)+'</b><small>'+escHTML(u.sigla||"")+'</small></div>';}).join("");
+}
+function mcKd(e){
+  if(!document.getElementById("mc-pop")||!_mcLista.length)return false;
+  if(e.key==="ArrowDown"){e.preventDefault();_mcIdx=(_mcIdx+1)%_mcLista.length;_mcDesenhar();return true;}
+  if(e.key==="ArrowUp"){e.preventDefault();_mcIdx=(_mcIdx-1+_mcLista.length)%_mcLista.length;_mcDesenhar();return true;}
+  if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();mcEscolher(_mcIdx);return true;}
+  if(e.key==="Escape"){e.preventDefault();e.stopPropagation();mcFechar();return true;}
+  return false;
+}
+function mcEscolher(i){
+  var u=_mcLista[i],ta=_mcTa;if(!u||!ta)return;
+  var pos=ta.selectionStart,antes=ta.value.slice(0,pos).replace(/@[^@\n]{0,30}$/,"@"+u.nome+" ");
+  ta.value=antes+ta.value.slice(pos);
+  ta.focus();ta.setSelectionRange(antes.length,antes.length);
+  mcFechar();
 }

@@ -2377,7 +2377,7 @@ function toggleNotifDropdown(){
   var naoLidas=(notificacoesDB||[]).filter(function(n){return !n.lida;});
   var todas=(notificacoesDB||[]).slice(0,15);
   var itens=!todas.length?'<div class="bt-mi-vazio">Nenhuma notificação</div>':todas.map(function(n){
-    return '<div class="bt-notif'+(n.lida?'':' nova')+'" onclick="abrirNotificacao(\''+n.id+'\')"><div class="bt-notif-t">'+escHTML(n.mensagem)+'</div><div class="bt-notif-d">'+new Date(n.criado_em).toLocaleDateString("pt-BR")+'</div></div>';
+    return '<div class="bt-notif'+(n.lida?'':' nova')+'" onclick="abrirNotificacao(\''+n.id+'\')"><div class="bt-notif-t">'+escHTML(_notifMsgVisivel(n.mensagem))+'</div><div class="bt-notif-d">'+new Date(n.criado_em).toLocaleDateString("pt-BR")+'</div></div>';
   }).join("");
   var drop=document.createElement("div");
   drop.id="notif-dropdown";drop.className="bt-menu bt-menu-notif";

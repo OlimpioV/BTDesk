@@ -1600,3 +1600,10 @@ html:not([data-tema="claro"]) #app.page-mode .mst-rchip,html:not([data-tema="cla
 html:not([data-tema="claro"]) #app.page-mode .mst-rchip.on,html:not([data-tema="claro"]) body:has(#app.page-mode,#app.kanban-mode) #modal-container .mst-rchip.on{background:rgba(87,157,255,.16);border-color:var(--tk-azul);color:var(--tk-forte);}
 html:not([data-tema="claro"]) #app.page-mode .btn-primary,html:not([data-tema="claro"]) body:has(#app.page-mode,#app.kanban-mode) #modal-container .btn-primary,html:not([data-tema="claro"]) body:has(#app.page-mode,#app.kanban-mode) #modal-container .rbtn-primary{background:var(--tk-azul);border-color:var(--tk-azul);color:#1d2125;}
 html:not([data-tema="claro"]) #app.page-mode .btn-primary:hover,html:not([data-tema="claro"]) body:has(#app.page-mode,#app.kanban-mode) #modal-container .btn-primary:hover,html:not([data-tema="claro"]) body:has(#app.page-mode,#app.kanban-mode) #modal-container .rbtn-primary:hover{background:var(--tk-anelazul);border-color:var(--tk-anelazul);color:#1d2125;}
+
+/* MENCOES (@) EM COMENTARIOS */
+.mc-pop{position:fixed;z-index:9999;max-width:360px;background:var(--tk-menu);border:1px solid var(--tk-linha);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:4px;}
+.mc-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--tk-txt);}
+.mc-item small{color:var(--tk-sub);font-weight:600;}
+.mc-item.on,.mc-item:hover{background:rgba(87,157,255,.16);color:var(--tk-forte);}
+.mc-tag{color:var(--tk-anelazul);font-weight:600;background:rgba(87,157,255,.14);border-radius:4px;padding:0 3px;}
