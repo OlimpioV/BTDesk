@@ -223,7 +223,7 @@ function _renderProjetosEquipePage(cats){
     +'<button class="rbtn rbtn-sm" onclick="_projetosPageBusca=\'\';_projetosPageStatus=\'\';_projetosPageResp=\'\';_projetosPagePrazo=\'\';_projetosPageReuniao=\'\';_renderProjetosEquipePage()">Limpar filtros</button>'
     +'</div>';
   html+='<div class="bgroup"><div class="bgroup-hd"><span class="bgroup-nm">'+(_projetosPageArquivados?'Projetos arquivados':'Projetos ativos')+'</span><span class="bgroup-ct">'+tarefas.length+' '+(tarefas.length===1?'projeto':'projetos')+'</span></div>';
-  html+='<div class="board"><div class="bcols"><span></span><span>Projeto</span><span>Respons\u00e1vel</span><span>Status</span><span>Prazo</span><span>Progresso</span></div>';
+  html+='<div class="board">';
   if(!tarefas.length){
     html+='<div style="padding:26px;text-align:center;color:var(--text3);font-size:13px;">Nenhum projeto encontrado.</div>';
   } else {
@@ -2966,7 +2966,6 @@ async function _loadPautasSection(reuniaoId){
       html+='<div class="bgroup">';
       html+='<div class="bgroup-hd"><span class="bgroup-nm">'+cat.nome+'</span><span class="bgroup-ct">'+nItens+' '+(nItens===1?(isProjetos?'projeto':'tarefa'):(isProjetos?'projetos':'tarefas'))+'</span></div>';
       html+='<div class="board">';
-      html+='<div class="bcols"><span></span><span>'+(isProjetos?'Projeto':'Tarefa')+'</span><span>Responsável</span><span>Status</span><span>Prazo</span><span>Progresso</span></div>';
       cat.itens.forEach(function(t){
         html+='<div id="tp-card-'+t.id+'" class="brow-wrap'+(isProjetos?' projeto-pauta-card':'')+'">'+_buildTarefaCard(t,ce,ehPassado)+'</div>';
       });
@@ -3269,56 +3268,51 @@ function _buildTarefaCard(t,ce,ehPassado){
 
   // ── LINHA DO BOARD (estilo Monday) ──
   var dragAttr=(ce&&!ehPassado)?' onpointerdown="_tarefaDragStart(event,\''+t.id+'\',false,null,'+!!ehPassado+')" title="Arraste para o lado para alterar status"':'';
-  html+='<div class="brow"'+dragAttr+'>';
+  // duas linhas: nome do projeto em cima; responsavel, status, prazo, progresso e historico embaixo
+  html+='<div class="brow brow2"'+dragAttr+'>';
   html+='<div class="brow-strip" style="background:'+bar+';"></div>';
-  // coluna 1: expandir
   html+='<div class="bc bc-chev"><button class="tcard-chev'+(subExp?' aberto':'')+'" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="'+(subExp?'Ocultar subtarefas':'Ver subtarefas')+'">'+ic("chevdown")+'</button></div>';
-  // coluna 2: tarefa (titulo editavel)
   html+='<div class="bc bc-task"><div class="btask-wrap"><span id="tp-txt-'+t.id+'" class="btask'+(statusTarefaFinalizador(t.status)?' done':'')+(canEdit?' inline-edit-hit':'')+'"'
-    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar o t\u00edtulo"':'')+'>'+_inlineHtml(t.texto)+'</span>'
-    +(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
-    +(t.campos_valores&&t.campos_valores.projeto_titulo?'<span class="bsub">Projeto: '+trunc(t.campos_valores.projeto_titulo,64)+'</span>':'')
-    +(_isProjetosPage()?'<span class="projeto-links">'+(_projetoReunioes(t.id).length?_projetoReunioes(t.id).slice(0,3).map(function(r){return '<span class="projeto-link-chip" title="'+_inlineHtml(_reuniaoResumoLabel(r))+'">'+_inlineHtml(_reuniaoResumoLabel(r))+'</span>';}).join(""):'<span class="projeto-link-empty">Sem reuni\u00e3o vinculada</span>')+(_projetoReunioes(t.id).length>3?'<span class="projeto-link-more">+'+(_projetoReunioes(t.id).length-3)+'</span>':'')+'</span>':'')
-    +(t.arquivado?'<span class="projeto-archived">Arquivado</span>':'')
-    +((t.descricao&&!subExp)?'<span class="bsub">'+_inlineHtml(trunc(t.descricao,64))+'</span>':'')
-    +'</div></div>';
-  // coluna 3: responsavel
-  html+='<div id="tp-resp-'+t.id+'" class="bc bc-resp'+(canEdit?' inline-edit-hit':'')+'"'
-    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar respons\u00e1vel"':'')+'>';
-  if(t.responsavel){
-    var u=(usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{};
-    html+='<span class="av av-sm" style="background:'+_avCor(u.id||t.responsavel)+';font-size:9px;width:24px;height:24px;min-width:24px;flex-shrink:0;">'+t.responsavel.slice(0,2).toUpperCase()+'</span><span class="bresp-nm">'+t.responsavel+'</span>';
-  } else { html+='<span class="bdash">&#8212;</span>'; }
-  html+='</div>';
-  // coluna 4: status solido
-  html+='<div class="bc bc-status"><span id="sc-'+t.id+'" class="statcell" style="background:'+bar+';'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
+    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar o título"':'')+'>'+_mcTextoHTML(t.texto)+'</span>';
+  html+='<div class="bmeta">';
+  // responsavel
+  var u=t.responsavel?((usuariosFullDB||[]).find(function(x){return x.sigla===t.responsavel;})||{}):null;
+  html+='<span id="tp-resp-'+t.id+'" class="sm sm-resp'+(canEdit?' inline-edit-hit':'')+'"'
+    +(canEdit?' onclick="event.stopPropagation();_abrirRespInline(\''+t.id+'\',false,null,'+!!ehPassado+')"':'')
+    +' title="'+(u?escHTML((u.nome||t.responsavel)+' ('+t.responsavel+')'):'Sem responsável')+(canEdit?' · clique para trocar':'')+'">';
+  if(u)html+='<span class="av av-sm sub-av" style="background:'+_avCor(u.id||t.responsavel)+';">'+t.responsavel.slice(0,2).toUpperCase()+'</span><b>'+escHTML(t.responsavel)+'</b>';
+  else html+='<span class="sm-lbl">Resp.</span><span class="bdash">&#8212;</span>';
+  html+='</span>';
+  // status
+  html+='<span id="sc-'+t.id+'" class="statcell" style="background:'+bar+';'+(ce&&!ehPassado?'cursor:pointer;':'')+'"'
     +(ce&&!ehPassado?' onclick="_abrirStatusDropdown(event,\''+t.id+'\',false,null,'+!!ehPassado+')"':'')
-    +'>'+lbl+(ce&&!ehPassado?' <span class="cv">&#9660;</span>':'')+'</span></div>';
-  // coluna 5: prazo
+    +'>'+lbl+(ce&&!ehPassado?' <span class="cv">&#9660;</span>':'')+'</span>';
+  // prazo
   var atrasado=t.data_fim&&_isAtrasado(t.data_fim,t.status);
-  html+='<div id="tp-date-'+t.id+'" class="bc bc-date'+(atrasado?' late':'')+(canEdit?' inline-edit-hit':'')+'"'
-    +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirPrazoInline(\''+t.id+'\',false,null,'+!!ehPassado+')" title="Clique para editar prazo"':'')+'>'
-    +(t.data_fim?_fmtDateBrShort(t.data_fim)+(atrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>')+'</div>';
-  // coluna 6: progresso + menu de acoes
-  html+='<div class="bc bc-prog">';
+  html+='<span id="tp-date-'+t.id+'" class="sm sm-date'+(atrasado?' venc':'')+(canEdit?' inline-edit-hit':'')+'"'
+    +(canEdit?' onclick="event.stopPropagation();_abrirPrazoInline(\''+t.id+'\',false,null,'+!!ehPassado+')" title="'+(atrasado?'Vencido · ':'')+'Clique para editar prazo"':'')+'>'
+    +'<span class="sm-lbl">Prazo</span>'+(t.data_fim?'<b>'+_fmtDateBrShort(t.data_fim)+'</b>':'<span class="bdash">&#8212;</span>')+'</span>';
+  // progresso (barra agrupada por status, concluidas primeiro; contagem ao passar o mouse)
   if(subtarefas&&subtarefas.length>0){
     var _pgs=statusTarefaProgresso(subtarefas),_conc=_pgs.feitas;
-    // barra agrupada por status (concluidas primeiro); a contagem de cada status aparece ao passar o mouse
     var _cnt={},_ordSt=[];
     subtarefas.forEach(function(s){if(!_cnt[s.status]){_cnt[s.status]=0;_ordSt.push(s.status);}_cnt[s.status]++;});
     _ordSt.sort(function(a,b){return (statusTarefaFeita(b)?1:0)-(statusTarefaFeita(a)?1:0)||(statusTarefaCancelado(a)?1:0)-(statusTarefaCancelado(b)?1:0);});
     var _tipProg=_ordSt.map(function(k){return _cnt[k]+" "+statusTarefaLabel(k).toLowerCase();}).join(" · ");
-    html+='<div class="bprogwrap" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="'+escHTML(_tipProg)+' · clique para ver as subtarefas">';
-    html+='<div class="btrack">';
-    _ordSt.forEach(function(k){for(var i=0;i<_cnt[k];i++)html+='<div class="bseg" style="background:'+statusTarefaCor(k,'#e8edf2')+';"></div>';});
-    html+='</div><span class="bpct">'+_conc+'/'+_pgs.total+'</span></div>';
-  } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
-  var _nh=_atuContar(t.id,subtarefas);
-  html+='<button class="b-hist'+(_nh?' tem':'')+'" onclick="event.stopPropagation();_atuAbrirHistorico(\''+t.id+'\','+!!ehPassado+')" title="Hist\u00f3rico de atualiza\u00e7\u00f5es">'+ic("clock")+(_nh?'<span>'+_nh+'</span>':'')+'</button>';
-  if(ce&&!ehPassado){
-    html+='<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>';
+    html+='<span class="bprogwrap" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="'+escHTML(_tipProg)+' · clique para ver as subtarefas"><span class="btrack">';
+    _ordSt.forEach(function(k){for(var i=0;i<_cnt[k];i++)html+='<span class="bseg" style="background:'+statusTarefaCor(k,'#e8edf2')+';"></span>';});
+    html+='</span><span class="bpct">'+_conc+'/'+_pgs.total+'</span></span>';
   }
+  var _nh=_atuContar(t.id,subtarefas);
+  html+='<button class="b-hist'+(_nh?' tem':'')+'" onclick="event.stopPropagation();_atuAbrirHistorico(\''+t.id+'\','+!!ehPassado+')" title="Histórico de atualizações">'+ic("clock")+(_nh?'<span>'+_nh+'</span>':'')+'</button>';
   html+='</div>';
+  html+=(t.campos_valores&&t.campos_valores.pauta_titulo?'<span class="bsub">Pauta: '+trunc(t.campos_valores.pauta_titulo,64)+'</span>':'')
+    +(t.campos_valores&&t.campos_valores.projeto_titulo?'<span class="bsub">Projeto: '+trunc(t.campos_valores.projeto_titulo,64)+'</span>':'')
+    +(_isProjetosPage()?'<span class="projeto-links">'+(_projetoReunioes(t.id).length?_projetoReunioes(t.id).slice(0,3).map(function(r){return '<span class="projeto-link-chip" title="'+_inlineHtml(_reuniaoResumoLabel(r))+'">'+_inlineHtml(_reuniaoResumoLabel(r))+'</span>';}).join(""):'<span class="projeto-link-empty">Sem reunião vinculada</span>')+(_projetoReunioes(t.id).length>3?'<span class="projeto-link-more">+'+(_projetoReunioes(t.id).length-3)+'</span>':'')+'</span>':'')
+    +(t.arquivado?'<span class="projeto-archived">Arquivado</span>':'')
+    +((t.descricao&&!subExp)?'<span class="bsub">'+_mcTextoHTML(trunc(t.descricao,90))+'</span>':'')
+    +'</div></div>';
+  html+='<div class="bc bc-acts">'+(ce&&!ehPassado?'<button onclick="_abrirMenuTarefa(event,\''+t.id+'\',false,null,'+!!ehPassado+')" class="rt-menu-btn" title="Ações">&#8943;</button>':'')+'</div>';
   html+='</div>';// fecha brow
   var colunasCustom=_colunasTarefaSnapshot();
   if(colunasCustom.length){
@@ -3386,7 +3380,6 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='<div class="subboard">';
     var _temSubs=subtarefas&&subtarefas.length>0;
     if(_temSubs){
-      html+='<div class="subcols"><span></span><span>Subtarefa</span><span title="Responsável">Resp.</span><span>Prazo</span><span></span><span></span></div>';
     }
     if(_temSubs){
       var _subRef=_subRefData(),_nFin=subtarefas.filter(function(x){return statusTarefaFinalizador(x.status);}).length,_finAb=!!_subFinAberto[t.id],_finPos=false;
@@ -3431,8 +3424,26 @@ function _buildTarefaCard(t,ce,ehPassado){
               +'<button class="sub-seta" title="Trocar status" onclick="_abrirStatusDropdown(event,'+_a+')">&#9660;</button>';
           } else html+='<span class="sub-sic" title="'+escHTML(sLbl)+'">'+_stIcone(s.status)+'</span>';
           html+='</div>';
+          // duas linhas: nome em cima; responsavel, prazo e historico embaixo; depois descricao e ultima atualizacao
           html+='<div class="subcell subcell-name"><div class="subname-wrap">';
           html+='<span id="tp-stxt-'+s.id+'" class="subname'+(_ehFin?' done':'')+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo('+_a+')" title="Clique para editar a subtarefa"':'')+'>'+_mcTextoHTML(s.texto)+'</span>';
+          html+='<div class="smeta">';
+          var su=s.responsavel?((usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{}):null;
+          html+='<span id="tp-sresp-'+s.id+'" class="sm sm-resp'+(canEdit?' inline-edit-hit':'')+'"'
+            +(canEdit?' onclick="event.stopPropagation();_abrirRespInline('+_a+')"':'')
+            +' title="'+(su?escHTML((su.nome||s.responsavel)+' ('+s.responsavel+')'):'Sem responsável')+(canEdit?' · clique para trocar':'')+'">';
+          if(su)html+='<span class="av av-sm sub-av" style="background:'+_avCor(su.id||s.responsavel)+';">'+s.responsavel.slice(0,2).toUpperCase()+'</span><b>'+escHTML(s.responsavel)+'</b>';
+          else html+='<span class="sm-lbl">Resp.</span><span class="bdash">&#8212;</span>';
+          html+='</span>';
+          // prazo: data completa; amarelo ate 3 dias, vermelho vencido; concluida mostra a data de conclusao
+          var sConcEm=statusTarefaConclusaoEm(s),_pz=_subPrazoInfo(s),_concOk=sConcEm&&statusTarefaFeita(s.status);
+          html+='<span id="tp-sdate-'+s.id+'" class="sm sm-date '+_pz.cls+(canEdit?' inline-edit-hit':'')+'"'
+            +(canEdit?' onclick="event.stopPropagation();_abrirPrazoInline('+_a+')"':'')+' title="'+_pz.tit+(canEdit?' · clique para editar':'')+'">'
+            +'<span class="sm-lbl">'+(_concOk?'Concluída':'Prazo')+'</span>'
+            +(_concOk?'<b class="sub-pz-ok">'+statusTarefaFmtData(sConcEm)+'</b>':(s.data_fim?'<b>'+_fmtDateBrShort(s.data_fim)+'</b>':'<span class="bdash">&#8212;</span>'))+'</span>';
+          var _ns=_atuLista(s.id).length,_sab=!!_atuAberta[s.id];
+          if(canEdit||_ns)html+='<button class="b-hist'+(_ns?' tem':'')+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Histórico'+(canEdit?': ver e comentar':'')+'">'+ic("clock")+(_ns?'<span>'+_ns+'</span>':'')+'</button>';
+          html+='</div>';
           if(s.descricao){
             html+='<span id="tp-sdesc-'+s.id+'" class="subdesc'+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:text;" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+_mcTextoHTML(s.descricao)+'</span>';
           } else if(canEdit){
@@ -3442,22 +3453,6 @@ function _buildTarefaCard(t,ce,ehPassado){
           var _parada=_subParadaDesde(s);
           if(_parada)html+='<span class="sub-parada">'+_ST_ALERTA+'Sem atualização desde '+_parada+'</span>';
           html+='</div></div>';
-          // responsavel: so o avatar (nome ao passar o mouse)
-          var su=s.responsavel?((usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{}):null;
-          html+='<div id="tp-sresp-'+s.id+'" class="subcell subcell-resp'+(canEdit?' inline-edit-hit':'')+'"'
-            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline('+_a+')"':'')
-            +' title="'+(su?escHTML((su.nome||s.responsavel)+' ('+s.responsavel+')'):'Sem responsável')+(canEdit?' · clique para trocar':'')+'">';
-          if(su)html+='<span class="av av-sm sub-av" style="background:'+_avCor(su.id||s.responsavel)+';">'+s.responsavel.slice(0,2).toUpperCase()+'</span>';
-          else html+='<span class="bdash">&#8212;</span>';
-          html+='</div>';
-          // prazo: data completa; amarelo ate 3 dias, vermelho vencido; concluida mostra a data de conclusao
-          var sConcEm=statusTarefaConclusaoEm(s),_pz=_subPrazoInfo(s);
-          html+='<div id="tp-sdate-'+s.id+'" class="subcell subcell-date '+_pz.cls+(canEdit?' inline-edit-hit':'')+'"'
-            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirPrazoInline('+_a+')"':'')+' title="'+_pz.tit+(canEdit?' · clique para editar':'')+'">'
-            +(sConcEm&&statusTarefaFeita(s.status)?'<span class="sub-pz-ok">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim):'<span class="bdash">&#8212;</span>'))+'</div>';
-          var _ns=_atuLista(s.id).length,_sab=!!_atuAberta[s.id];
-          html+='<div class="subcell subcell-hist">'+((canEdit||_ns)
-            ?'<button class="b-hist'+(_ns?' tem':'')+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Histórico'+(canEdit?': ver e comentar':'')+'">'+ic("clock")+(_ns?'<span>'+_ns+'</span>':'')+'</button>':'')+'</div>';
           html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,'+_a+')" class="rt-menu-btn" title="Ações">&#8943;</button>':'')+'</div>';
           html+='</div>';
           var subCols=_colunasTarefaSnapshot();
