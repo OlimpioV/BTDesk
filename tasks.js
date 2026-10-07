@@ -409,6 +409,7 @@ async function abrirNotificacao(id){
     else toast("Demanda não encontrada ou sem acesso",true);
     return;
   }
+  if(n.tipo==="mencao_tarefa"){await _abrirMencaoTarefa(n.referencia_id);return;}
   var txt=_notifTextoBase(n.mensagem);
   if(txt){
     var cardMatch=null;

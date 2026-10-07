@@ -3303,9 +3303,14 @@ function _buildTarefaCard(t,ce,ehPassado){
   html+='<div class="bc bc-prog">';
   if(subtarefas&&subtarefas.length>0){
     var _pgs=statusTarefaProgresso(subtarefas),_conc=_pgs.feitas;
-    html+='<div class="bprogwrap" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="Ver subtarefas">';
+    // barra agrupada por status (concluidas primeiro); a contagem de cada status aparece ao passar o mouse
+    var _cnt={},_ordSt=[];
+    subtarefas.forEach(function(s){if(!_cnt[s.status]){_cnt[s.status]=0;_ordSt.push(s.status);}_cnt[s.status]++;});
+    _ordSt.sort(function(a,b){return (statusTarefaFeita(b)?1:0)-(statusTarefaFeita(a)?1:0)||(statusTarefaCancelado(a)?1:0)-(statusTarefaCancelado(b)?1:0);});
+    var _tipProg=_ordSt.map(function(k){return _cnt[k]+" "+statusTarefaLabel(k).toLowerCase();}).join(" · ");
+    html+='<div class="bprogwrap" onclick="_toggleSubExpand(\''+t.id+'\','+!!ehPassado+')" title="'+escHTML(_tipProg)+' · clique para ver as subtarefas">';
     html+='<div class="btrack">';
-    subtarefas.forEach(function(s){html+='<div class="bseg" style="background:'+statusTarefaCor(s.status,'#e8edf2')+';"></div>';});
+    _ordSt.forEach(function(k){for(var i=0;i<_cnt[k];i++)html+='<div class="bseg" style="background:'+statusTarefaCor(k,'#e8edf2')+';"></div>';});
     html+='</div><span class="bpct">'+_conc+'/'+_pgs.total+'</span></div>';
   } else { html+='<span class="bdash" style="flex:1;">&#8212;</span>'; }
   var _nh=_atuContar(t.id,subtarefas);
@@ -3336,7 +3341,7 @@ function _buildTarefaCard(t,ce,ehPassado){
   if(subExp){
     if(t.descricao){
       html+='<div id="tp-desc-'+t.id+'" class="'+(canEdit?'inline-edit-hit':'')+'" style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap;'+(canEdit?'cursor:text;':'')+'"'
-        +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+_inlineHtml(t.descricao)+'</div>';
+        +(canEdit?' onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')"':'')+'>'+_mcTextoHTML(t.descricao)+'</div>';
     } else if(canEdit&&!(subtarefas&&subtarefas.length)){
       html+='<div id="tp-desc-'+t.id+'" onclick="event.stopPropagation();_iniciarEdicaoDescricaoMain(\''+t.id+'\','+!!ehPassado+')" class="tp-add-desc-ph" style="font-size:12px;color:var(--text3);font-style:italic;cursor:text;">Adicionar descri\u00e7\u00e3o...</div>';
     }
@@ -3381,10 +3386,17 @@ function _buildTarefaCard(t,ce,ehPassado){
     html+='<div class="subboard">';
     var _temSubs=subtarefas&&subtarefas.length>0;
     if(_temSubs){
-      html+='<div class="subcols"><span>Subtarefa</span><span>Resp.</span><span>Status</span><span>Prazo</span><span>Histórico</span><span></span></div>';
+      html+='<div class="subcols"><span></span><span>Subtarefa</span><span title="Responsável">Resp.</span><span>Prazo</span><span></span><span></span></div>';
     }
     if(_temSubs){
-      subtarefas.forEach(function(s){
+      var _subRef=_subRefData(),_nFin=subtarefas.filter(function(x){return statusTarefaFinalizador(x.status);}).length,_finAb=!!_subFinAberto[t.id],_finPos=false;
+      _subOrdenar(subtarefas).forEach(function(s){
+        var _ehFin=statusTarefaFinalizador(s.status);
+        if(_ehFin&&!_finPos){
+          _finPos=true;
+          html+='<button class="sub-fin'+(_finAb?' on':'')+'" onclick="event.stopPropagation();_subFinAberto[\''+t.id+'\']=!_subFinAberto[\''+t.id+'\'];_reloadTarefaCard(\''+t.id+'\','+!!ehPassado+')"><span>&#9656;</span>'+_nFin+(_nFin>1?' finalizadas':' finalizada')+'</button>';
+        }
+        if(_ehFin&&!_finAb&&_subEditando!==s.id)return;
         var sBg=statusTarefaCor(s.status,'#FCEBEB');
         var sTxt='#fff';
         var sBar=statusTarefaCor(s.status,'#E24B4A');
@@ -3408,34 +3420,45 @@ function _buildTarefaCard(t,ce,ehPassado){
             +'<button onclick="_salvarEditSubtarefaPauta(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" class="btn" style="font-size:11px;">Salvar</button>'
             +'</div></div>';
         } else {
-          html+='<div class="subrow"'+(canEdit?' onpointerdown="_tarefaDragStart(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Arraste para o lado para alterar status"':'')+'>';
-          html+='<div class="subcell subcell-name"><span class="subdot" style="background:'+sBar+';"></span><div class="subname-wrap">';
-          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(statusTarefaFinalizador(s.status)?' done':'')+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar a subtarefa"':'')+'>'+_inlineHtml(s.texto)+'</span>';
+          var _a="'"+s.id+"',true,'"+t.id+"',"+!!ehPassado;
+          var _novoDesde=_subNovoDesde(s,_subRef);
+          html+='<div class="subrow'+(_ehFin?' fin':'')+(_subFlash===s.id?' flash':'')+'"'+(canEdit?' onpointerdown="_tarefaDragStart(event,'+_a+')" oncontextmenu="event.preventDefault();_abrirStatusDropdown(event,'+_a+')"':'')+'>';
+          if(_novoDesde)html+='<span class="sub-novo" title="Criada ou alterada desde a última reunião ('+_novoDesde+')"></span>';
+          // status: icone (clique conclui; seta ou clique direito abrem todos os status)
+          html+='<div class="subcell subcell-st">';
+          if(canEdit){
+            html+='<button class="sub-sic'+(_ehFin?'':' pode')+'" title="'+escHTML(sLbl)+(_ehFin?' · clique para trocar':' · clique para concluir')+'" onclick="event.stopPropagation();'+(_ehFin?'_abrirStatusDropdown(event,'+_a+')':'_subConcluir(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')')+'"><span class="real">'+_stIcone(s.status)+'</span>'+(_ehFin?'':_ST_FANT)+'</button>'
+              +'<button class="sub-seta" title="Trocar status" onclick="_abrirStatusDropdown(event,'+_a+')">&#9660;</button>';
+          } else html+='<span class="sub-sic" title="'+escHTML(sLbl)+'">'+_stIcone(s.status)+'</span>';
+          html+='</div>';
+          html+='<div class="subcell subcell-name"><div class="subname-wrap">';
+          html+='<span id="tp-stxt-'+s.id+'" class="subname'+(_ehFin?' done':'')+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_iniciarEdicaoTitulo('+_a+')" title="Clique para editar a subtarefa"':'')+'>'+_mcTextoHTML(s.texto)+'</span>';
           if(s.descricao){
-            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc'+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:text;" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+_inlineHtml(s.descricao)+'</span>';
+            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc'+(canEdit?' inline-edit-hit':'')+'"'+(canEdit?' style="cursor:text;" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')"':'')+'>'+_mcTextoHTML(s.descricao)+'</span>';
           } else if(canEdit){
-          html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add inline-edit-hit" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descri\u00e7\u00e3o</span>';
+            html+='<span id="tp-sdesc-'+s.id+'" class="subdesc subdesc-add inline-edit-hit" onclick="event.stopPropagation();_iniciarEdicaoDescricaoSub(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')">+ descrição</span>';
           }
           html+=_atuSubLinhaHTML(s,t.id,canEdit,ehPassado);
+          var _parada=_subParadaDesde(s);
+          if(_parada)html+='<span class="sub-parada">'+_ST_ALERTA+'Sem atualização desde '+_parada+'</span>';
           html+='</div></div>';
+          // responsavel: so o avatar (nome ao passar o mouse)
+          var su=s.responsavel?((usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{}):null;
           html+='<div id="tp-sresp-'+s.id+'" class="subcell subcell-resp'+(canEdit?' inline-edit-hit':'')+'"'
-            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar respons\u00e1vel"':'')+'>';
-          if(s.responsavel){
-            var su=(usuariosFullDB||[]).find(function(x){return x.sigla===s.responsavel;})||{};
-            html+='<span class="av av-sm" style="background:'+_avCor(su.id||s.responsavel)+';font-size:9px;width:24px;height:24px;min-width:24px;flex-shrink:0;">'+s.responsavel.slice(0,2).toUpperCase()+'</span><span class="subresp-nm">'+s.responsavel+'</span>';
-          } else { html+='<span class="bdash">&#8212;</span>'; }
+            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirRespInline('+_a+')"':'')
+            +' title="'+(su?escHTML((su.nome||s.responsavel)+' ('+s.responsavel+')'):'Sem responsável')+(canEdit?' · clique para trocar':'')+'">';
+          if(su)html+='<span class="av av-sm sub-av" style="background:'+_avCor(su.id||s.responsavel)+';">'+s.responsavel.slice(0,2).toUpperCase()+'</span>';
+          else html+='<span class="bdash">&#8212;</span>';
           html+='</div>';
-          html+='<div class="subcell subcell-status"><span class="substat" style="background:'+sBar+';'+(canEdit?'cursor:pointer;':'')+'"'+(canEdit?' onclick="_abrirStatusDropdown(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')"':'')+'>'+sLbl+(canEdit?' <span class="cv">&#9660;</span>':'')+'</span></div>';
-          var sAtrasado=s.data_fim&&_isAtrasado(s.data_fim,s.status);
-          var sConcEm=statusTarefaConclusaoEm(s);
-          html+='<div id="tp-sdate-'+s.id+'" class="subcell subcell-date'+(sAtrasado?' late':'')+(canEdit?' inline-edit-hit':'')+'"'
-            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirPrazoInline(\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" title="Clique para editar prazo"':'')+'>'
-            +(sConcEm?'<span style="color:#16a34a;font-weight:700;">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim)+(sAtrasado?' &#128336;':''):'<span class="bdash">&#8212;</span>'))+'</div>';
+          // prazo: data completa; amarelo ate 3 dias, vermelho vencido; concluida mostra a data de conclusao
+          var sConcEm=statusTarefaConclusaoEm(s),_pz=_subPrazoInfo(s);
+          html+='<div id="tp-sdate-'+s.id+'" class="subcell subcell-date '+_pz.cls+(canEdit?' inline-edit-hit':'')+'"'
+            +(canEdit?' style="cursor:pointer;" onclick="event.stopPropagation();_abrirPrazoInline('+_a+')"':'')+' title="'+_pz.tit+(canEdit?' · clique para editar':'')+'">'
+            +(sConcEm&&statusTarefaFeita(s.status)?'<span class="sub-pz-ok">'+statusTarefaFmtData(sConcEm)+'</span>':(s.data_fim?_fmtDateBrShort(s.data_fim):'<span class="bdash">&#8212;</span>'))+'</div>';
           var _ns=_atuLista(s.id).length,_sab=!!_atuAberta[s.id];
-          html+='<div class="subcell subcell-hist">'+(canEdit
-            ?'<button class="b-hist b-hist-add'+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Ver o histórico e comentar esta subtarefa">'+ic("clock")+' Histórico'+(_ns?'<span class="b-hist-n">'+_ns+'</span>':'')+'</button>'
-            :(_ns?'<button class="b-hist tem'+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Ver histórico">'+ic("clock")+'<span>'+_ns+'</span></button>':''))+'</div>';
-          html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,\''+s.id+'\',true,\''+t.id+'\','+!!ehPassado+')" class="rt-menu-btn" title="A\u00e7\u00f5es">&#8943;</button>':'')+'</div>';
+          html+='<div class="subcell subcell-hist">'+((canEdit||_ns)
+            ?'<button class="b-hist'+(_ns?' tem':'')+(_sab?' on':'')+'" onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+t.id+'\','+!!ehPassado+')" title="Histórico'+(canEdit?': ver e comentar':'')+'">'+ic("clock")+(_ns?'<span>'+_ns+'</span>':'')+'</button>':'')+'</div>';
+          html+='<div class="subcell subcell-menu">'+(canEdit?'<button onclick="_abrirMenuTarefa(event,'+_a+')" class="rt-menu-btn" title="Ações">&#8943;</button>':'')+'</div>';
           html+='</div>';
           var subCols=_colunasTarefaSnapshot();
           if(subCols.length){
@@ -3455,8 +3478,7 @@ function _buildTarefaCard(t,ce,ehPassado){
       });
     }
     if(ce&&!ehPassado){
-      var respOptsQuick='<option value="">Resp...</option>'+(responsaveis||[]).map(function(sg){return '<option value="'+sg+'">'+sg+'</option>';}).join("");
-      html+='<div class="subadd"><input id="tp-sub-quick-txt-'+t.id+'" placeholder="+ Adicionar subtarefa..." onkeydown="_quickSubKeydown(event,\''+t.id+'\','+!!ehPassado+')"><select id="tp-sub-quick-resp-'+t.id+'">'+respOptsQuick+'</select></div>';
+      html+=_subAddHTML(t.id,ehPassado);
     } else if(!_temSubs){
       html+='<div class="subempty">Nenhuma subtarefa.</div>';
     }
@@ -3466,6 +3488,195 @@ function _buildTarefaCard(t,ce,ehPassado){
 
   if(_temExp){html+='</div>';}// fecha brow-exp
   return html;
+}
+// ── SUBTAREFAS: STATUS POR ICONE, ORDEM, PRAZO, LINHA DE ADICIONAR E MARCACOES (@) ──
+// A coluna de status virou um icone no inicio da linha: clique conclui, seta ou clique direito abrem todos os status.
+// Ordem: vencidas e pendentes em cima; finalizadas (concluidas/canceladas) recolhidas no fim.
+var _subFinAberto={},_subFlash=null,_subNovo={};
+var _ST_FANT='<svg class="fant" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="rgba(0,200,117,.15)" stroke="#00c875" stroke-width="2.2"/><path d="M8 12.3l2.8 2.8 5.2-5.4" fill="none" stroke="#00c875" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var _ST_ALERTA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>';
+// Tipo do icone pelo papel do status (configuravel): finalizador vira check ou X; os demais pelo nome
+function _stTipo(id){
+  if(statusTarefaFinalizador(id))return statusTarefaCancelado(id)?"x":"ok";
+  var n=_mcNorm(statusTarefaLabel(id)+" "+id);
+  if(/nao.inici|a inici/.test(n))return "vazio";
+  if(/pend/.test(n))return "alerta";
+  if(/andamento|execu/.test(n))return "meio";
+  if(/paus|aguard|suspen/.test(n))return "pausa";
+  return "anel";
+}
+function _stIcone(id){
+  var c=statusTarefaCor(id,"#94a3b8"),r='<circle cx="12" cy="12" r="8.5" fill="none" stroke="'+c+'" stroke-width="2.2"/>';
+  var m={
+    vazio:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="'+c+'" stroke-width="2.2" stroke-dasharray="3.2 2.6"/>',
+    meio:r+'<path d="M12 6.5a5.5 5.5 0 0 1 0 11z" fill="'+c+'"/>',
+    alerta:r+'<path d="M12 7.5v5.2" stroke="'+c+'" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="16" r="1.4" fill="'+c+'"/>',
+    pausa:r+'<path d="M10 8.5v7M14 8.5v7" stroke="'+c+'" stroke-width="2.4" stroke-linecap="round"/>',
+    ok:'<circle cx="12" cy="12" r="9.5" fill="'+c+'"/><path d="M7.8 12.3l2.9 2.9 5.5-5.7" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+    x:'<circle cx="12" cy="12" r="9.5" fill="'+c+'"/><path d="M9 9l6 6M15 9l-6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>'};
+  return '<svg class="st-ic" viewBox="0 0 24 24" aria-hidden="true">'+(m[_stTipo(id)]||r)+'</svg>';
+}
+function _subHoje(){return new Date().toISOString().slice(0,10);}
+function _subDias(a,b){return Math.round((new Date(a+"T12:00:00")-new Date(b+"T12:00:00"))/864e5);}
+function _subPrazoInfo(s){
+  var conc=statusTarefaConclusaoEm(s);
+  if(conc&&statusTarefaFeita(s.status))return {cls:"ok",tit:"Concluída em "+statusTarefaFmtData(conc)};
+  if(!s.data_fim)return {cls:"",tit:"Sem prazo"};
+  var f=_fmtDateBrShort(s.data_fim);
+  if(statusTarefaFinalizador(s.status))return {cls:"",tit:"Prazo "+f};
+  var n=_subDias(s.data_fim,_subHoje());
+  if(n<0)return {cls:"venc",tit:"Vencida em "+f};
+  if(n<=3)return {cls:"perto",tit:"Vence em "+f};
+  return {cls:"",tit:"Prazo "+f};
+}
+function _subOrdenar(lista){
+  var ordTipo={alerta:1,meio:2,vazio:3,anel:4,pausa:5};
+  return (lista||[]).map(function(s,i){
+    var p;
+    if(statusTarefaFinalizador(s.status))p=1000+(statusTarefaCancelado(s.status)?1:0);
+    else{var pz=_subPrazoInfo(s);p=(pz.cls==="venc"?0:pz.cls==="perto"?10:20)+(ordTipo[_stTipo(s.status)]||4);}
+    return {s:s,p:p,i:i};
+  }).sort(function(a,b){return a.p-b.p||a.i-b.i;}).map(function(x){return x.s;});
+}
+// Data da reuniao anterior: na reuniao aberta, a anterior a ela; em Projetos, a ultima que ja aconteceu
+function _subRefData(){
+  var hoje=_subHoje(),ant=null;
+  if(!_isProjetosPage()&&reuniaoAtiva)ant=_reuniaoAnterior(reuniaoAtiva);
+  else{
+    var c=(reunioesDB||[]).filter(function(x){return x.data&&x.data<hoje&&x.status!=="cancelada";});
+    c.sort(function(a,b){return String(b.data).localeCompare(String(a.data));});ant=c[0]||null;
+  }
+  return ant?ant.data:null;
+}
+function _subUltimaAtividade(s){
+  var d=[String(s.criado_em||"").slice(0,10),statusTarefaConclusaoEm(s)];
+  var l=_atuLista(s.id);if(l.length)d.push(String(l[0].criado_em||"").slice(0,10));
+  return d.filter(Boolean).sort().pop()||"";
+}
+function _subNovoDesde(s,ref){
+  if(!ref)return "";
+  return _subUltimaAtividade(s)>ref?_fmtDateBrShort(ref):"";
+}
+// Subtarefa aberta sem novidade (criacao ou comentario) ha mais de 21 dias
+function _subParadaDesde(s){
+  if(statusTarefaFinalizador(s.status)||!(s.id in _tarefaCmtsCache))return "";
+  var ult=_subUltimaAtividade(s);
+  return ult&&_subDias(_subHoje(),ult)>21?statusTarefaFmtData(ult):"";
+}
+function _subStatusConclusao(){
+  var sts=statusTarefaList(false);
+  var a=sts.find(function(x){return x.finalizador&&!statusTarefaCancelado(x.id);});
+  return a?a.id:"concluido";
+}
+async function _subConcluir(subId,parentId,ehPassado){
+  var sub=(_subtarefasCache[parentId]||[]).find(function(s){return s.id===subId;});if(!sub)return;
+  var antes=sub.status;
+  await _alterarStatusTarefa(subId,_subStatusConclusao(),true,parentId,ehPassado);
+  _subDesfazer('"'+trunc(sub.texto||"",40)+'" concluída',function(){_alterarStatusTarefa(subId,antes,true,parentId,ehPassado);});
+}
+var _subDesfTm=null;
+function _subDesfazer(msg,fn){
+  var o=document.getElementById("sub-desfazer");if(o)o.remove();clearTimeout(_subDesfTm);
+  var el=document.createElement("div");el.id="sub-desfazer";el.className="sub-desfazer";
+  el.innerHTML='<span>'+escHTML(msg)+'</span><button type="button">Desfazer</button>';
+  el.querySelector("button").onclick=function(){el.remove();fn();};
+  document.body.appendChild(el);
+  _subDesfTm=setTimeout(function(){el.remove();},6000);
+}
+// Menu flutuante simples (status e responsavel da linha de adicionar)
+function _subPopFechar(){var p=document.getElementById("sub-pop");if(p)p.remove();document.removeEventListener("keydown",_subPopTecla,true);}
+function _subPopTecla(e){
+  var p=document.getElementById("sub-pop");if(!p)return;
+  if(e.key==="Escape"){e.preventDefault();_subPopFechar();return;}
+  var n=parseInt(e.key,10),b=p.querySelectorAll("[data-op]");
+  if(n>=1&&n<=b.length&&!/INPUT|TEXTAREA/.test((e.target||{}).tagName||"")){e.preventDefault();b[n-1].click();}
+}
+function _subPop(ev,html){
+  ev.stopPropagation();_subPopFechar();
+  var a=ev.currentTarget.getBoundingClientRect(),p=document.createElement("div");
+  p.id="sub-pop";p.className="sub-pop";p.innerHTML=html;document.body.appendChild(p);
+  var w=p.offsetWidth,h=p.offsetHeight;
+  p.style.left=Math.max(8,Math.min(a.left,window.innerWidth-w-8))+"px";
+  p.style.top=(a.bottom+4+h>window.innerHeight?Math.max(8,a.top-h-4):a.bottom+4)+"px";
+  document.addEventListener("keydown",_subPopTecla,true);
+  setTimeout(function(){document.addEventListener("click",function f(e){if(!p.contains(e.target)){_subPopFechar();document.removeEventListener("click",f,true);}},true);},0);
+}
+function _subNovoEst(pid){return _subNovo[pid]||(_subNovo[pid]={s:"pendente",r:"",p:""});}
+function _subAddHTML(pid,ehPassado){
+  var q="'"+pid+"',"+!!ehPassado;
+  return '<div class="subadd" onpointerdown="event.stopPropagation()"><input id="tp-sub-quick-txt-'+pid+'" autocomplete="off" placeholder="+ Adicionar subtarefa... (use @ para marcar alguém)" oninput="mcInput(this)" onblur="setTimeout(mcFechar,150)" onkeydown="if(mcKd(event))return;_quickSubKeydown(event,'+q+')">'
+    +'<span id="tp-sa-btns-'+pid+'" class="sa-btns">'+_subAddBtns(pid,ehPassado)+'</span>'
+    +'<button type="button" class="sa-ok" onclick="_quickSaveSubtarefa('+q+')">Adicionar</button></div>';
+}
+function _subAddBtns(pid,ehPassado){
+  var e=_subNovoEst(pid),q="'"+pid+"',"+!!ehPassado;
+  var h='<button type="button" class="sa-b sa-ic" title="Status: '+escHTML(statusTarefaLabel(e.s))+'" onclick="_subNovoMenuStatus(event,'+q+')">'+_stIcone(e.s)+'</button>';
+  var u=e.r?((usuariosFullDB||[]).find(function(x){return x.sigla===e.r;})||{}):null;
+  h+='<button type="button" class="sa-b'+(u?'':' vazio')+'" title="'+(u?escHTML((u.nome||e.r)+" ("+e.r+")"):"Responsável")+'" onclick="_subNovoMenuResp(event,'+q+')">'
+    +(u?'<span class="av av-sm sub-av" style="background:'+_avCor(u.id||e.r)+';">'+escHTML(e.r.slice(0,2).toUpperCase())+'</span>'+escHTML(e.r):'Resp. &#9662;')+'</button>';
+  h+='<span class="sa-dw"><button type="button" class="sa-b'+(e.p?'':' vazio')+'" title="Prazo" onclick="_subNovoPrazo(\''+pid+'\')">'
+    +(e.p?e.p.slice(8,10)+'/'+e.p.slice(5,7)+'<span class="sa-x" title="Limpar prazo" onclick="event.stopPropagation();_subNovo[\''+pid+'\'].p=\'\';_subNovoPintar('+q+')">&#10005;</span>':'Prazo &#9662;')+'</button>'
+    +'<input type="date" class="sa-d" id="tp-sa-dt-'+pid+'" tabindex="-1" value="'+e.p+'" onchange="_subNovo[\''+pid+'\'].p=this.value;_subNovoPintar('+q+')"></span>';
+  return h;
+}
+function _subNovoPintar(pid,ehPassado){var el=document.getElementById("tp-sa-btns-"+pid);if(el)el.innerHTML=_subAddBtns(pid,ehPassado);}
+function _subNovoPrazo(pid){var i=document.getElementById("tp-sa-dt-"+pid);if(!i)return;try{i.showPicker();}catch(_){i.focus();i.click();}}
+function _subNovoMenuStatus(ev,pid,ehPassado){
+  var e=_subNovoEst(pid);
+  _subPop(ev,statusTarefaList(false).map(function(st,k){
+    return '<button type="button" data-op class="'+(e.s===st.id?'on':'')+'" onclick="_subNovo[\''+pid+'\'].s=\''+st.id+'\';_subPopFechar();_subNovoPintar(\''+pid+'\','+!!ehPassado+')">'+_stIcone(st.id)+'<span>'+escHTML(statusTarefaLabel(st.id))+'</span><kbd>'+(k+1)+'</kbd></button>';
+  }).join(""));
+}
+function _subNovoMenuResp(ev,pid,ehPassado){
+  var e=_subNovoEst(pid),q="'"+pid+"',"+!!ehPassado;
+  var h='<button type="button" data-op class="'+(e.r?'':'on')+'" onclick="_subNovo[\''+pid+'\'].r=\'\';_subPopFechar();_subNovoPintar('+q+')"><span class="sub-pop-sem">&#8212;</span><span>Sem responsável</span></button>';
+  (responsaveis||[]).forEach(function(sg){
+    var u=(usuariosFullDB||[]).find(function(x){return x.sigla===sg;})||{};
+    h+='<button type="button" data-op class="'+(e.r===sg?'on':'')+'" onclick="_subNovo[\''+pid+'\'].r=\''+escQ(sg)+'\';_subPopFechar();_subNovoPintar('+q+')"><span class="av av-sm sub-av" style="background:'+_avCor(u.id||sg)+';">'+escHTML(sg.slice(0,2).toUpperCase())+'</span><span>'+escHTML(u.nome||sg)+'</span><small>'+escHTML(sg)+'</small></button>';
+  });
+  _subPop(ev,h);
+}
+// Marcacoes (@) em subtarefas, descricoes e historico: reaproveita _mcExtrair/_mcTextoHTML do cartao (modal.js)
+function _tarefaCtx(id){
+  var todas=_tarefasPautaCache[_tarefaCacheKey()]||[];
+  var proj=todas.find(function(x){return x.id===id;});
+  if(proj)return {nome:proj.texto,proj:null};
+  for(var pid in _subtarefasCache){
+    var s=(_subtarefasCache[pid]||[]).find(function(x){return x.id===id;});
+    if(s){var p=todas.find(function(x){return x.id===pid;});return {nome:s.texto,proj:p?p.texto:null};}
+  }
+  return {nome:"",proj:null};
+}
+async function _mcNotificarTarefa(texto,textoAntes,tarefaId,onde){
+  var ja=textoAntes?_mcExtrair(textoAntes):[];
+  var novos=_mcExtrair(texto).filter(function(id){return id!==userDbId&&ja.indexOf(id)<0;});
+  if(!novos.length)return;
+  var c=_tarefaCtx(tarefaId),quem=_mtUserSigla()||nomeUser||"Alguém";
+  var msg=quem+" marcou você "+onde+' "'+trunc(c.nome||"",60)+'"'+(c.proj?" ("+trunc(c.proj,50)+")":"");
+  var falhas=0;
+  for(var i=0;i<novos.length;i++){
+    var n={usuario_id:novos[i],tipo:"mencao_tarefa",mensagem:msg};
+    if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tarefaId))n.referencia_id=tarefaId;
+    try{await dbUpsertNotificacao(n);}catch(e){falhas++;console.error("Falha ao notificar marcação",e);}
+  }
+  if(falhas)toast("Salvo, mas a marcação não pôde ser enviada",true);
+}
+// Clique na notificacao de marcacao: abre Projetos, expande o projeto e o historico onde a pessoa foi marcada
+async function _abrirMencaoTarefa(id){
+  await renderProjetosEquipe();
+  if(!id)return;
+  try{
+    var r=await fetch(SB+"/rest/v1/tarefas?id=eq."+id+"&select=id,parent_id",{headers:H});
+    var row=r.ok?(await r.json())[0]:null;if(!row)return;
+    var pid=row.parent_id||row.id;
+    if(!document.getElementById("tp-card-"+pid)){toast("Projeto não encontrado na equipe ativa",true);return;}
+    if(row.parent_id)_atuAberta[row.id]=true;else _atuProjAberto[pid]=true;
+    if(!(pid in _subtarefasCache)||_subCollapsed[pid])await _toggleSubExpand(pid,false);else _reloadTarefaCard(pid,false);
+    setTimeout(function(){
+      var a=document.getElementById(row.parent_id?"tp-stxt-"+row.id:"tp-cmts-"+pid)||document.getElementById("tp-card-"+pid);
+      if(a)a.scrollIntoView({behavior:"smooth",block:"center"});
+    },150);
+  }catch(_){}
 }
 function _editarTarefaPauta(tarefaId){
   _itemEditando=tarefaId;
@@ -3610,15 +3821,14 @@ function _quickSubKeydown(evt,parentId,ehPassado){
 }
 async function _quickSaveSubtarefa(parentId,ehPassado){
   var inp=document.getElementById('tp-sub-quick-txt-'+parentId);
-  var respEl=document.getElementById('tp-sub-quick-resp-'+parentId);
   if(!inp)return;
-  var texto=inp.value.trim();if(!texto)return;
-  var resp=(respEl?respEl.value||null:null);
+  var texto=inp.value.trim();if(!texto){inp.focus();return;}
+  var est=_subNovoEst(parentId),resp=est.r||null;
   var rId=_tarefaPayloadReuniaoId();
   var eqId=equipeAtiva?equipeAtiva.id:null;
   var parentT=(_tarefasPautaCache[_tarefaCacheKey()]||[]).find(function(x){return x.id===parentId;});
   try{
-    var nova={id:uid(),texto:texto,responsavel:resp||null,status:'pendente',criado_em:new Date().toISOString()};
+    var nova=normalizarStatusTarefa({id:uid(),texto:texto,responsavel:resp||null,status:est.s||'pendente',data_fim:est.p||null,criado_em:new Date().toISOString()},est.s||'pendente');
     if(parentId)nova.parent_id=parentId;
     if(rId)nova.reuniao_id=rId;
     if(eqId)nova.equipe_id=eqId;
@@ -3626,9 +3836,11 @@ async function _quickSaveSubtarefa(parentId,ehPassado){
     await notificarTarefaReuniao(nova.id,resp,texto,rId);
     if(!_subtarefasCache[parentId])_subtarefasCache[parentId]=[];
     _subtarefasCache[parentId].push(nova);
-    inp.value='';
-    if(respEl)respEl.value='';
+    _tarefaCmtsCache[nova.id]=[];
+    _mcNotificarTarefa(texto,"",nova.id,"na subtarefa");
+    // status, responsavel e prazo continuam escolhidos para lancar a proxima
     _reloadTarefaCard(parentId,ehPassado);
+    var ni=document.getElementById('tp-sub-quick-txt-'+parentId);if(ni)ni.focus();
     toast("Subtarefa adicionada!");
   }catch(_){toast("Erro ao adicionar subtarefa",true);}
 }
@@ -3704,8 +3916,9 @@ function _iniciarEdicaoDescricaoSub(subId,parentId,ehPassado){
   var tex=(el.innerText||el.textContent||'').replace(/^Adicionar descri\u00e7\u00e3o\.\.\.$/,'').replace(/^Adicionar descricao\.\.\.$/,'').trim();
   _descEsc=false;
   el.innerHTML='<span class="rt-inline-editor rt-inline-desc inline-edit-hit">'
-    +'<textarea id="tp-sdesc-ta-'+subId+'" rows="3" class="rt-inline-control"'
-    +' onkeydown="_descKeydown(event,\''+subId+'\',\''+parentId+'\','+!!ehPassado+')"'
+    +'<textarea id="tp-sdesc-ta-'+subId+'" rows="3" class="rt-inline-control" placeholder="Descrição... use @ para marcar alguém"'
+    +' oninput="mcInput(this)" onblur="setTimeout(mcFechar,150)"'
+    +' onkeydown="if(mcKd(event))return;_descKeydown(event,\''+subId+'\',\''+parentId+'\','+!!ehPassado+')"'
     +'>'+_inlineHtml(tex)+'</textarea>'
     +_inlineActions("_doSaveDescricaoSub('"+subId+"','"+parentId+"',"+!!ehPassado+")","_cancelarDescricaoSub('"+subId+"','"+parentId+"',"+!!ehPassado+")")
     +'</span>';
@@ -3724,11 +3937,13 @@ async function _doSaveDescricaoSub(subId,parentId,ehPassado){
   var ta=document.getElementById('tp-sdesc-ta-'+subId);
   if(!ta)return;
   var descricao=ta.value.trim()||null;
+  var antes=((_subtarefasCache[parentId]||[]).find(function(s){return s.id===subId;})||{}).descricao||"";
   try{
     await dbUpsertTarefa({id:subId,descricao:descricao});
     (_subtarefasCache[parentId]||[]).forEach(function(s){if(s.id===subId)s.descricao=descricao;});
     _reloadTarefaCard(parentId,ehPassado);
     toast('Descri\u00e7\u00e3o salva!');
+    _mcNotificarTarefa(descricao||"",antes,subId,"na descri\u00e7\u00e3o da subtarefa");
   }catch(_){toast('Erro ao salvar',true);_cancelarDescricaoSub(subId,parentId,ehPassado);}
 }
 function _cancelarDescricaoSub(subId,parentId,ehPassado){
@@ -3931,14 +4146,22 @@ function _abrirStatusDropdown(ev,tarefaId,isSub,parentId,ehPassado){
   top=Math.min(top,window.innerHeight-180);
   var html='<div id="status-dd-wrap" style="position:fixed;inset:0;z-index:2000;" onclick="document.getElementById(\'status-dd-wrap\').remove();">';
   html+='<div style="position:fixed;top:'+top+'px;left:'+left+'px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);padding:4px;min-width:150px;z-index:2001;" onclick="event.stopPropagation();">';
-  statusList.forEach(function(st){
-    html+='<div onclick="_alterarStatusTarefa(\''+tarefaId+'\',\''+st.id+'\','+!!isSub+',\''+parentId+'\','+!!ehPassado+')" style="padding:7px 12px;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">'
-      +'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+statusTarefaCor(st.id,'#94a3b8')+';flex-shrink:0;"></span>'
-      +'<span style="font-size:13px;color:'+statusTarefaCor(st.id,'#475569')+';">'+statusTarefaLabel(st.id)+'</span>'
+  statusList.forEach(function(st,k){
+    html+='<div data-op class="st-dd-op" onclick="_alterarStatusTarefa(\''+tarefaId+'\',\''+st.id+'\','+!!isSub+',\''+parentId+'\','+!!ehPassado+')" style="padding:6px 10px;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'">'
+      +_stIcone(st.id)
+      +'<span style="font-size:13px;color:'+statusTarefaCor(st.id,'#475569')+';flex:1;">'+statusTarefaLabel(st.id)+'</span>'
+      +(k<9?'<kbd class="st-dd-k">'+(k+1)+'</kbd>':'')
       +'</div>';
   });
   html+='</div></div>';
   var d=document.createElement("div");d.innerHTML=html;document.body.appendChild(d.firstChild);
+  // teclas 1 a 9 escolhem o status; Esc fecha
+  document.addEventListener("keydown",function tecla(e){
+    var w=document.getElementById("status-dd-wrap");if(!w){document.removeEventListener("keydown",tecla,true);return;}
+    if(e.key==="Escape"){e.preventDefault();w.remove();document.removeEventListener("keydown",tecla,true);return;}
+    var n=parseInt(e.key,10),ops=w.querySelectorAll("[data-op]");
+    if(n>=1&&n<=ops.length){e.preventDefault();document.removeEventListener("keydown",tecla,true);ops[n-1].click();}
+  },true);
 }
 async function _alterarStatusTarefa(tarefaId,novoStatus,isSub,parentId,ehPassado){
   var sd=document.getElementById("status-dd-wrap");if(sd)sd.remove();
@@ -4047,7 +4270,7 @@ function _mudRender(){
     if(_mudAberta==="concl")lista=d.concl.map(function(x){return linha(x,'Concluída em '+statusTarefaFmtData(statusTarefaConclusaoEm(x.t))+(respsDe(x.t).length?' · '+escHTML(respsDe(x.t).join(", ")):''));}).join("");
     if(_mudAberta==="atraso")lista=d.atraso.map(function(x){return linha(x,'<span class="mud-atr">Venceu em '+_fmtDateBrShort(x.t.data_fim)+'</span> · '+escHTML(statusTarefaLabel(x.t.status))+(respsDe(x.t).length?' · '+escHTML(respsDe(x.t).join(", ")):''));}).join("");
     if(_mudAberta==="novos")lista=d.novos.map(function(x){return linha(x,'Criada em '+_atuDataBR(x.t.criado_em)+(respsDe(x.t).length?' · '+escHTML(respsDe(x.t).join(", ")):''));}).join("");
-    if(_mudAberta==="ups")lista=d.ups.map(function(c){var x=d.porId[c.tarefa_id]||{t:{texto:"?"}};var u=c.usuarios||{};return linha(x,'<b>'+escHTML(u.sigla||u.nome||"?")+'</b> · '+_atuDataBR(c.criado_em)+' · '+(c.reuniao_id?escHTML(_atuReuniaoNome(c.reuniao_id)):'fora de reunião')+'<div class="mud-up">'+_inlineHtml(c.texto)+'</div>');}).join("");
+    if(_mudAberta==="ups")lista=d.ups.map(function(c){var x=d.porId[c.tarefa_id]||{t:{texto:"?"}};var u=c.usuarios||{};return linha(x,'<b>'+escHTML(u.sigla||u.nome||"?")+'</b> · '+_atuDataBR(c.criado_em)+' · '+(c.reuniao_id?escHTML(_atuReuniaoNome(c.reuniao_id)):'fora de reunião')+'<div class="mud-up">'+_mcTextoHTML(c.texto)+'</div>');}).join("");
     h+='<div class="mud-lista">'+lista+'</div>';
   }
   el.innerHTML=h;
@@ -4085,9 +4308,9 @@ function _atuItemHTML(c,cardId,ehPassado,rotulo){
     +'<div class="atu-h"><b>'+escHTML(sig)+'</b><span>'+_atuDataBR(c.criado_em)+'</span>'+_atuReuniaoTag(c.reuniao_id)+(rotulo?'<span class="atu-sub">'+escHTML(rotulo)+'</span>':'')
     +(vs.length?'<button class="atu-ed" title="Ver versões anteriores" onclick="event.stopPropagation();_atuVersoes[\''+c.id+'\']=!_atuVersoes[\''+c.id+'\'];_atuRerender(\''+cardId+'\','+!!ehPassado+')">editado ('+vs.length+' '+(vs.length>1?'versões anteriores':'versão anterior')+')</button>':'')+'</div>';
   if(_atuEditando===c.id){
-    h+='<textarea class="atu-ta" id="atu-ed-'+c.id+'" rows="2">'+escHTML(c.texto)+'</textarea><div class="atu-acts"><span></span><div><button class="rbtn rbtn-ghost rbtn-sm" onclick="_atuEditando=null;_atuRerender(\''+cardId+'\','+!!ehPassado+')">Cancelar</button><button class="rbtn rbtn-primary rbtn-sm" onclick="_atuSalvarEdicao(\''+c.id+'\',\''+c.tarefa_id+'\',\''+cardId+'\','+!!ehPassado+')">Salvar</button></div></div>';
+    h+='<textarea class="atu-ta" id="atu-ed-'+c.id+'" rows="2" oninput="mcInput(this)" onblur="setTimeout(mcFechar,150)" onkeydown="mcKd(event)">'+escHTML(c.texto)+'</textarea><div class="atu-acts"><span></span><div><button class="rbtn rbtn-ghost rbtn-sm" onclick="_atuEditando=null;_atuRerender(\''+cardId+'\','+!!ehPassado+')">Cancelar</button><button class="rbtn rbtn-primary rbtn-sm" onclick="_atuSalvarEdicao(\''+c.id+'\',\''+c.tarefa_id+'\',\''+cardId+'\','+!!ehPassado+')">Salvar</button></div></div>';
   }else{
-    h+='<div class="atu-t">'+_inlineHtml(c.texto)+'</div>';
+    h+='<div class="atu-t">'+_mcTextoHTML(c.texto)+'</div>';
     var _ae=[];
     if(_atuPodeEditar(c,ehPassado))_ae.push('<a onclick="_atuEditando=\''+c.id+'\';_atuRerender(\''+cardId+'\','+!!ehPassado+')">Editar</a>');
     if(_atuPodeExcluir(c,ehPassado))_ae.push('<a onclick="_atuExcluir(\''+c.id+'\',\''+c.tarefa_id+'\',\''+cardId+'\','+!!ehPassado+')">Excluir</a>');
@@ -4101,7 +4324,7 @@ function _atuItemHTML(c,cardId,ehPassado,rotulo){
 function _atuNovaHTML(tarefaId,cardId,ehPassado,fechar){
   if(ehPassado||!(perfil==="mestre"||perfil==="advogado"))return "";
   var rid=_tarefaPayloadReuniaoId();
-  return '<div class="atu-nova"><textarea class="atu-ta" id="atu-nova-'+tarefaId+'" rows="2" placeholder="Escreva um comentário para o histórico (Ctrl+Enter registra)" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+');}"></textarea>'
+  return '<div class="atu-nova"><textarea class="atu-ta" id="atu-nova-'+tarefaId+'" rows="2" placeholder="Escreva um comentário para o histórico. Use @ para marcar alguém (Ctrl+Enter registra)" oninput="mcInput(this)" onblur="setTimeout(mcFechar,150)" onkeydown="if(mcKd(event))return;if(event.key===\'Enter\'&&event.ctrlKey){event.preventDefault();_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+');}"></textarea>'
     +'<div class="atu-acts"><span class="atu-ctx">'+(rid?'Será registrada na <b>'+escHTML(_atuReuniaoNome(rid))+'</b>':'Será registrada fora de reunião')+'</span><div>'+(fechar?'<button class="rbtn rbtn-ghost rbtn-sm" onclick="'+fechar+'">Fechar</button>':'')+'<button class="rbtn rbtn-primary rbtn-sm" onclick="_atuAdicionar(\''+tarefaId+'\',\''+cardId+'\','+!!ehPassado+')">Registrar</button></div></div></div>';
 }
 // Linha curta embaixo do nome da subtarefa: ultimo comentario do historico
@@ -4110,7 +4333,7 @@ function _atuSubLinhaHTML(s,cardId,canEdit,ehPassado){
   var clk=' onclick="event.stopPropagation();_atuToggle(\''+s.id+'\',\''+cardId+'\','+!!ehPassado+')"';
   if(!l.length)return '';
   var u=l[0];
-  return '<span class="atu-ult inline-edit-hit'+(ab?' on':'')+'"'+clk+' title="Ver o histórico desta subtarefa"><b>'+_atuDataBR(u.criado_em)+'</b><span class="atu-ult-t">'+escHTML(trunc(u.texto,110))+'</span><em>'+l.length+ic("chevdown")+'</em></span>';
+  return '<span class="atu-ult inline-edit-hit'+(ab?' on':'')+'"'+clk+' title="Ver o histórico desta subtarefa"><b>'+_atuDataBR(u.criado_em)+'</b><span class="atu-ult-t">'+_mcTextoHTML(trunc(u.texto,110))+'</span><em>'+l.length+ic("chevdown")+'</em></span>';
 }
 // Eventos automaticos do historico (criacao e conclusao), montados a partir das proprias tarefas
 function _atuDataEv(v){if(!v)return "";var s=String(v);return s.length===10?s.slice(8,10)+"/"+s.slice(5,7):_atuDataBR(s);}
@@ -4202,7 +4425,7 @@ async function _atuAdicionar(tarefaId,cardId,ehPassado){
   if(!txt){toast("Escreva a atualização",true);if(ta)ta.focus();return;}
   var payload={tarefa_id:tarefaId,usuario_id:userDbId,texto:txt};
   var rid=_tarefaPayloadReuniaoId();if(rid)payload.reuniao_id=rid;
-  try{await dbUpsertTarefaComentario(payload);await _atuPrefetch([tarefaId]);_atuRerender(cardId,ehPassado);toast("Atualização registrada!");}
+  try{await dbUpsertTarefaComentario(payload);await _atuPrefetch([tarefaId]);_atuRerender(cardId,ehPassado);toast("Atualização registrada!");_mcNotificarTarefa(txt,"",tarefaId,"no histórico de");}
   catch(_){toast("Erro ao registrar",true);}
 }
 async function _atuSalvarEdicao(cId,tarefaId,cardId,ehPassado){
@@ -4215,6 +4438,7 @@ async function _atuSalvarEdicao(cId,tarefaId,cardId,ehPassado){
     await dbPatchTarefaComentario(cId,{texto:txt});
     await _atuPrefetch([tarefaId]);
     _atuEditando=null;_atuRerender(cardId,ehPassado);toast("Atualização editada");
+    _mcNotificarTarefa(txt,c.texto,tarefaId,"no histórico de");
   }catch(_){toast("Erro ao salvar",true);}
 }
 function _atuExcluir(cId,tarefaId,cardId,ehPassado){
